@@ -913,7 +913,7 @@ export function CardStats({
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                         <h3 className="text-white font-bold" style={{ fontSize: '0.82rem', lineHeight: 1.2 }}>{baseName(uc.cards.name)}</h3>
                         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                            <span style={{ fontSize: '0.55rem', color: '#eab308', fontFamily: 'monospace' }}>${Number(uc.cards.market_price_usd ?? 0).toFixed(2)}</span>
+                            <span style={{ fontSize: '0.55rem', color: '#eab308', fontFamily: 'monospace' }}>${Number(uc.worth ?? 0).toFixed(2)}</span>
                             <span style={{ fontSize: '0.55rem', color: '#4ade80', fontFamily: 'monospace' }}>Lv {uc.card_level}</span>
                         </div>
                     </div>
