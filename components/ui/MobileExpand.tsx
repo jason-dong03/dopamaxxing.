@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { getTitleColor } from '@/lib/titleConfig'
+import LinkDiscord from '../LinkDiscord'
 
 export default function MobileExpand({
     loginStreak,
@@ -41,9 +42,9 @@ export default function MobileExpand({
                     style={{
                         position: 'absolute',
                         top: '100%',
-                        right: 0,
+                        left: 0,
                         marginTop: 4,
-                        background: 'var(--app-surface-2)',
+                        background: 'var(--app-bg)',
                         border: '1px solid var(--app-border)',
                         borderRadius: 10,
                         padding: '8px 10px',
@@ -59,6 +60,7 @@ export default function MobileExpand({
                         <span
                             style={{
                                 display: 'inline-flex',
+                                justifyContent: 'center',
                                 alignItems: 'center',
                                 gap: 4,
                                 fontSize: '0.65rem',
@@ -72,12 +74,19 @@ export default function MobileExpand({
                     {activeTitle && (
                         <span
                             style={{
+                                display: 'flex',
                                 fontSize: '0.6rem',
                                 fontWeight: 600,
+                                justifyContent: 'center',
                                 color: getTitleColor(activeTitle),
                             }}
                         >
                             {activeTitle}
+                        </span>
+                    )}
+                    {discordLinked && (
+                        <span>
+                            <LinkDiscord discordLinked={discordLinked} />
                         </span>
                     )}
                 </div>

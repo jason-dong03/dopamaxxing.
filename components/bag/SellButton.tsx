@@ -5,9 +5,11 @@ import type { UserCard } from '@/lib/types'
 
 export function SellButton({
     uc,
+    sellDisplay,
     onSell,
 }: {
     uc: UserCard
+    sellDisplay: string
     onSell: () => Promise<void>
 }) {
     const [selling, setSelling] = useState(false)
@@ -80,13 +82,7 @@ export function SellButton({
                 ) : (
                     <>
                         {uc.is_hot ? '🔥 ' : ''}sell ·{' '}
-                        <span style={{ color: '#4ade80' }}>
-                            ${' '}
-                            {Number(uc.worth).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            })}
-                        </span>
+                        <span style={{ color: '#4ade80' }}>${sellDisplay}</span>
                     </>
                 )}
             </button>

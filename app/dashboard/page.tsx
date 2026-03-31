@@ -43,7 +43,7 @@ export default async function Dashboard() {
                     position: 'sticky',
                     top: 0,
                     zIndex: 40,
-                    overflow: 'hidden',
+                    overflow: 'visible',
                 }}
             >
                 {/* main row */}
@@ -121,8 +121,21 @@ export default async function Dashboard() {
                         />
                     )}
 
-                    <div style={{ lineHeight: 1.2, minWidth: 0, overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+                    <div
+                        style={{
+                            lineHeight: 1.2,
+                            minWidth: 0,
+                            overflow: 'hidden',
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                flexWrap: 'nowrap',
+                            }}
+                        >
                             <p
                                 style={{
                                     fontSize: '0.78rem',
@@ -143,7 +156,9 @@ export default async function Dashboard() {
                                     style={{
                                         fontSize: '0.6rem',
                                         fontWeight: 600,
-                                        color: getTitleColor(profile.active_title),
+                                        color: getTitleColor(
+                                            profile.active_title,
+                                        ),
                                         whiteSpace: 'nowrap',
                                         flexShrink: 0,
                                     }}
@@ -182,18 +197,20 @@ export default async function Dashboard() {
                                     letterSpacing: '1px',
                                 }}
                             >
-                                @{[profile.first_name, profile.last_name].filter(Boolean).join(' ')}
+                                @
+                                {[profile.first_name, profile.last_name]
+                                    .filter(Boolean)
+                                    .join(' ')}
                             </p>
                         )}
                     </div>
-
-                    <div style={{ flex: 1 }} />
-
                     <MobileExpand
                         loginStreak={profile?.login_streak ?? 0}
                         activeTitle={profile?.active_title}
                         discordLinked={!!profile?.discord_id}
                     />
+
+                    <div style={{ flex: 1 }} />
 
                     {profile?.is_admin && (
                         <a
@@ -224,28 +241,10 @@ export default async function Dashboard() {
                     {/* coins */}
                     <CoinDisplay initialCoins={Number(profile?.coins ?? 0)} />
 
-                    {/* level badge — mobile only */}
-                    <div
-                        className="sm:hidden"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'baseline',
-                            gap: 2,
-                            background: 'var(--app-surface-2)',
-                            border: '1px solid var(--app-border)',
-                            borderRadius: 20,
-                            padding: '3px 10px',
-                            flexShrink: 0,
-                        }}
-                    >
-                        <span style={{ fontSize: '0.6rem', fontWeight: 500, color: 'var(--app-text-muted)' }}>Lv</span>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--lv-green)' }}>{level}</span>
-                    </div>
-
                     {/* level + xp bar — hidden on mobile */}
                     <div
-                        className="hidden sm:flex"
                         style={{
+                            display: 'flex',
                             alignItems: 'center',
                             gap: 8,
                             flexShrink: 0,
@@ -292,6 +291,7 @@ export default async function Dashboard() {
                             }}
                         >
                             <div
+                                className="hidden sm:flex"
                                 style={{
                                     width: 100,
                                     height: 5,
@@ -311,6 +311,7 @@ export default async function Dashboard() {
                                 />
                             </div>
                             <span
+                                className="hidden sm:flex"
                                 style={{
                                     fontSize: '0.5rem',
                                     color: 'var(--app-text-muted)',
@@ -326,8 +327,13 @@ export default async function Dashboard() {
                     <Link
                         href="/dashboard/settings"
                         style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 28,
+                            height: 28,
+                            borderRadius: '50%',
+                            flexShrink: 0,
                             background: 'var(--app-surface-2)',
                             border: '1px solid var(--app-border)',
                             color: '#475569',
@@ -335,8 +341,16 @@ export default async function Dashboard() {
                         }}
                         title="Settings"
                     >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                            <path d="M6 4v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2m6-16v2m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v10m6-16v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2"/>
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        >
+                            <path d="M6 4v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2m6-16v2m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v10m6-16v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2" />
                         </svg>
                     </Link>
                 </div>

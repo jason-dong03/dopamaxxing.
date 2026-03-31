@@ -73,6 +73,8 @@ import type {
 } from '@/lib/types'
 import { baseName } from '@/lib/types/cards'
 import type { BinderPreview } from '@/lib/types'
+import { GRADE_MULT } from '@/lib/gradeWorth'
+import { fmt } from '@/lib/utils'
 
 function Badge({
     children,
@@ -1755,35 +1757,10 @@ export default function ProfileView({
                             {showcaseCard.worth != null &&
                                 showcaseCard.worth > 0 &&
                                 (() => {
-                                    const GRADE_MULTIPLIER: Record<
-                                        number,
-                                        number
-                                    > = {
-                                        10: 2.2,
-                                        9: 1.7,
-                                        8: 1.35,
-                                        7: 1.15,
-                                        6: 1.0,
-                                        5: 0.8,
-                                        4: 0.65,
-                                        3: 0.55,
-                                        2: 0.4,
-                                        1: 4.5,
-                                    }
-                                    const raw = Number(showcaseCard.worth)
-                                    const mult =
-                                        showcaseCard.grade != null
-                                            ? (GRADE_MULTIPLIER[
-                                                  showcaseCard.grade
-                                              ] ?? 1)
-                                            : 1
-                                    const graded = raw * mult
+                                    const raw = Number(showcaseCard.raw)
+                                    const graded = Number(showcaseCard.worth)
                                     const delta = graded - raw
-                                    const fmt = (n: number) =>
-                                        n.toLocaleString(undefined, {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        })
+
                                     return (
                                         <div
                                             className="flex items-center gap-1.5 flex-wrap"
@@ -1804,7 +1781,7 @@ export default function ProfileView({
                                                     fontSize: '0.57rem',
                                                     fontWeight: 700,
                                                     fontFamily: 'monospace',
-                                                    color: '#4ade80',
+                                                    color: '#dedc4a',
                                                 }}
                                             >
                                                 ${fmt(raw)}

@@ -930,7 +930,7 @@ export default function PackOpening({
                         style={{
                             transform: isMobile
                                 ? 'translateY(32px)'
-                                : 'translateY(60px)',
+                                : 'translateY(15px)',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -1322,7 +1322,7 @@ export default function PackOpening({
                                     className="flex flex-col items-center gap-4"
                                     style={{
                                         transform: isMobile
-                                            ? 'translateY(110px)'
+                                            ? 'translateY(85px)'
                                             : 'translateY(24px)',
                                         padding: isMobile ? '0 10px' : 0,
                                         width: '100%',

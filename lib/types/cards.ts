@@ -8,6 +8,11 @@ export function baseName(name: string): string {
         .trim()
 }
 
+export type SetInfo = {
+    id: string
+    name: string
+    total_cards: number
+}
 /** Core card info as stored in the `cards` DB table */
 export type CardInfo = {
     id: string
@@ -19,6 +24,8 @@ export type CardInfo = {
     set_id?: string | null
     hp?: number
     pokemon_type?: string | null
+    market_price_usd: number
+    sets: SetInfo
 }
 
 /** A user's owned card with all metadata (bag view) */
@@ -63,6 +70,7 @@ export type RawCard = {
         rarity: string
         national_pokedex_number: number
         set_id: string | null
+        market_price_usd: number
     } | null
 }
 
@@ -72,6 +80,7 @@ export type ShowcaseCard = {
     card_level: number
     grade: number | null
     worth: number | null
+    raw: number | null
     nature?: string | null
     cards: {
         id: string

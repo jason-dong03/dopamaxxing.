@@ -16,6 +16,7 @@ import { CardTile } from '@/components/bag/CardTile'
 import { CardStats } from '@/components/bag/CardStats'
 import { ITEM_MAP, type ItemId } from '@/lib/items'
 import { TYPE_COLOR } from '@/lib/pokemon-types'
+import { GRADE_MULT } from '@/lib/gradeWorth'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const FILTERS = ['All', ...RARITY_ORDER]
@@ -55,6 +56,7 @@ export default function BagPage({
     const [filters, setFilters] = useState<Set<string>>(new Set(['All']))
     const [favoritesOnly, setFavoritesOnly] = useState(false)
     const [typeFilter, setTypeFilter] = useState<string | null>(null)
+    const [setFilter, setSetFilter] = useState<string | null>(null)
     const [search, setSearch] = useState('')
     const [sort, setSort] = useState<
         'rarity' | 'level' | 'name' | 'price' | 'grade'
@@ -92,7 +94,6 @@ export default function BagPage({
         })
     }, [])
 
-
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') setSelected(null)
@@ -108,11 +109,23 @@ export default function BagPage({
                 .filter(Boolean) as string[],
         ),
     ).sort()
+    const setNameMap = Object.fromEntries(
+        userCards
+            .filter((uc) => uc.cards.set_id && uc.cards.sets?.name)
+            .map((uc) => [uc.cards.set_id, uc.cards.sets.name]),
+    )
+
+    const allSets = Array.from(
+        new Set(
+            userCards.map((uc) => uc.cards.set_id).filter(Boolean) as string[],
+        ),
+    ).sort()
 
     const filtered = userCards
         .filter((uc) => filters.has('All') || filters.has(uc.cards.rarity))
         .filter((uc) => !favoritesOnly || uc.is_favorited)
         .filter((uc) => !typeFilter || uc.cards.pokemon_type === typeFilter)
+        .filter((uc) => !setFilter || uc.cards.set_id === setFilter)
         .filter((uc) =>
             uc.cards.name.toLowerCase().includes(search.toLowerCase()),
         )
@@ -130,18 +143,7 @@ export default function BagPage({
 
     async function handleSell(): Promise<void> {
         if (!selected) return
-        const GRADE_MULT: Record<number, number> = {
-            10: 1.5,
-            9: 1.35,
-            8: 1.2,
-            7: 1.1,
-            6: 1.05,
-            5: 1.0,
-            4: 0.9,
-            3: 0.8,
-            2: 0.65,
-            1: 0.5,
-        }
+
         const mult =
             selected.grade != null ? (GRADE_MULT[selected.grade] ?? 1) : 1
         const saleAmount = Math.round(selected.worth * mult)
@@ -446,7 +448,10 @@ export default function BagPage({
                         </div>
 
                         {/* tabs + action buttons row */}
-                        <div className="flex items-center mb-3" style={{ gap: 6 }}>
+                        <div
+                            className="flex items-center mb-3"
+                            style={{ gap: 6 }}
+                        >
                             {(['cards', 'misc'] as const).map((tab) => (
                                 <button
                                     key={tab}
@@ -456,9 +461,18 @@ export default function BagPage({
                                         fontWeight: 600,
                                         padding: '3px 12px',
                                         borderRadius: 20,
-                                        border: activeTab === tab ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(255,255,255,0.1)',
-                                        background: activeTab === tab ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
-                                        color: activeTab === tab ? '#4ade80' : 'var(--app-text-muted)',
+                                        border:
+                                            activeTab === tab
+                                                ? '1px solid rgba(74,222,128,0.4)'
+                                                : '1px solid rgba(255,255,255,0.1)',
+                                        background:
+                                            activeTab === tab
+                                                ? 'rgba(74,222,128,0.1)'
+                                                : 'rgba(255,255,255,0.04)',
+                                        color:
+                                            activeTab === tab
+                                                ? '#4ade80'
+                                                : 'var(--app-text-muted)',
                                         cursor: 'pointer',
                                         transition: 'all 150ms ease',
                                         flexShrink: 0,
@@ -470,63 +484,186 @@ export default function BagPage({
 
                             <div style={{ flex: 1 }} />
 
-                            {activeTab === 'cards' && (<>
-                                {/* +Space with confirmation popover */}
-                                <div style={{ position: 'relative', flexShrink: 0 }}>
-                                    <button
-                                        onClick={() => !expanding && setExpandConfirm(v => !v)}
-                                        disabled={expanding}
+                            {activeTab === 'cards' && (
+                                <>
+                                    {/* +Space with confirmation popover */}
+                                    <div
                                         style={{
+                                            position: 'relative',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        <button
+                                            onClick={() =>
+                                                !expanding &&
+                                                setExpandConfirm((v) => !v)
+                                            }
+                                            disabled={expanding}
+                                            style={{
+                                                fontSize: '0.62rem',
+                                                fontWeight: 600,
+                                                padding: '3px 9px',
+                                                borderRadius: 20,
+                                                border: '1px solid rgba(74,222,128,0.35)',
+                                                background:
+                                                    'rgba(74,222,128,0.08)',
+                                                color: expanding
+                                                    ? 'var(--app-text-muted)'
+                                                    : '#4ade80',
+                                                cursor: expanding
+                                                    ? 'not-allowed'
+                                                    : 'pointer',
+                                                whiteSpace: 'nowrap',
+                                                transition: 'all 150ms ease',
+                                            }}
+                                        >
+                                            {expandMsg ||
+                                                (expanding ? '…' : '+Space')}
+                                        </button>
+                                        {expandConfirm && !expandMsg && (
+                                            <>
+                                                <div
+                                                    onClick={() =>
+                                                        setExpandConfirm(false)
+                                                    }
+                                                    style={{
+                                                        position: 'fixed',
+                                                        inset: 0,
+                                                        zIndex: 49,
+                                                    }}
+                                                />
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: 'calc(100% + 8px)',
+                                                        right: 0,
+                                                        zIndex: 50,
+                                                        background: '#0e0e16',
+                                                        border: '1px solid rgba(74,222,128,0.25)',
+                                                        borderRadius: 12,
+                                                        padding: '12px 14px',
+                                                        minWidth: 180,
+                                                        boxShadow:
+                                                            '0 8px 24px rgba(0,0,0,0.5)',
+                                                    }}
+                                                >
+                                                    <p
+                                                        style={{
+                                                            fontSize: '0.65rem',
+                                                            color: 'var(--app-text-muted)',
+                                                            margin: '0 0 6px',
+                                                        }}
+                                                    >
+                                                        Expand bag space
+                                                    </p>
+                                                    <p
+                                                        style={{
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 700,
+                                                            color: 'var(--app-text)',
+                                                            margin: '0 0 4px',
+                                                        }}
+                                                    >
+                                                        {bagCapacity} →{' '}
+                                                        {bagCapacity + 10} slots
+                                                    </p>
+                                                    <p
+                                                        style={{
+                                                            fontSize: '0.65rem',
+                                                            color: '#eab308',
+                                                            margin: '0 0 12px',
+                                                        }}
+                                                    >
+                                                        costs $20.00
+                                                    </p>
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            gap: 6,
+                                                        }}
+                                                    >
+                                                        <button
+                                                            onClick={() =>
+                                                                setExpandConfirm(
+                                                                    false,
+                                                                )
+                                                            }
+                                                            style={{
+                                                                flex: 1,
+                                                                padding:
+                                                                    '5px 0',
+                                                                borderRadius: 8,
+                                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                                background:
+                                                                    'transparent',
+                                                                color: 'var(--app-text-muted)',
+                                                                fontSize:
+                                                                    '0.62rem',
+                                                                fontWeight: 600,
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setExpandConfirm(
+                                                                    false,
+                                                                )
+                                                                handleExpandBag()
+                                                            }}
+                                                            style={{
+                                                                flex: 1,
+                                                                padding:
+                                                                    '5px 0',
+                                                                borderRadius: 8,
+                                                                border: '1px solid rgba(74,222,128,0.4)',
+                                                                background:
+                                                                    'rgba(74,222,128,0.12)',
+                                                                color: '#4ade80',
+                                                                fontSize:
+                                                                    '0.62rem',
+                                                                fontWeight: 700,
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            Confirm
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const next = !selectMode
+                                            setSelectMode(next)
+                                            dispatchSelectMode(next)
+                                            setSelectedIds(new Set())
+                                        }}
+                                        style={{
+                                            flexShrink: 0,
                                             fontSize: '0.62rem',
                                             fontWeight: 600,
                                             padding: '3px 9px',
                                             borderRadius: 20,
-                                            border: '1px solid rgba(74,222,128,0.35)',
-                                            background: 'rgba(74,222,128,0.08)',
-                                            color: expanding ? 'var(--app-text-muted)' : '#4ade80',
-                                            cursor: expanding ? 'not-allowed' : 'pointer',
-                                            whiteSpace: 'nowrap',
+                                            border: selectMode
+                                                ? '1px solid rgba(168,85,247,0.5)'
+                                                : '1px solid var(--pill-border)',
+                                            background: selectMode
+                                                ? 'rgba(168,85,247,0.12)'
+                                                : 'transparent',
+                                            color: selectMode
+                                                ? '#c084fc'
+                                                : 'var(--app-text-muted)',
+                                            cursor: 'pointer',
                                             transition: 'all 150ms ease',
                                         }}
                                     >
-                                        {expandMsg || (expanding ? '…' : '+Space')}
+                                        {selectMode ? 'Done' : 'Select'}
                                     </button>
-                                    {expandConfirm && !expandMsg && (<>
-                                        <div onClick={() => setExpandConfirm(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                                        <div style={{
-                                            position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50,
-                                            background: '#0e0e16', border: '1px solid rgba(74,222,128,0.25)',
-                                            borderRadius: 12, padding: '12px 14px', minWidth: 180,
-                                            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                                        }}>
-                                            <p style={{ fontSize: '0.65rem', color: 'var(--app-text-muted)', margin: '0 0 6px' }}>Expand bag space</p>
-                                            <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--app-text)', margin: '0 0 4px' }}>{bagCapacity} → {bagCapacity + 10} slots</p>
-                                            <p style={{ fontSize: '0.65rem', color: '#eab308', margin: '0 0 12px' }}>costs $20.00</p>
-                                            <div style={{ display: 'flex', gap: 6 }}>
-                                                <button onClick={() => setExpandConfirm(false)} style={{ flex: 1, padding: '5px 0', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--app-text-muted)', fontSize: '0.62rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                                                <button onClick={() => { setExpandConfirm(false); handleExpandBag() }} style={{ flex: 1, padding: '5px 0', borderRadius: 8, border: '1px solid rgba(74,222,128,0.4)', background: 'rgba(74,222,128,0.12)', color: '#4ade80', fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer' }}>Confirm</button>
-                                            </div>
-                                        </div>
-                                    </>)}
-                                </div>
-                                <button
-                                    onClick={() => { const next = !selectMode; setSelectMode(next); dispatchSelectMode(next); setSelectedIds(new Set()) }}
-                                    style={{
-                                        flexShrink: 0,
-                                        fontSize: '0.62rem',
-                                        fontWeight: 600,
-                                        padding: '3px 9px',
-                                        borderRadius: 20,
-                                        border: selectMode ? '1px solid rgba(168,85,247,0.5)' : '1px solid var(--pill-border)',
-                                        background: selectMode ? 'rgba(168,85,247,0.12)' : 'transparent',
-                                        color: selectMode ? '#c084fc' : 'var(--app-text-muted)',
-                                        cursor: 'pointer',
-                                        transition: 'all 150ms ease',
-                                    }}
-                                >
-                                    {selectMode ? 'Done' : 'Select'}
-                                </button>
-                            </>)}
+                                </>
+                            )}
                         </div>
 
                         {activeTab === 'cards' && (
@@ -625,6 +762,36 @@ export default function BagPage({
                                     ))}
                                 </select>
 
+                                {/* set dropdown*/}
+                                {allSets.length > 0 && (
+                                    <select
+                                        value={setFilter ?? ''}
+                                        onChange={(e) =>
+                                            setSetFilter(e.target.value || null)
+                                        }
+                                        style={{
+                                            background: 'var(--input-bg)',
+                                            border: setFilter
+                                                ? '1px solid rgba(255,255,255,0.3)'
+                                                : '1px solid var(--input-border)',
+                                            borderRadius: 8,
+                                            padding: '5px 8px',
+                                            fontSize: '0.65rem',
+                                            color: 'var(--app-text)',
+                                            cursor: 'pointer',
+                                            outline: 'none',
+                                            flexShrink: 0,
+                                            colorScheme: 'dark',
+                                        }}
+                                    >
+                                        <option value="">All sets</option>
+                                        {allSets.map((s) => (
+                                            <option key={s} value={s}>
+                                                {setNameMap[s] ?? s}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                                 {/* type dropdown */}
                                 {allTypes.length > 0 && (
                                     <select
@@ -998,15 +1165,22 @@ export default function BagPage({
                                             onClick={() => {
                                                 if (selectMode) {
                                                     setSelectedIds((prev) => {
-                                                        const next = new Set(prev)
-                                                        if (next.has(uc.id)) next.delete(uc.id)
+                                                        const next = new Set(
+                                                            prev,
+                                                        )
+                                                        if (next.has(uc.id))
+                                                            next.delete(uc.id)
                                                         else next.add(uc.id)
                                                         return next
                                                     })
                                                 } else {
                                                     const col = i % 5
                                                     setSelectedCol(col)
-                                                    setSelected((prev) => prev?.id === uc.id ? null : uc)
+                                                    setSelected((prev) =>
+                                                        prev?.id === uc.id
+                                                            ? null
+                                                            : uc,
+                                                    )
                                                 }
                                             }}
                                         />
@@ -1016,35 +1190,45 @@ export default function BagPage({
                         </div>
 
                         {/* sidebar — desktop/tablet only, portalled to body so it overlays everything */}
-                        {!isWide && !isMobile && selected && createPortal(
-                            <div
-                                className="sidebar-anim scrollbar-none"
-                                style={{
-                                    width: 300,
-                                    position: 'fixed',
-                                    top: 0,
-                                    bottom: 0,
-                                    ...(selectedCol <= 2
-                                        ? { right: `max(0px, calc((100vw - 1200px) / 2))`, borderLeft: '1px solid var(--sidebar-border)' }
-                                        : { left: `max(0px, calc((100vw - 1200px) / 2))`, borderRight: '1px solid var(--sidebar-border)' }
-                                    ),
-                                    overflowY: 'auto',
-                                    background: 'var(--sidebar-bg)',
-                                    zIndex: 100,
-                                    paddingBottom: 24,
-                                }}
-                            >
-                                <CardStats
-                                    uc={selected}
-                                    onClose={() => setSelected(null)}
-                                    onSell={handleSell}
-                                    onToggleFavorite={handleToggleFavorite}
-                                    onGraded={handleGraded}
-                                    mode="sidebar"
-                                />
-                            </div>,
-                            document.body
-                        )}
+                        {!isWide &&
+                            !isMobile &&
+                            selected &&
+                            createPortal(
+                                <div
+                                    className="sidebar-anim scrollbar-none"
+                                    style={{
+                                        width: 300,
+                                        position: 'fixed',
+                                        top: 0,
+                                        bottom: 0,
+                                        ...(selectedCol <= 2
+                                            ? {
+                                                  right: `max(0px, calc((100vw - 1200px) / 2))`,
+                                                  borderLeft:
+                                                      '1px solid var(--sidebar-border)',
+                                              }
+                                            : {
+                                                  left: `max(0px, calc((100vw - 1200px) / 2))`,
+                                                  borderRight:
+                                                      '1px solid var(--sidebar-border)',
+                                              }),
+                                        overflowY: 'auto',
+                                        background: 'var(--sidebar-bg)',
+                                        zIndex: 100,
+                                        paddingBottom: 24,
+                                    }}
+                                >
+                                    <CardStats
+                                        uc={selected}
+                                        onClose={() => setSelected(null)}
+                                        onSell={handleSell}
+                                        onToggleFavorite={handleToggleFavorite}
+                                        onGraded={handleGraded}
+                                        mode="sidebar"
+                                    />
+                                </div>,
+                                document.body,
+                            )}
 
                         {/* bottom sheet — mobile only */}
                         {isMobile && selected && (
