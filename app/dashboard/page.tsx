@@ -7,8 +7,8 @@ import { getActiveEvents } from '@/lib/dailyEvents'
 import EventBanner from '@/components/ui/EventBanner'
 import PassiveCoins from '@/components/ui/PassiveCoins'
 import LinkDiscord from '@/components/LinkDiscord'
-import DropsButton from '@/components/DropsButton'
 import CoinDisplay from '@/components/ui/CoinDisplay'
+import StashButton from '@/components/ui/StashButton'
 import LiberatorEasterEgg from '@/components/LiberatorEasterEgg'
 import { getTitleColor } from '@/lib/titleConfig'
 import MobileExpand from '@/components/ui/MobileExpand'
@@ -208,6 +208,7 @@ export default async function Dashboard() {
                         loginStreak={profile?.login_streak ?? 0}
                         activeTitle={profile?.active_title}
                         discordLinked={!!profile?.discord_id}
+                        adminPanel={profile?.is_admin}
                     />
 
                     <div style={{ flex: 1 }} />
@@ -215,7 +216,7 @@ export default async function Dashboard() {
                     {profile?.is_admin && (
                         <a
                             href="/admin"
-                            className="admin-pill"
+                            className="hidden sm:contents admin-pill"
                             style={{
                                 fontSize: '0.68rem',
                                 fontWeight: 700,
@@ -238,6 +239,9 @@ export default async function Dashboard() {
                         <LinkDiscord discordLinked={!!profile?.discord_id} />
                     </span>
 
+                    {/* stash */}
+                    <StashButton />
+
                     {/* coins */}
                     <CoinDisplay initialCoins={Number(profile?.coins ?? 0)} />
 
@@ -253,6 +257,7 @@ export default async function Dashboard() {
                         <div
                             style={{
                                 display: 'flex',
+                                justifyContent: 'center',
                                 alignItems: 'baseline',
                                 gap: 2,
                                 background: 'var(--app-surface-2)',
@@ -281,8 +286,8 @@ export default async function Dashboard() {
                             </span>
                         </div>
                         <div
+                            className="hidden sm:flex"
                             style={{
-                                display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'flex-end',
                                 gap: 3,
@@ -291,7 +296,6 @@ export default async function Dashboard() {
                             }}
                         >
                             <div
-                                className="hidden sm:flex"
                                 style={{
                                     width: 100,
                                     height: 5,
@@ -337,7 +341,6 @@ export default async function Dashboard() {
                             background: 'var(--app-surface-2)',
                             border: '1px solid var(--app-border)',
                             color: '#475569',
-                            marginRight: 4,
                         }}
                         title="Settings"
                     >
@@ -358,7 +361,6 @@ export default async function Dashboard() {
 
             {/* daily event banner */}
             <EventBanner events={await getActiveEvents()} />
-            <DropsButton />
 
             <PackSelector coins={profile?.coins ?? 0} />
         </div>

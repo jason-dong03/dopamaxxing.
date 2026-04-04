@@ -6,7 +6,7 @@ import {
     BONUS_CARD_CHANCE, pickRarityFromWeights,
     applyProfileXP, packXpGain,
 } from '@/lib/rarityConfig'
-import { PACKS } from '@/lib/packs'
+import { getMergedPacks } from '@/lib/packMeta'
 import { generateAttributes } from '@/lib/cardAttributes'
 import { getEventMagnitude, getTodayEvents } from '@/lib/dailyEvents'
 import { awardAchievements, getEarnedAchievements } from '@/lib/awardAchievement'
@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
         const { setId, count: rawCount = 10, free = false } = await request.json()
         const count = Math.max(1, Math.min(10, Number(rawCount)))
 
-        const packDef = PACKS.find((p) => p.id === setId)
+        const mergedPacks = await getMergedPacks(supabase)
+        const packDef = mergedPacks.find((p) => p.id === setId)
         const baseCost = packDef?.cost ?? 0
         const costDiscount = await getEventMagnitude('cheap_packs')
         const costPerPack = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))

@@ -7,10 +7,12 @@ export default function MobileExpand({
     loginStreak,
     activeTitle,
     discordLinked,
+    adminPanel,
 }: {
     loginStreak: number
     activeTitle?: string | null
     discordLinked: boolean
+    adminPanel: boolean
 }) {
     const [open, setOpen] = useState(false)
 
@@ -88,6 +90,29 @@ export default function MobileExpand({
                         <span>
                             <LinkDiscord discordLinked={discordLinked} />
                         </span>
+                    )}
+                    {adminPanel && (
+                        <a
+                            href="/admin"
+                            className="admin-pill"
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                color: '#94a3b8',
+                                background: 'var(--app-surface-2)',
+                                border: '1px solid var(--app-border)',
+                                borderRadius: 20,
+                                padding: '3px 10px',
+                                textDecoration: 'none',
+                                letterSpacing: '0.05em',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                            }}
+                        >
+                            ADMIN
+                        </a>
                     )}
                 </div>
             )}

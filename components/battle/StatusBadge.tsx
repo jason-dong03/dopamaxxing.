@@ -14,11 +14,11 @@ export function StatusBadge({ status }: { status: string }) {
     const color = STATUS_COLOR[status] ?? '#94a3b8'
     return (
         <span style={{
-            fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.06em',
+            fontSize: '0.36rem', fontWeight: 700, letterSpacing: '0.05em',
             textTransform: 'uppercase',
-            background: `${color}22`,
-            border: `1px solid ${color}55`,
-            color,
+            background: '#1a1a1a',
+            border: `1px solid ${color}88`,
+            color: `${color}dd`,
             padding: '1px 5px',
             borderRadius: 4,
         }}>

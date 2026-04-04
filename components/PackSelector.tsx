@@ -14,6 +14,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
     const [previewPack, setPreviewPack] = useState<Pack | null>(null)
     const [bagCount, setBagCount] = useState<number | null>(null)
     const [bagCapacity, setBagCapacity] = useState<number>(50)
+    const [allPacks, setAllPacks] = useState<Pack[]>(PACKS)
 
     useEffect(() => {
         const supabase = createClient()
@@ -27,6 +28,23 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                 setBagCapacity(profileRes.data?.bag_capacity ?? 50)
             })
         })
+        // fetch DB price overrides
+        fetch('/api/pack-prices').then(r => r.ok ? r.json() : null).then(json => {
+            if (!json?.prices) return
+            const priceMap = new Map<string, typeof json.prices[0]>(json.prices.map((p: any) => [p.id, p]))
+            setAllPacks(PACKS.map(pack => {
+                const meta = priceMap.get(pack.id)
+                if (!meta) return pack
+                return {
+                    ...pack,
+                    cost: meta.cost,
+                    ...(meta.name != null && { name: meta.name }),
+                    ...(meta.description != null && { description: meta.description }),
+                    ...(meta.special != null && { special: meta.special }),
+                    ...(meta.card_count != null && { card_count: meta.card_count }),
+                }
+            }))
+        }).catch(() => {})
     }, [])
 
     if (selectedPack) {
@@ -44,9 +62,9 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
     }
 
     const isDev = process.env.NODE_ENV === 'development'
-    const packs = PACKS.filter((p) => p.aspect === 'pack' && !p.theme_pokedex_ids && !p.special && (isDev || !p.test))
-    const specialPacks = PACKS.filter((p) => p.aspect === 'pack' && (!!p.theme_pokedex_ids || !!p.special) && (isDev || !p.test))
-    const boxes = PACKS.filter((p) => p.aspect === 'box' && (isDev || !p.test))
+    const packs = allPacks.filter((p) => p.aspect === 'pack' && !p.theme_pokedex_ids && !p.special && (isDev || !p.test))
+    const specialPacks = allPacks.filter((p) => p.aspect === 'pack' && (!!p.theme_pokedex_ids || !!p.special) && (isDev || !p.test))
+    const boxes = allPacks.filter((p) => p.aspect === 'box' && (isDev || !p.test))
 
     const bagFull = bagCount !== null && bagCount >= bagCapacity
 

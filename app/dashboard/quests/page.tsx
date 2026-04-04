@@ -159,9 +159,9 @@ export default async function QuestsPage() {
         (rarityRows ?? []).some((r: any) => r.cards?.name === 'Zekrom ex'   && nLegRarities.has(r.cards?.rarity) && r.cards?.set_id === 'sv10.5b'),
     ].filter(Boolean).length
     const hasCreationTrio = [
-        ownedLower.some(n => n.includes('dialga')   && n.includes('vmax')),
-        ownedLower.some(n => n.includes('palkia')   && n.includes('vmax')),
-        ownedLower.some(n => n.includes('giratina') && n.includes('vmax')),
+        ownedLower.some(n => n.includes('dialga')),
+        ownedLower.some(n => n.includes('palkia')),
+        ownedLower.some(n => n.includes('giratina')),
     ].filter(Boolean).length
     const hasMewMewtwo = [
         (rarityRows ?? []).some((r: any) => legendaryRarities.has(r.cards?.rarity) && r.cards?.name && !r.cards.name.toLowerCase().includes('mewtwo') && r.cards.name.toLowerCase().includes('mew')),

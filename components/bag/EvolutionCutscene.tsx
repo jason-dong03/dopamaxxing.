@@ -34,6 +34,7 @@ export default function EvolutionCutscene({
     const [chosenCard, setChosenCard] = useState<EvolutionCard | null>(null)
     const [transferLoading, setTransferLoading] = useState(false)
     const rollRef = useRef<number | null>(null)
+    const hardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const evolutionName = cards.length > 0 ? baseName(cards[0].name) : 'something'
     const fullDialogue = `What?! ${pokemonName} is evolving into ${evolutionName}!`
@@ -87,6 +88,7 @@ export default function EvolutionCutscene({
 
             if (speed <= 1.6 && offset > targetOffset * 0.6) {
                 cancelAnimationFrame(rollRef.current!)
+                clearTimeout(hardTimeoutRef.current!)
                 setTimeout(() => setPhase('choice'), 600)
                 return
             }
@@ -94,8 +96,16 @@ export default function EvolutionCutscene({
         }
         rollRef.current = requestAnimationFrame(step)
     }
+    hardTimeoutRef.current = setTimeout(() => {
+        cancelAnimationFrame(rollRef.current!)
+        setPhase('choice')
+    }, 5000)
+    }
 
-    useEffect(() => () => { if (rollRef.current) cancelAnimationFrame(rollRef.current) }, [])
+    useEffect(() => () => {
+        if (rollRef.current) cancelAnimationFrame(rollRef.current)
+        if (hardTimeoutRef.current) clearTimeout(hardTimeoutRef.current)
+    }, [])
 
     async function handleChoice(transferLevels: boolean) {
         if (!chosenCard) return

@@ -329,7 +329,7 @@ export function useBattle(options?: { trainerId?: string; startPhase?: BattlePha
                     await waitForAdvance()
 
                     if (isUser) {
-                        // User KO'd N's pokemon — N recalls + throws next one
+                        // User KO'd N's pokemon — N sprite appears with recall speech
                         const nRecallLines = [
                             `...you were free.\nRest now, ${baseName(entry.fainted)}.`,
                             `Come back,\n${baseName(entry.fainted)}.`,
@@ -337,17 +337,18 @@ export function useBattle(options?: { trainerId?: string; startPhase?: BattlePha
                             `Forgive me,\n${baseName(entry.fainted)}.`,
                             `You gave your all,\n${baseName(entry.fainted)}.`,
                         ]
+                        setNRecalling(true)
                         setBattleTextOverride(nRecallLines[Math.floor(Math.random() * nRecallLines.length)])
                         await waitForAdvance()
-                        setFaintedSide(null)
+                        setNRecalling(false)
+                        if (updated.status === 'won') setFaintedSide(null)
 
                         if (updated.status !== 'won') {
-                            // N's trainer sprite appears
-                            setNRecalling(true)
-                            await wait(750)
-                            // N throws pokeball
+                            // Batch: clear faint + swap pokemon + start send-out in one render
+                            // Old sprite has a different key so it unmounts instantly — no flash
+                            setFaintedSide(null)
+                            setBattle(prev => prev ? { ...prev, n_cards: updated.n_cards, n_active_index: updated.n_active_index } : prev)
                             setNSendingOut(true)
-                            setNRecalling(false)
                             await wait(900)
                             setNSendingOut(false)
 

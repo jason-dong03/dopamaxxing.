@@ -24,22 +24,34 @@ function useBreakpoint() {
 
 const SPRITE_POS = {
     mobile: {
+        // ── Player sprite ──────────────────────────────
         playerLeft: '5%',
         playerBottom: '8%',
+        // ── Enemy pokemon sprite ───────────────────────
         enemyTop: '45%',
         enemyRight: '16%',
+        // ── Enemy trainer (recall animation) ──────────
+        trainerBottom: '38%',
+        trainerRight: '14%',
+        trainerHeight: 'clamp(70px,25vw,130px)',
     },
     tablet: {
         playerLeft: '12%',
         playerBottom: '10%',
         enemyTop: '45%',
         enemyRight: '20%',
+        trainerBottom: '38%',
+        trainerRight: '20%',
+        trainerHeight: 'clamp(70px,18vw,130px)',
     },
     desktop: {
-        playerLeft: '12%',
+        playerLeft: '21%',
         playerBottom: '8%',
-        enemyTop: '30%',
-        enemyRight: '25%',
+        enemyTop: '47%',
+        enemyRight: '28%',
+        trainerBottom: '38%',
+        trainerRight: '28%',
+        trainerHeight: 'clamp(110px,15vw,180px)',
     },
 } as const
 
@@ -60,29 +72,44 @@ type BattleFieldProps = {
 
 const FONT = "'PokemonClassic', monospace"
 
-
-function StatStages({ atk, def, spd }: { atk?: number; def?: number; spd?: number }) {
+function StatStages({
+    atk,
+    def,
+    spd,
+}: {
+    atk?: number
+    def?: number
+    spd?: number
+}) {
     const stages = [
         { label: 'ATK', val: atk ?? 0 },
         { label: 'DEF', val: def ?? 0 },
         { label: 'SPD', val: spd ?? 0 },
-    ].filter(s => s.val !== 0)
+    ].filter((s) => s.val !== 0)
     if (stages.length === 0) return null
     return (
         <>
-            {stages.map(s => (
-                <span key={s.label} style={{
-                    fontSize: 'clamp(0.3rem,0.8vw,0.38rem)',
-                    fontWeight: 700,
-                    color: s.val > 0 ? '#4ade80' : '#f87171',
-                    background: s.val > 0 ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
-                    border: `1px solid ${s.val > 0 ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
-                    borderRadius: 3,
-                    padding: '0 3px',
-                    lineHeight: 1.6,
-                    flexShrink: 0,
-                }}>
-                    {s.label}{s.val > 0 ? '+' : ''}{s.val} ×{statStageMult(s.val).toFixed(2)}
+            {stages.map((s) => (
+                <span
+                    key={s.label}
+                    style={{
+                        fontSize: 'clamp(0.3rem,0.8vw,0.38rem)',
+                        fontWeight: 700,
+                        color: s.val > 0 ? '#11371f' : '#f87171',
+                        background:
+                            s.val > 0
+                                ? 'rgba(120, 170, 138, 0.83)'
+                                : 'rgba(78, 37, 37, 0.15)',
+                        border: `1px solid ${s.val > 0 ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
+                        borderRadius: 3,
+                        padding: '0 3px',
+                        lineHeight: 1.6,
+                        flexShrink: 0,
+                    }}
+                >
+                    {s.label}
+                    {s.val > 0 ? '+' : ''}
+                    {s.val} ×{statStageMult(s.val).toFixed(2)}
                 </span>
             ))}
         </>
@@ -160,7 +187,15 @@ export function BattleField({
                             marginBottom: 5,
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0, flex: 1 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                minWidth: 0,
+                                flex: 1,
+                            }}
+                        >
                             <span
                                 style={{
                                     fontSize: 'clamp(0.55rem,1.8vw,0.68rem)',
@@ -174,12 +209,6 @@ export function BattleField({
                                 {baseName(nActive.name)}
                             </span>
                             <StatusBadge status={nActive.statusEffect} />
-                            <StatStages atk={nActive.attackStage} def={nActive.defenseStage} spd={nActive.speedStage} />
-                            {nActive.nature && (
-                                <span style={{ fontSize: 'clamp(0.36rem,1vw,0.46rem)', color: '#7c4d9e', fontWeight: 600, flexShrink: 0 }}>
-                                    {nActive.nature}
-                                </span>
-                            )}
                         </div>
                         <span
                             style={{
@@ -234,6 +263,24 @@ export function BattleField({
                             activeIndex={battle.n_active_index}
                         />
                     </div>
+                    {/* Stat stage overlay — top-right corner overlapping border */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: -14,
+                            right: -14,
+                            display: 'flex',
+                            flexDirection: 'row',
+                            gap: 2,
+                            zIndex: 10,
+                        }}
+                    >
+                        <StatStages
+                            atk={nActive.attackStage}
+                            def={nActive.defenseStage}
+                            spd={nActive.speedStage}
+                        />
+                    </div>
                 </div>
                 {/* Black strip — behind panel, protrudes from bottom-right */}
                 <div
@@ -260,24 +307,29 @@ export function BattleField({
 
             {/* N trainer sprite — slides in during recall animation */}
             {nRecalling && (
-                <div style={{
-                    position: 'absolute',
-                    bottom: '30%',
-                    right: spritePos.enemyRight,
-                    zIndex: 6,
-                    animation: 'n-trainer-recall 0.7s ease-out forwards',
-                    pointerEvents: 'none',
-                }}>
+                <div
+                    style={{
+                        position: 'absolute',
+                        bottom: spritePos.trainerBottom,
+                        right: spritePos.trainerRight,
+                        zIndex: 6,
+                        animation: 'n-trainer-recall 0.7s ease-out forwards',
+                        pointerEvents: 'none',
+                    }}
+                >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={trainerSprite ?? '/trainers/N-masters.gif'}
                         alt="Trainer"
                         style={{
-                            height: 'clamp(70px,12vw,130px)',
+                            height: spritePos.trainerHeight,
                             imageRendering: 'pixelated',
                             filter: 'drop-shadow(0 0 18px rgba(74,222,128,0.5))',
                         }}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        onError={(e) => {
+                            ;(e.target as HTMLImageElement).style.display =
+                                'none'
+                        }}
                     />
                 </div>
             )}
@@ -301,7 +353,9 @@ export function BattleField({
                             left: '50%',
                             transform: 'translateX(-50%)',
                             animation: 'n-damage-float 1.8s ease-out forwards',
-                            fontSize: isCriticalHit ? 'clamp(1.2rem,3.5vw,1.6rem)' : 'clamp(0.85rem,2.5vw,1.1rem)',
+                            fontSize: isCriticalHit
+                                ? 'clamp(1.2rem,3.5vw,1.6rem)'
+                                : 'clamp(0.85rem,2.5vw,1.1rem)',
                             fontWeight: 900,
                             color: isCriticalHit ? '#facc15' : '#f87171',
                             textShadow: isCriticalHit
@@ -317,18 +371,24 @@ export function BattleField({
                     </div>
                 )}
                 {nSendingOut && (
-                    <div style={{
-                        position: 'absolute',
-                        top: '40%', left: '50%',
-                        fontSize: 'clamp(1.6rem,4vw,2.8rem)',
-                        animation: 'n-pokeball-throw 0.8s ease-out forwards',
-                        pointerEvents: 'none',
-                        zIndex: 5,
-                    }}>⚾</div>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '40%',
+                            left: '50%',
+                            fontSize: 'clamp(1.6rem,4vw,2.8rem)',
+                            animation:
+                                'n-pokeball-throw 0.8s ease-out forwards',
+                            pointerEvents: 'none',
+                            zIndex: 5,
+                        }}
+                    >
+                        ⚾
+                    </div>
                 )}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                    key={nActive.id}
+                    key={`${nActive.id}-${!!nSendingOut}`}
                     src={
                         enemyLunge
                             ? frontSprite(nActive.name)
@@ -338,18 +398,19 @@ export function BattleField({
                     style={{
                         width: 'auto',
                         height: 'auto',
-                        maxWidth: 'clamp(80px,13vw,160px)',
-                        maxHeight: 'clamp(80px,13vw,160px)',
+                        maxWidth: 'clamp(100px,16vw,200px)',
+                        maxHeight: 'clamp(100px,16vw,200px)',
                         imageRendering: 'pixelated',
                         filter:
                             enemyHit !== null
                                 ? 'drop-shadow(0 0 14px rgba(248,113,113,1)) brightness(0.45) sepia(1) hue-rotate(-20deg)'
                                 : 'drop-shadow(0 4px 16px rgba(248,113,113,0.4))',
-                        animation: faintedSide === 'enemy'
-                            ? 'n-faint 1.1s ease-in forwards'
-                            : enemyLunge
-                                ? 'n-enemy-lunge 0.55s ease-out both'
-                                : nSendingOut
+                        animation:
+                            faintedSide === 'enemy'
+                                ? 'n-faint 1.1s ease-in forwards'
+                                : enemyLunge
+                                  ? 'n-enemy-lunge 0.55s ease-out both'
+                                  : nSendingOut
                                     ? 'n-send-out 0.65s ease-out both'
                                     : 'none',
                         transition: 'filter 0.1s',
@@ -391,7 +452,9 @@ export function BattleField({
                             left: '50%',
                             transform: 'translateX(-50%)',
                             animation: 'n-damage-float 1.8s ease-out forwards',
-                            fontSize: isCriticalHit ? 'clamp(1.2rem,3.5vw,1.6rem)' : 'clamp(0.85rem,2.5vw,1.1rem)',
+                            fontSize: isCriticalHit
+                                ? 'clamp(1.2rem,3.5vw,1.6rem)'
+                                : 'clamp(0.85rem,2.5vw,1.1rem)',
                             fontWeight: 900,
                             color: isCriticalHit ? '#facc15' : '#f87171',
                             textShadow: isCriticalHit
@@ -416,9 +479,11 @@ export function BattleField({
                     }
                     alt={uActive.name}
                     style={{
-                        width: ['reshiram', 'zekrom'].includes(uActive.name.toLowerCase())
-                            ? 'clamp(180px,28vw,440px)'
-                            : 'clamp(90px,18vw,220px)',
+                        width: ['reshiram ex', 'zekrom ex'].includes(
+                            uActive.name.toLowerCase(),
+                        )
+                            ? 'clamp(225px,35vw,550px)'
+                            : 'clamp(112px,10vw,275px)',
                         height: 'auto',
                         imageRendering: 'pixelated',
                         filter:
@@ -488,7 +553,15 @@ export function BattleField({
                             marginBottom: 5,
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0, flex: 1 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                minWidth: 0,
+                                flex: 1,
+                            }}
+                        >
                             <span
                                 style={{
                                     fontSize: 'clamp(0.55rem,1.8vw,0.68rem)',
@@ -502,12 +575,6 @@ export function BattleField({
                                 {baseName(uActive.name)}
                             </span>
                             <StatusBadge status={uActive.statusEffect} />
-                            <StatStages atk={uActive.attackStage} def={uActive.defenseStage} spd={uActive.speedStage} />
-                            {uActive.nature && (
-                                <span style={{ fontSize: 'clamp(0.36rem,1vw,0.46rem)', color: '#7c4d9e', fontWeight: 600, flexShrink: 0 }}>
-                                    {uActive.nature}
-                                </span>
-                            )}
                         </div>
                         <span
                             style={{
@@ -569,6 +636,24 @@ export function BattleField({
                         >
                             {uActive.hp}/ {uActive.maxHp}
                         </span>
+                    </div>
+                    {/* Stat stage overlay — top-right corner overlapping border */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: -10,
+                            right: 35,
+                            display: 'flex',
+                            flexDirection: 'row',
+                            gap: 2,
+                            zIndex: 10,
+                        }}
+                    >
+                        <StatStages
+                            atk={uActive.attackStage}
+                            def={uActive.defenseStage}
+                            spd={uActive.speedStage}
+                        />
                     </div>
                 </div>
                 {/* Black strip — behind panel, protrudes from bottom-left */}

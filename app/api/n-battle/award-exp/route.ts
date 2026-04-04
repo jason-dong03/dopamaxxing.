@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { xpToNextLevel } from '@/lib/rarityConfig'
+import { applyXP, applyProfileXP } from '@/lib/rarityConfig'
+import { awardLevelUpRewards } from '@/lib/awardLevelUp'
 
 // POST /api/n-battle/award-exp
 // Awards battle EXP to user cards after a won battle.
@@ -94,23 +95,22 @@ export async function POST(request: NextRequest) {
     if (!rows) return NextResponse.json({ ok: true, skipped: true })
 
     let levelUps = 0
-    const leveledUpCards: { userCardId: string; cardName: string; newLevel: number }[] = []
+    const leveledUpCards: { userCardId: string; cardName: string; oldLevel: number; newLevel: number }[] = []
     const perCard: { id: string; name: string; gained: number; newLevel: number | null }[] = []
 
     const updates = rows.map((row: any) => {
-        const level      = row.card_level ?? 1
-        const threshold  = xpToNextLevel(row.cards.rarity ?? '', level)
-        const expGained  = Math.floor((0.05 + Math.random() * 0.10) * threshold)
-        const newExp     = (row.card_xp ?? 0) + expGained
-        if (newExp >= threshold) {
+        const oldLevel   = row.card_level ?? 1
+        const rarity     = row.cards.rarity ?? ''
+        const expGained  = Math.floor((0.05 + Math.random() * 0.10) * 100)
+        const { newLevel, newXP } = applyXP(oldLevel, row.card_xp ?? 0, expGained, rarity)
+        if (newLevel > oldLevel) {
             levelUps++
-            const newLevel = level + 1
-            leveledUpCards.push({ userCardId: row.id, cardName: row.cards.name, newLevel })
+            leveledUpCards.push({ userCardId: row.id, cardName: row.cards.name, oldLevel, newLevel })
             perCard.push({ id: row.id, name: row.cards.name, gained: expGained, newLevel })
-            return { id: row.id, user_id: user.id, card_xp: newExp - threshold, card_level: newLevel }
+        } else {
+            perCard.push({ id: row.id, name: row.cards.name, gained: expGained, newLevel: null })
         }
-        perCard.push({ id: row.id, name: row.cards.name, gained: expGained, newLevel: null })
-        return { id: row.id, user_id: user.id, card_xp: newExp }
+        return { id: row.id, user_id: user.id, card_xp: newXP, card_level: newLevel }
     })
 
     const coinsAwarded = Math.floor(BATTLE_WIN_COINS_MIN + Math.random() * (BATTLE_WIN_COINS_MAX - BATTLE_WIN_COINS_MIN))
@@ -123,6 +123,30 @@ export async function POST(request: NextRequest) {
     if (error) {
         console.warn('[award-exp] update failed', error.message)
         return NextResponse.json({ ok: true, skipped: true })
+    }
+
+    // Award stash rewards for card level-ups
+    if (leveledUpCards.length > 0) {
+        await Promise.all(
+            leveledUpCards.map((lc) =>
+                awardLevelUpRewards(supabase, user.id, lc.oldLevel, lc.newLevel)
+            )
+        )
+    }
+
+    // Award user profile XP for the battle win
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('xp, level')
+        .eq('id', user.id)
+        .single()
+
+    const oldUserLevel = profile?.level ?? 1
+    const userXpGained = Math.round(25 * Math.sqrt(oldUserLevel))
+    const { xp: newUserXP, level: newUserLevel } = applyProfileXP(profile?.xp ?? 0, oldUserLevel, userXpGained)
+    await supabase.from('profiles').update({ xp: newUserXP, level: newUserLevel }).eq('id', user.id)
+    if (newUserLevel > oldUserLevel) {
+        await awardLevelUpRewards(supabase, user.id, oldUserLevel, newUserLevel)
     }
 
     // Check which leveled-up cards have reached EVOLVE_LEVEL and have an evolution
@@ -147,5 +171,5 @@ export async function POST(request: NextRequest) {
         }
     }
 
-    return NextResponse.json({ ok: true, cardCount: updates.length, levelUps, evolveEligible, perCard, coinsAwarded })
+    return NextResponse.json({ ok: true, cardCount: updates.length, levelUps, evolveEligible, perCard, coinsAwarded, userXpGained, userLevel: newUserLevel })
 }

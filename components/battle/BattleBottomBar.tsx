@@ -171,6 +171,8 @@ export function BattleBottomBar({
         return () => window.removeEventListener('keydown', handler)
     }, [battleMenu, uActive.attacks.length, selectedAtk, acting, onAttack, setBattleMenu])
 
+    const [noPpNotice, setNoPpNotice] = useState(false)
+
     // ── Pokemon screen ─────────────────────────────────────────────────────────
     if (battleMenu === 'pokemon') {
         return (
@@ -450,25 +452,38 @@ export function BattleBottomBar({
                         <div style={{ display: 'flex', height: '100%', gap: 0 }}>
                             {/* Moves list — 2×2 grid, larger touch targets */}
                             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-                                {uActive.attacks.map((atk, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => { setSelectedAtk(i); if (!acting) onAttack(i) }}
-                                        disabled={acting}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 4,
-                                            padding: 'clamp(6px,2vw,10px) clamp(6px,2vw,10px)',
-                                            background: 'transparent', border: 'none',
-                                            cursor: acting ? 'not-allowed' : 'pointer',
-                                            fontFamily: FONT, fontSize: 'clamp(0.54rem,1.8vw,0.72rem)',
-                                            color: acting ? '#9ca3af' : '#1a1a1a', textAlign: 'left',
-                                            minHeight: 'clamp(28px,6vh,44px)',
-                                        }}
-                                    >
-                                        <span style={{ width: '0.7em', flexShrink: 0, visibility: selectedAtk === i ? 'visible' : 'hidden' }}>▶</span>
-                                        {atk.name}
-                                    </button>
-                                ))}
+                                {uActive.attacks.map((atk, i) => {
+                                    const pp = (cardPp[uActive.id] ?? [])[i] ?? atk.maxPp ?? 30
+                                    const noPp = pp <= 0
+                                    return (
+                                        <button
+                                            key={i}
+                                            onClick={() => {
+                                                if (noPp) {
+                                                    setSelectedAtk(i)
+                                                    setNoPpNotice(true)
+                                                    return
+                                                }
+                                                setNoPpNotice(false)
+                                                setSelectedAtk(i)
+                                                if (!acting) onAttack(i)
+                                            }}
+                                            disabled={acting}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 4,
+                                                padding: 'clamp(6px,2vw,10px) clamp(6px,2vw,10px)',
+                                                background: 'transparent', border: 'none',
+                                                cursor: acting ? 'not-allowed' : noPp ? 'default' : 'pointer',
+                                                fontFamily: FONT, fontSize: 'clamp(0.54rem,1.8vw,0.72rem)',
+                                                color: acting || noPp ? '#9ca3af' : '#1a1a1a', textAlign: 'left',
+                                                minHeight: 'clamp(28px,6vh,44px)',
+                                            }}
+                                        >
+                                            <span style={{ width: '0.7em', flexShrink: 0, visibility: selectedAtk === i ? 'visible' : 'hidden' }}>▶</span>
+                                            {atk.name}
+                                        </button>
+                                    )
+                                })}
                                 <button
                                     onClick={() => setBattleMenu('main')}
                                     style={{
@@ -486,36 +501,47 @@ export function BattleBottomBar({
                                 padding: 'clamp(4px,1.2vw,8px) clamp(6px,2vw,10px)',
                                 flexShrink: 0,
                             }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                    {selAtk?.damage > 0 ? (
-                                        <>
-                                            <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#555' }}>PWR</span>
-                                            <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#333' }}>{selAtk.damage}</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#555' }}>ACC</span>
-                                            <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#333' }}>
-                                                {selAtk?.moveAccuracy != null ? `${selAtk.moveAccuracy}%` : '—'}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                    <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#555' }}>PP</span>
-                                    <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: ppLow ? '#dc2626' : '#333' }}>
-                                        {currentPp}/{maxPp}
+                                {noPpNotice ? (
+                                    <span style={{
+                                        fontFamily: FONT, fontSize: 'clamp(0.42rem,1.3vw,0.54rem)',
+                                        color: '#dc2626', textAlign: 'center', lineHeight: 1.6,
+                                    }}>
+                                        No PP<br />left!
                                     </span>
-                                </div>
-                                <div style={{
-                                    background: typeColor, borderRadius: 4,
-                                    padding: 'clamp(2px,0.5vw,3px) clamp(4px,1vw,8px)',
-                                    fontFamily: FONT, fontSize: 'clamp(0.42rem,1.2vw,0.52rem)', color: '#fff',
-                                    textShadow: '0 1px 2px rgba(0,0,0,0.5)', letterSpacing: '0.03em',
-                                    width: '100%', textAlign: 'center',
-                                }}>
-                                    {typeName.slice(0, 8).toUpperCase()}
-                                </div>
+                                ) : (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                            {selAtk?.damage > 0 ? (
+                                                <>
+                                                    <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#555' }}>PWR</span>
+                                                    <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#333' }}>{selAtk.damage}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#555' }}>ACC</span>
+                                                    <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#333' }}>
+                                                        {selAtk?.moveAccuracy != null ? `${selAtk.moveAccuracy}%` : '—'}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                            <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: '#555' }}>PP</span>
+                                            <span style={{ fontFamily: FONT, fontSize: 'clamp(0.44rem,1.4vw,0.56rem)', color: ppLow ? '#dc2626' : '#333' }}>
+                                                {currentPp}/{maxPp}
+                                            </span>
+                                        </div>
+                                        <div style={{
+                                            background: typeColor, borderRadius: 4,
+                                            padding: 'clamp(2px,0.5vw,3px) clamp(4px,1vw,8px)',
+                                            fontFamily: FONT, fontSize: 'clamp(0.42rem,1.2vw,0.52rem)', color: '#fff',
+                                            textShadow: '0 1px 2px rgba(0,0,0,0.5)', letterSpacing: '0.03em',
+                                            width: '100%', textAlign: 'center',
+                                        }}>
+                                            {typeName.slice(0, 8).toUpperCase()}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )

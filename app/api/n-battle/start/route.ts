@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     // Validate ownership + fetch card data including moves
     const { data: rows } = await supabase
         .from('user_cards')
-        .select('id, card_level, exp, nature, moves, cards!inner(id, name, hp, rarity, image_url, pokemon_type)')
+        .select('id, card_level, card_xp, nature, moves, cards!inner(id, name, hp, rarity, image_url, pokemon_type)')
         .eq('user_id', user.id)
         .in('id', userCardIds)
 
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
             pokemon_type:     cardType,
             hp,
             maxHp:            hp,
-            exp:              (row.exp as number | null) ?? 0,
+            exp:              (row.card_xp as number | null) ?? 0,
             nature:           (row.nature as string | null) ?? undefined,
             image_url:        row.cards.image_url,
             attacks:          storedMovesToAttacks(row.moves as StoredMove[] | null, hp, rarity),

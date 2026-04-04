@@ -109,10 +109,15 @@ export function pickRarityFromWeights(weights: Record<string, number>): string {
 
 // ─── profile leveling ─────────────────────────────────────────────────────────
 
+export const USER_LEVEL_K = 100
+export const MAX_USER_LEVEL = 100
+
 /** XP required to advance FROM a given profile level to the next */
 export function xpForLevel(level: number): number {
-    return level * 100
+    return USER_LEVEL_K * level * level
 }
+// Spot-check: xpForLevel(1)=100, xpForLevel(10)=10000,
+//             xpForLevel(25)=62500, xpForLevel(50)=250000, xpForLevel(100)=1000000
 
 /** XP awarded for opening a pack (base) */
 export const XP_PER_PACK = 15
@@ -130,9 +135,13 @@ export function applyProfileXP(
 ): { xp: number; level: number } {
     let xp = currentXp + gained
     let level = currentLevel
-    while (xp >= xpForLevel(level)) {
+    while (xp >= xpForLevel(level) && level < MAX_USER_LEVEL) {
         xp -= xpForLevel(level)
         level += 1
+    }
+    if (level >= MAX_USER_LEVEL) {
+        level = MAX_USER_LEVEL
+        xp = 0
     }
     return { xp, level }
 }

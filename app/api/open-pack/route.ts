@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { calculateBuyback, WEIGHTS_BULK, WEIGHTS_UNCOMMON_PLUS, WEIGHTS_RARE_PLUS, BONUS_CARD_CHANCE, pickRarityFromWeights } from '@/lib/rarityConfig'
-import { PACKS } from '@/lib/packs'
+import { getMergedPacks } from '@/lib/packMeta'
 import { applyProfileXP, packXpGain } from '@/lib/rarityConfig'
 import { generateAttributes } from '@/lib/cardAttributes'
 import { getEventMagnitude, getTodayEvents } from '@/lib/dailyEvents'
@@ -80,8 +80,9 @@ export async function POST(request: NextRequest) {
 
         const { setId, free = false } = await request.json()
 
-        // look up pack cost from catalog
-        const packDef = PACKS.find((p) => p.id === setId)
+        // look up pack cost from catalog (DB overrides static defaults)
+        const mergedPacks = await getMergedPacks(supabase)
+        const packDef = mergedPacks.find((p) => p.id === setId)
         const baseCost = packDef?.cost ?? 0
         const costDiscount = await getEventMagnitude('cheap_packs') // e.g. 0.75 = 25% off
         const cost = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))

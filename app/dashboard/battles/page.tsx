@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import {
     getDailyTrainerId,
@@ -79,9 +80,15 @@ export default function BattlesPage() {
     const [pickedLineupIds, setPickedLineupIds] = useState<string[]>([])
     const [trainerId, setTrainerId] = useState<TrainerId>('n')
     const [battlesWon, setBattlesWon] = useState<number | null>(null)
+    const [lastWonAt, setLastWonAt] = useState<string | null>(null)
+    const [cooldownLeft, setCooldownLeft] = useState(0)
     const [lineups, setLineups] = useState<SavedLineup[]>([])
     const [showRules, setShowRules] = useState(false)
     const [userLevel, setUserLevel] = useState<number | null>(null)
+    const [shopOpen, setShopOpen] = useState(false)
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => { setMounted(true) }, [])
 
     // Lineup setup modal
     const [setupOpen, setSetupOpen] = useState(false)
@@ -108,6 +115,7 @@ export default function BattlesPage() {
             .then((r) => r.json())
             .then((d) => {
                 if (d.battlesWon != null) setBattlesWon(d.battlesWon)
+                if (d.lastWonAt) setLastWonAt(d.lastWonAt)
             })
             .catch(() => {})
         fetchLineups()
@@ -123,6 +131,27 @@ export default function BattlesPage() {
                 })
         })
     }, [fetchLineups])
+
+    // ── Cooldown ticker ───────────────────────────────────────────────────────
+    useEffect(() => {
+        function tick() {
+            if (!lastWonAt) { setCooldownLeft(0); return }
+            const ms = 24 * 60 * 60 * 1000 - (Date.now() - new Date(lastWonAt).getTime())
+            setCooldownLeft(Math.max(0, ms))
+        }
+        tick()
+        const id = setInterval(tick, 1000)
+        return () => clearInterval(id)
+    }, [lastWonAt])
+
+    function fmtCooldown(ms: number) {
+        const h = Math.floor(ms / 3_600_000)
+        const m = Math.floor((ms % 3_600_000) / 60_000)
+        const s = Math.floor((ms % 60_000) / 1000)
+        return `${h}h ${m}m ${s}s`
+    }
+
+    const onCooldown = cooldownLeft > 0
 
     async function openSetup(existing?: SavedLineup) {
         setEditingLineupId(existing?.id ?? null)
@@ -248,6 +277,24 @@ export default function BattlesPage() {
                     Battles
                 </h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                        onClick={() => setShopOpen(true)}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            background: '#0d0d1f',
+                            border: '1px solid rgba(99,102,241,0.45)',
+                            borderRadius: 20, padding: '4px 11px',
+                            cursor: 'pointer', transition: 'background 150ms ease',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#151530'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#0d0d1f'}
+                    >
+                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                        </svg>
+                        <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#818cf8' }}>Shop</span>
+                    </button>
                     <div
                         style={{
                             display: 'flex',
@@ -423,20 +470,21 @@ export default function BattlesPage() {
                             ))}
                         </div>
                         <button
-                            onClick={() => setLineupPickerOpen(true)}
+                            onClick={() => { if (!onCooldown) setLineupPickerOpen(true) }}
+                            disabled={onCooldown}
                             style={{
                                 padding: '10px 32px',
                                 borderRadius: 10,
-                                fontSize: '0.82rem',
+                                fontSize: onCooldown ? '0.65rem' : '0.82rem',
                                 fontWeight: 700,
-                                background: `${trainer.color}1a`,
-                                border: `1px solid ${trainer.color}55`,
-                                color: trainer.color,
-                                cursor: 'pointer',
+                                background: onCooldown ? 'rgba(255,255,255,0.03)' : `${trainer.color}1a`,
+                                border: `1px solid ${onCooldown ? 'rgba(255,255,255,0.08)' : trainer.color + '55'}`,
+                                color: onCooldown ? '#4b5563' : trainer.color,
+                                cursor: onCooldown ? 'not-allowed' : 'pointer',
                                 transition: 'all 150ms',
                             }}
                         >
-                            Battle Now →
+                            {onCooldown ? `Next battle in ${fmtCooldown(cooldownLeft)}` : 'Battle Now →'}
                         </button>
                     </div>
                 </div>
@@ -1345,8 +1393,46 @@ export default function BattlesPage() {
                         setBattleOpen(false)
                         setPickedLineupIds([])
                         setBattlesWon((prev) => (prev ?? 0) + 1)
+                        setLastWonAt(new Date().toISOString())
                     }}
                 />
+            )}
+
+            {/* shop overlay */}
+            {mounted && shopOpen && createPortal(
+                <div
+                    onClick={() => setShopOpen(false)}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 9999,
+                        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start',
+                        padding: '80px 0 0 16px',
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            background: '#0e0e16',
+                            border: '1px solid rgba(99,102,241,0.3)',
+                            borderRadius: 16, width: 'min(320px, calc(100vw - 32px))',
+                            overflow: 'hidden',
+                        }}
+                    >
+                        <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                            </svg>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#818cf8' }}>Shop</span>
+                            <button onClick={() => setShopOpen(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>×</button>
+                        </div>
+                        <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🛒</div>
+                            <p style={{ fontSize: '0.72rem', color: '#4b5563' }}>Shop coming soon — buy battle items with coins.</p>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     )

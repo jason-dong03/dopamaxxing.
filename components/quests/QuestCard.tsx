@@ -408,7 +408,6 @@ export function QuestCard({
 
                     {/* combo requirements */}
                     {isExpanded &&
-                        isAuto &&
                         (() => {
                             const LEG = new Set([
                                 'Legendary',
@@ -453,34 +452,25 @@ export function QuestCard({
                                 ],
                                 has_creation_trio: [
                                     {
-                                        label: 'Dialga VMAX',
+                                        label: 'Dialga',
                                         match: (c) =>
                                             c.name
                                                 .toLowerCase()
-                                                .includes('dialga') &&
-                                            c.name
-                                                .toLowerCase()
-                                                .includes('vmax'),
+                                                .includes('dialga'),
                                     },
                                     {
-                                        label: 'Palkia VMAX',
+                                        label: 'Palkia',
                                         match: (c) =>
                                             c.name
                                                 .toLowerCase()
-                                                .includes('palkia') &&
-                                            c.name
-                                                .toLowerCase()
-                                                .includes('vmax'),
+                                                .includes('palkia'),
                                     },
                                     {
-                                        label: 'Giratina VMAX',
+                                        label: 'Giratina',
                                         match: (c) =>
                                             c.name
                                                 .toLowerCase()
-                                                .includes('giratina') &&
-                                            c.name
-                                                .toLowerCase()
-                                                .includes('vmax'),
+                                                .includes('giratina'),
                                     },
                                 ],
                                 has_mew_mewtwo: [
@@ -505,7 +495,26 @@ export function QuestCard({
                                     },
                                 ],
                             }
-                            const reqs = COMBOS[quest.requirement_metric ?? '']
+                            // Slug-based combos for quests that don't use auto metrics
+                            const SLUG_COMBOS: Partial<Record<string, Req[]>> = {
+                                'gilded-ascension': [
+                                    {
+                                        label: 'Reshiram ex — White Flare (Legendary/Divine)',
+                                        match: (c) =>
+                                            c.name === 'Reshiram ex' &&
+                                            LEG.has(c.rarity) &&
+                                            c.set_id === 'sv10.5w',
+                                    },
+                                    {
+                                        label: 'Zekrom ex — Black Bolt (Legendary/Divine)',
+                                        match: (c) =>
+                                            c.name === 'Zekrom ex' &&
+                                            LEG.has(c.rarity) &&
+                                            c.set_id === 'sv10.5b',
+                                    },
+                                ],
+                            }
+                            const reqs = COMBOS[quest.requirement_metric ?? ''] ?? SLUG_COMBOS[quest.slug ?? '']
                             if (!reqs) return null
                             return (
                                 <div style={{ marginBottom: 10 }}>

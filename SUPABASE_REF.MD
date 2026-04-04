@@ -1,93 +1,102 @@
-# Supabase Schema Reference
-
-## achievements
-
-`id` text · `name` text · `description` text · `icon` text · `is_hidden` bool · `coin_reward` int
-
-## battle_lineups
-
-`id` uuid · `user_id` uuid · `name` text · `card_ids` text[] · `created_at` timestamptz · `updated_at` timestamptz
-
-## binder_cards
-
-`id` uuid · `binder_id` uuid · `user_card_id` uuid · `position` int · `created_at` timestamptz
-
-## binder_likes
-
-`id` uuid · `binder_id` uuid · `user_id` uuid · `created_at` timestamptz
-
-## binders
-
-`id` uuid · `user_id` uuid · `name` text · `color` text · `include_slabs` bool · `is_featured` bool · `created_at` timestamptz · `updated_at` timestamptz
-
-## card_evolutions
-
-`id` uuid · `card_id` text · `evolves_into` text
-
-## card_types
-
-`id` uuid · `card_id` text · `type` text
-
-## cards
-
-`id` text · `name` text · `subtype` text · `hp` int · `evolves_from` text · `set_id` text · `national_pokedex_number` int · `image_url` text · `image_url_hi` text · `market_price_usd` numeric · `is_special` bool · `rarity` text · `pokemon_type` text
-
-## events
-
-`id` text · `name` text · `description` text · `icon` text · `effect` text · `magnitude` float · `color` text · `accent_color` text · `event_rarity` text · `duration_min` float · `duration_max` float · `weight` int · `is_active` bool · `force_active_until` timestamptz
-
-## friendships
-
-`id` uuid · `requester_id` uuid · `addressee_id` uuid · `status` text(pending) · `created_at` timestamptz
-
-## level_up_stash
-
-`id` uuid · `user_id` uuid · `level_reached` int · `coins` int · `pack_id` text · `claimed_at` timestamptz · `created_at` timestamptz
-
-## n_battles
-
-`id` uuid · `user_id` uuid · `status` text(active) · `user_cards` jsonb · `n_cards` jsonb · `user_active_index` int · `n_active_index` int · `turn` int · `n_next_move` jsonb · `battle_log` jsonb · `created_at` timestamptz · `updated_at` timestamptz
-
-## n_quest_progress
-
-`user_id` uuid · `opened_white_flare` bool · `opened_black_bolt` bool · `sold_highest_count` int · `found_liberator` bool · `found_n_farewell` bool · `act6_unlocked` bool · `found_liberator_phrase` bool · `battle_won` bool · `created_at` timestamptz · `updated_at` timestamptz
-
-## pending_packs
-
-`id` uuid · `user_id` uuid · `pack_id` text · `source` text(discord) · `created_at` timestamptz
-
-## profiles
-
-`id` uuid · `username` text · `first_name` text · `last_name` text · `profile_url` text · `coins` numeric · `xp` int · `level` int(1) · `pity_counter` int · `pity_threshold` int(50) · `packs_opened` int · `cards_fed` int · `daily_packs_today` int · `daily_cards_fed_today` int · `daily_reset_date` date · `login_streak` int · `last_login_date` date · `discord_id` text · `discord_username` text · `discord_linked` bool · `phone` text · `passive_coin_at` timestamptz · `pack_count` int · `cards_sold` int · `active_title` text · `last_daily_pack_date` text · `tos_accepted_at` timestamptz · `age_verified` bool · `new_user_promo_used` bool · `bag_capacity` int(50) · `is_admin` bool · `tutorial_completed` bool
-
-## purchases
-
-`id` uuid · `user_id` uuid · `stripe_payment_intent` text · `stripe_session_id` text · `package_id` text · `coins_credited` int · `amount_cents` int · `created_at` timestamptz
-
-## quests
-
-`id` uuid · `name` text · `description` text · `quest_type` text · `coin_reward` int · `xp_reward` int · `slug` text · `cooldown_hours` int · `requirement_metric` text · `requirement_target` int · `category` text · `difficulty` text · `is_active` bool · `timed_minutes` int · `title_reward` text · `is_hidden` bool · `prerequisite_slug` text · `min_level` int · `sort_order` int
-
-## sets
-
-`id` text · `name` text · `series` text · `total_cards` int · `release_date` date · `image_url` text
-
-## user_achievements
-
-`id` uuid · `user_id` uuid · `achievement_id` text · `earned_at` timestamptz · `coins_claimed` bool
-
-## user_cards
-
-`id` uuid · `user_id` uuid · `card_id` text · `card_xp` int · `card_level` int(1) · `exp` int · `is_favorited` bool · `obtained_at` timestamptz · `worth` numeric · `is_hot` bool · `attr_centering` numeric · `attr_corners` numeric · `attr_edges` numeric · `attr_surface` numeric · `grade` smallint · `grade_count` smallint · `stat_atk` int · `stat_def` int · `stat_spatk` int · `stat_spdef` int · `stat_spd` int · `stat_accuracy` int · `stat_evasion` int · `nature` text · `moves` jsonb · `pending_moves` jsonb
-
-## user_items
-
-`id` uuid · `user_id` uuid · `item_id` text · `quantity` int
-
-## user_quest_metrics
-
-`user_id` uuid · `packs_opened` int · `cards_fed` int · `cards_owned` bigint
-
-## user_quests
-
-`id` uuid · `user_id` uuid · `quest_id` uuid · `status` quest_status_enum(in_progress) · `started_at` timestamptz · `completed_at` timestamptz · `notes` text
+| table_schema | table_name     | column_name             | data_type                | is_nullable | column_default    |
+| ------------ | -------------- | ----------------------- | ------------------------ | ----------- | ----------------- |
+| public       | achievements   | id                      | text                     | NO          | null              |
+| public       | achievements   | name                    | text                     | NO          | null              |
+| public       | achievements   | description             | text                     | NO          | null              |
+| public       | achievements   | icon                    | text                     | NO          | null              |
+| public       | achievements   | is_hidden               | boolean                  | YES         | false             |
+| public       | achievements   | coin_reward             | integer                  | NO          | 0                 |
+| public       | battle_lineups | id                      | uuid                     | NO          | gen_random_uuid() |
+| public       | battle_lineups | user_id                 | uuid                     | NO          | null              |
+| public       | battle_lineups | name                    | text                     | NO          | 'Lineup'::text    |
+| public       | battle_lineups | slots                   | jsonb                    | NO          | '[]'::jsonb       |
+| public       | battle_lineups | created_at              | timestamp with time zone | YES         | now()             |
+| public       | binder_cards   | id                      | uuid                     | NO          | gen_random_uuid() |
+| public       | binder_cards   | binder_id               | uuid                     | NO          | null              |
+| public       | binder_cards   | user_card_id            | uuid                     | NO          | null              |
+| public       | binder_cards   | position                | integer                  | NO          | 0                 |
+| public       | binder_cards   | created_at              | timestamp with time zone | YES         | now()             |
+| public       | binder_likes   | id                      | uuid                     | NO          | gen_random_uuid() |
+| public       | binder_likes   | binder_id               | uuid                     | NO          | null              |
+| public       | binder_likes   | user_id                 | uuid                     | NO          | null              |
+| public       | binder_likes   | created_at              | timestamp with time zone | YES         | now()             |
+| public       | binders        | id                      | uuid                     | NO          | gen_random_uuid() |
+| public       | binders        | user_id                 | uuid                     | NO          | null              |
+| public       | binders        | name                    | text                     | NO          | null              |
+| public       | binders        | color                   | text                     | NO          | '#3b82f6'::text   |
+| public       | binders        | include_slabs           | boolean                  | YES         | false             |
+| public       | binders        | created_at              | timestamp with time zone | YES         | now()             |
+| public       | binders        | updated_at              | timestamp with time zone | YES         | now()             |
+| public       | binders        | is_featured             | boolean                  | YES         | false             |
+| public       | cards          | id                      | text                     | NO          | null              |
+| public       | cards          | name                    | text                     | NO          | null              |
+| public       | cards          | subtype                 | text                     | YES         | null              |
+| public       | cards          | hp                      | integer                  | YES         | null              |
+| public       | cards          | evolves_from            | text                     | YES         | null              |
+| public       | cards          | set_id                  | text                     | YES         | null              |
+| public       | cards          | national_pokedex_number | integer                  | YES         | null              |
+| public       | cards          | image_url               | text                     | YES         | null              |
+| public       | cards          | image_url_hi            | text                     | YES         | null              |
+| public       | cards          | market_price_usd        | numeric                  | YES         | 0                 |
+| public       | cards          | is_special              | boolean                  | YES         | false             |
+| public       | cards          | pokemon_type            | text                     | YES         | null              |
+| public       | cards          | rarity                  | text                     | YES         | null              |
+| public       | events         | id                      | text                     | NO          | null              |
+| public       | events         | name                    | text                     | NO          | null              |
+| public       | events         | description             | text                     | NO          | null              |
+| public       | events         | icon                    | text                     | NO          | ''::text          |
+| public       | events         | effect                  | text                     | NO          | null              |
+| public       | events         | magnitude               | double precision         | NO          | 1.0               |
+| public       | events         | color                   | text                     | NO          | '#9ca3af'::text   |
+| public       | events         | accent_color            | text                     | NO          | '#000000'::text   |
+| public       | events         | event_rarity            | text                     | NO          | 'common'::text    |
+| public       | events         | duration_min            | double precision         | NO          | 1                 |
+| public       | events         | duration_max            | double precision         | NO          | 2                 |
+| public       | events         | weight                  | integer                  | NO          | 1                 |
+| public       | events         | is_active               | boolean                  | NO          | true              |
+| public       | events         | force_active_until      | timestamp with time zone | YES         | null              |
+| public       | friendships    | id                      | uuid                     | NO          | gen_random_uuid() |
+| public       | friendships    | requester_id            | uuid                     | NO          | null              |
+| public       | friendships    | addressee_id            | uuid                     | NO          | null              |
+| public       | friendships    | status                  | text                     | NO          | 'pending'::text   |
+| public       | friendships    | created_at              | timestamp with time zone | YES         | now()             |
+| public       | level_up_stash | id                      | uuid                     | NO          | gen_random_uuid() |
+| public       | level_up_stash | user_id                 | uuid                     | NO          | null              |
+| public       | level_up_stash | level_reached           | integer                  | NO          | null              |
+| public       | level_up_stash | coins                   | integer                  | NO          | null              |
+| public       | level_up_stash | pack_id                 | text                     | NO          | null              |
+| public       | level_up_stash | claimed_at              | timestamp with time zone | YES         | null              |
+| public       | level_up_stash | created_at              | timestamp with time zone | NO          | now()             |
+| public       | moves          | id                      | integer                  | NO          | null              |
+| public       | moves          | identifier              | text                     | NO          | null              |
+| public       | moves          | display_name            | text                     | NO          | null              |
+| public       | moves          | generation_id           | integer                  | NO          | null              |
+| public       | moves          | type                    | text                     | NO          | null              |
+| public       | moves          | power                   | integer                  | YES         | null              |
+| public       | moves          | pp                      | integer                  | NO          | null              |
+| public       | moves          | accuracy                | integer                  | YES         | null              |
+| public       | moves          | priority                | integer                  | NO          | 0                 |
+| public       | moves          | damage_class            | text                     | NO          | null              |
+| public       | moves          | effect_id               | integer                  | YES         | null              |
+| public       | moves          | effect_chance           | integer                  | YES         | null              |
+| public       | moves          | effect                  | text                     | YES         | null              |
+| public       | moves          | is_attack               | boolean                  | NO          | false             |
+| public       | moves          | is_buff                 | boolean                  | NO          | false             |
+| public       | moves          | is_heal                 | boolean                  | NO          | false             |
+| public       | moves          | is_enemy_debuff         | boolean                  | NO          | false             |
+| public       | moves          | heal_fraction           | numeric                  | YES         | null              |
+| public       | moves          | status_inflict          | text                     | YES         | null              |
+| public       | moves          | always_inflict          | boolean                  | YES         | null              |
+| public       | moves          | self_status_inflict     | text                     | YES         | null              |
+| public       | moves          | self_damage             | numeric                  | YES         | null              |
+| public       | moves          | self_boosts             | jsonb                    | YES         | null              |
+| public       | moves          | enemy_drops             | jsonb                    | YES         | null              |
+| public       | moves          | seeded_at               | timestamp with time zone | YES         | null              |
+| public       | moves          | created_at              | timestamp with time zone | NO          | now()             |
+| public       | n_battles      | id                      | uuid                     | NO          | gen_random_uuid() |
+| public       | n_battles      | user_id                 | uuid                     | YES         | null              |
+| public       | n_battles      | status                  | text                     | YES         | 'active'::text    |
+| public       | n_battles      | user_cards              | jsonb                    | YES         | '[]'::jsonb       |
+| public       | n_battles      | n_cards                 | jsonb                    | YES         | '[]'::jsonb       |
+| public       | n_battles      | user_active_index       | integer                  | YES         | 0                 |
+| public       | n_battles      | n_active_index          | integer                  | YES         | 0                 |

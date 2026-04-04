@@ -60,9 +60,15 @@ export default function BattleScreen({
         setRevealTeam(buildRevealTeam())
     }, [])
 
-    // ── If skipping to card-select, load cards immediately ───────────────────
+    // ── If skipping to card-select, either auto-start (full lineup) or load card picker ──
     useEffect(() => {
-        if (skipToCardSelect) battle.proceedToCardSelect()
+        if (skipToCardSelect) {
+            if (preSelectedIds && preSelectedIds.length === 5) {
+                battle.startBattleWith(preSelectedIds)
+            } else {
+                battle.proceedToCardSelect()
+            }
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -324,6 +330,38 @@ export default function BattleScreen({
 
     // ── CARD SELECT ───────────────────────────────────────────────────────────
     if (battle.phase === 'card-select') {
+        // Auto-starting with a full lineup — show loading or error
+        if (preSelectedIds && preSelectedIds.length === 5) {
+            return createPortal(
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 99998,
+                    background: 'rgba(0,0,0,0.97)',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 16,
+                }}>
+                    {battle.startError ? (
+                        <>
+                            <p style={{ fontSize: '0.85rem', color: '#f87171' }}>{battle.startError}</p>
+                            <button
+                                onClick={onClose}
+                                style={{
+                                    padding: '9px 24px', borderRadius: 10, fontSize: '0.8rem',
+                                    background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+                                    color: '#9ca3af', cursor: 'pointer',
+                                }}
+                            >
+                                Close
+                            </button>
+                        </>
+                    ) : (
+                        <p style={{ fontSize: '0.8rem', color: '#4b5563', letterSpacing: '0.04em' }}>
+                            Starting battle…
+                        </p>
+                    )}
+                </div>,
+                document.body,
+            )
+        }
         return createPortal(
             <CardSelectPhase
                 cards={battle.cards}
@@ -437,10 +475,8 @@ export default function BattleScreen({
                         100% { transform: scale(0) translateY(20%); filter: brightness(3) saturate(0); opacity: 0; }
                     }
                     @keyframes n-trainer-recall {
-                        0%   { opacity: 0; transform: translateX(30px) scale(0.85); }
-                        18%  { opacity: 1; transform: translateX(0)    scale(1); }
-                        80%  { opacity: 1; transform: translateX(0)    scale(1); }
-                        100% { opacity: 0; transform: translateX(-20px) scale(0.9); }
+                        from { opacity: 0; transform: translateX(30px) scale(0.85); }
+                        to   { opacity: 1; transform: translateX(0)    scale(1); }
                     }
                     @keyframes n-pokeball-throw {
                         0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
