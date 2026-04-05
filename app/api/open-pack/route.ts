@@ -340,7 +340,7 @@ export async function POST(request: NextRequest) {
             const previewStats = rollStats(rarity, pokeData?.baseStats ?? undefined)
             const previewNature = rollNature(rarity)
             const cardLevel = randomCardLevel(rarity)
-            const { storedWorth, ...buybackResult } = calculateBuyback(rarity, Number(card.market_price_usd) || 0, (card.set_id as string)?.endsWith('-1ed') ?? false, cardLevel)
+            const { storedWorth, ...buybackResult } = calculateBuyback(rarity, Number(card.market_price_usd) || 0, (card.set_id as string)?.endsWith('-1ed') ?? false)
             return {
                 ...card,
                 isNew: !ownedIds.has(card.id as string),

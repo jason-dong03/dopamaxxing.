@@ -17,6 +17,7 @@ import { conditionFilter, centeringSkew } from '@/lib/cardAttributes'
 import { NATURE_BY_NAME, NATURE_TIER_COLOR } from '@/lib/pokemon-stats'
 import { TYPE_COLOR } from '@/lib/pokemon-types'
 import PsaSlab from '@/components/card/PsaSlab'
+import { Card3DViewer } from '@/components/card/Card3DViewer'
 import FirstEditionBadge from '@/components/card/FirstEditionBadge'
 import WearOverlay from '@/components/card/WearOverlay'
 import { rarityClassName, cardImgSrc } from './utils'
@@ -170,10 +171,15 @@ export function CardStats({
     }
     const condMult = conditionMultFunction(weightedCondition(condAttrs))
     const isGraded = uc.grade != null
-    const condAdjustedWorth =
-        (uc.cards.market_price_usd ?? 0) * condMult
-    const worthDelta = condAdjustedWorth - (uc.cards.market_price_usd ?? 0)
-    const worthDisplay = `$${fmt(condAdjustedWorth)} (${worthDelta > 0 ? '+' : '-'}$${fmt(worthDelta)})`
+    const rawWorth = uc.cards.market_price_usd ?? 0
+    // Worth = market price, multiplied by condition only after grading (no tier rate)
+    const cardWorth = isGraded ? rawWorth * condMult : rawWorth
+    // Sell = worth × tier rate (computed fresh, not from stale uc.worth)
+    const computedSellAmount = parseFloat((cardWorth * tierRate).toFixed(2))
+    const worthDelta = cardWorth - rawWorth
+    const worthDisplay = isGraded && worthDelta !== 0
+        ? `$${fmt(cardWorth)} (${worthDelta > 0 ? '+' : '-'}$${fmt(Math.abs(worthDelta))})`
+        : `$${fmt(cardWorth)}`
 
     // colored stat rows
     const stats = [
@@ -750,7 +756,7 @@ export function CardStats({
                         {/* sell button */}
                         <SellButton
                             uc={uc}
-                            sellAmount={uc.worth}
+                            sellAmount={computedSellAmount}
                             onSell={handleSellWithAnimation}
                         />
                     </div>
@@ -1259,39 +1265,27 @@ export function CardStats({
                 }}
             >
                 <div style={{ fontWeight: 700, color: '#f9fafb', marginBottom: 6, fontSize: '0.65rem' }}>
-                    How worth is calculated
+                    Card worth
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div>
-                        <span style={{ color: '#9ca3af' }}>① Market price:</span>
+                        <span style={{ color: '#9ca3af' }}>Market price:</span>
                         <span style={{ color: '#fbbf24', marginLeft: 4 }}>
                             ${fmt(Number(uc.cards.market_price_usd))}
                         </span>
                     </div>
-                    <div>
-                        <span style={{ color: '#9ca3af' }}>② Tier rate ({uc.cards.rarity}):</span>
-                        <span style={{ color: '#a78bfa', marginLeft: 4 }}>
-                            {(tierRate * 100).toFixed(0)}%
-                        </span>
-                    </div>
-                    <div>
-                        <span style={{ color: '#9ca3af' }}>③ Level:</span>
-                        <span style={{ color: '#34d399', marginLeft: 4 }}>
-                            {uc.card_level}×
-                        </span>
-                    </div>
                     {isGraded && (
                         <div>
-                            <span style={{ color: '#9ca3af' }}>④ Condition mult:</span>
+                            <span style={{ color: '#9ca3af' }}>Condition mult:</span>
                             <span style={{ color: '#60a5fa', marginLeft: 4 }}>
                                 {condMult.toFixed(2)}×
                             </span>
                         </div>
                     )}
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 2, paddingTop: 4 }}>
-                        <span style={{ color: '#9ca3af' }}>Est. sell value:</span>
+                        <span style={{ color: '#9ca3af' }}>Worth:</span>
                         <span style={{ color: '#4ade80', marginLeft: 4, fontWeight: 700 }}>
-                            ${fmt(uc.worth ?? 0)}
+                            ${fmt(cardWorth)}
                         </span>
                     </div>
                 </div>
@@ -1562,8 +1556,8 @@ export function CardStats({
                 </div>
 
                 {cleanView ? (
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div style={{ width: 350 }}>{imageBlock}</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+                        <Card3DViewer uc={uc} width={260} />
                     </div>
                 ) : (
                     <div
@@ -1594,6 +1588,34 @@ export function CardStats({
             {worthTooltip}
             {learnOverlay}
             {evolutionCutscene}
+
+            {/* 3D viewer modal — pops over everything when clean view is active */}
+            {cleanView && typeof document !== 'undefined' && createPortal(
+                <div
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 99997,
+                        background: 'rgba(0,0,0,0.92)',
+                        backdropFilter: 'blur(22px)',
+                        WebkitBackdropFilter: 'blur(22px)',
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        gap: 12,
+                    }}
+                    onClick={() => setCleanView(false)}
+                >
+                    <div onClick={e => e.stopPropagation()}>
+                        <Card3DViewer uc={uc} width={300} />
+                    </div>
+                    <p style={{
+                        fontSize: '0.5rem', color: 'rgba(255,255,255,0.22)',
+                        letterSpacing: '0.1em', pointerEvents: 'none',
+                        marginTop: 4,
+                    }}>
+                        TAP OUTSIDE TO DISMISS
+                    </p>
+                </div>,
+                document.body,
+            )}
 
             {/* close row */}
             <div
@@ -2038,7 +2060,7 @@ export function CardStats({
 
                                 <SellButton
                                     uc={uc}
-                                    sellAmount={uc.worth}
+                                    sellAmount={computedSellAmount}
                                     onSell={handleSellWithAnimation}
                                 />
 

@@ -3,7 +3,6 @@ import type { StoredMove } from '@/lib/pokemon-moves'
 /** Strip TCG prefixes/suffixes and possessives, returning just the Pokémon name */
 export function baseName(name: string): string {
     return name
-        .replace(/[''']s\s+/gi, '')                                                      // "N's " → ""
         .replace(/^(Mega|Dark|Shadow|Rocket's|Shining|Radiant|Prism\s+Star)\s+/gi, '')  // leading prefixes
         .replace(/\s+(VMAX|VSTAR|GX|EX|V|TAG\s+TEAM|ex|gx|vmax|vstar)\b/gi, '')        // trailing TCG suffixes
         .trim()

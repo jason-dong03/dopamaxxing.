@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { calculateBuyback, levelBuybackMult } from '@/lib/rarityConfig'
+import { calculateBuyback } from '@/lib/rarityConfig'
 import {
     NATURE_BY_NAME,
     NATURE_TIER_COLOR,
@@ -76,7 +76,6 @@ export function CardStatsPanel({
         currentCard.rarity,
         currentCard.worth,
         (currentCard.set_id as string | undefined)?.endsWith('-1ed') ?? false,
-        currentCard.card_level ?? 1,
     )
     const bagLeft = bagCount !== null ? bagCapacity - bagCount : null
     const bagFull = bagCount !== null && bagCount >= bagCapacity
@@ -140,7 +139,7 @@ export function CardStatsPanel({
                         >
                             <div>
                                 <span style={{ color: '#9ca3af' }}>
-                                    ① Base value:
+                                    ① Market price:
                                 </span>
                                 <span
                                     style={{ color: '#fbbf24', marginLeft: 4 }}
@@ -151,20 +150,9 @@ export function CardStatsPanel({
                                         : '—'}
                                 </span>
                             </div>
-                            {currentCard.card_level != null && (
-                                <div>
-                                    <span style={{ color: '#9ca3af' }}>
-                                        ② Level ({currentCard.card_level}):
-                                    </span>
-                                    <span style={{ color: '#34d399', marginLeft: 4 }}>
-                                        {levelBuybackMult(currentCard.card_level)}×
-                                    </span>
-                                </div>
-                            )}
                             <div>
                                 <span style={{ color: '#9ca3af' }}>
-                                    ③ Buyback rate ({currentCard.rarity}
-                                    ):
+                                    ② Buyback rate ({currentCard.rarity}):
                                 </span>
                                 <span
                                     style={{ color: '#a78bfa', marginLeft: 4 }}

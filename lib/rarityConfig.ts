@@ -302,10 +302,10 @@ export function getBuyback(
     return 0
 }
 export function tierBuyBack(rarity: string): number {
-    if (rarity === '???') return 10
-    if (rarity === 'Celestial') return 4.5
-    if (rarity === 'Divine') return 2.25
-    if (rarity === 'Legendary') return 1.25
+    if (rarity === '???') return 3.5
+    if (rarity === 'Celestial') return 2.5
+    if (rarity === 'Divine') return 1.75
+    if (rarity === 'Legendary') return 1
     if (rarity === 'Mythical') return 0.85
     if (rarity === 'Epic') return 0.65
     if (rarity === 'Rare') return 0.45
@@ -357,14 +357,14 @@ export function levelBuybackMult(level: number): number {
     if (level >= 76) return 2.75
     if (level >= 51) return 2.25
     if (level >= 26) return 1.75
-    if (level >= 11) return 1.5
-    if (level >= 2) return 1.2
-    return 0.5
+    if (level >= 11) return 1.35
+    if (level >= 2) return 1.15
+    return 0.85
 }
 
 /**
  * Calculates buyback value.
- *   storedWorth = base × tierRate × levelMult  (saved to user_cards.worth)
+ *   storedWorth = base × tierRate  (saved to user_cards.worth)
  *   amount      = storedWorth × editionMult × hotMult  (shown as coins at pack open)
  *   After grading: worth is multiplied by conditionMult in grade-card route.
  */
@@ -372,7 +372,6 @@ export function calculateBuyback(
     rarity: string,
     _marketPrice = 0,
     isFirstEdition = false,
-    level = 1,
 ): {
     amount: number
     storedWorth: number
@@ -382,9 +381,7 @@ export function calculateBuyback(
     const rate = tierBuyBack(rarity)
     const editionMult = isFirstEdition ? FIRST_EDITION_MULTIPLIER : 1
     const isHot = Math.random() < HOT_MARKET_CHANCE
-    const storedWorth = parseFloat(
-        (_marketPrice * rate * levelBuybackMult(level)).toFixed(2),
-    )
+    const storedWorth = parseFloat((_marketPrice * rate).toFixed(2))
     let amount = parseFloat(
         (
             storedWorth *

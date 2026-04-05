@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
     RARITY_ORDER,
-    getBuyback,
     isRainbow,
     rarityGlowRgb,
     rarityGlowShadow,
+    tierBuyBack,
+    conditionMultFunction,
+    weightedCondition,
     type Rarity,
 } from '@/lib/rarityConfig'
 import type { UserCard } from '@/lib/types'
@@ -145,7 +147,16 @@ export default function BagPage({
         if (!selected) return
 
         const soldId = selected.id
-        const buyback = getBuyback(null, selected)
+        const rawWorth = selected.cards.market_price_usd ?? 0
+        const isGraded = selected.grade != null
+        const condMult = conditionMultFunction(weightedCondition({
+            attr_centering: selected.attr_centering ?? 0,
+            attr_corners: selected.attr_corners ?? 0,
+            attr_edges: selected.attr_edges ?? 0,
+            attr_surface: selected.attr_surface ?? 0,
+        }))
+        const cardWorth = isGraded ? rawWorth * condMult : rawWorth
+        const buyback = parseFloat((cardWorth * tierBuyBack(selected.cards.rarity)).toFixed(2))
         await fetch('/api/buyback-card', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1276,7 +1287,7 @@ export default function BagPage({
                     style={{
                         background: 'rgba(0,0,0,0.9)',
                         backdropFilter: 'blur(20px)',
-                        paddingTop: '5vh',
+                        paddingTop: '10vh',
                     }}
                     onClick={() => setSelected(null)}
                 >

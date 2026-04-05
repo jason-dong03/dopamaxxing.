@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { UserCard } from '@/lib/types'
 import { fmt } from '@/lib/utils'
+import { tierBuyBack } from '@/lib/rarityConfig'
 
 export function SellButton({
     uc,
@@ -14,6 +15,9 @@ export function SellButton({
     onSell: () => Promise<void>
 }) {
     const [selling, setSelling] = useState(false)
+    const [showTooltip, setShowTooltip] = useState(false)
+    const buybackPct = Math.round(tierBuyBack(uc.cards.rarity) * 100)
+
     async function handleClick() {
         if (selling) return
         setSelling(true)
@@ -33,9 +37,30 @@ export function SellButton({
                     }}
                 />
             )}
+            {showTooltip && !selling && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '115%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(15,15,20,0.97)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 6,
+                    padding: '5px 10px',
+                    fontSize: '0.58rem',
+                    color: '#9ca3af',
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                    zIndex: 99,
+                }}>
+                    {uc.cards.rarity} buyback: <span style={{ color: '#a78bfa', fontWeight: 700 }}>{buybackPct}%</span>
+                </div>
+            )}
             <button
                 onClick={handleClick}
                 disabled={selling}
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
                 className="relative block w-1/2 mx-auto py-1 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 style={{
                     fontSize: '0.62rem',
