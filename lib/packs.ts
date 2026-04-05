@@ -43,7 +43,7 @@ export const PACKS: Pack[] = [
         image: '/packs/paldea-evolved.png',
         description: 'S & V — Paldea Evolved',
         aspect: 'pack',
-        cost: 16.45,
+        cost: 20.45,
     },
     {
         id: 'sv03',
@@ -83,7 +83,7 @@ export const PACKS: Pack[] = [
         image: '/packs/prismatic-pack.png',
         description: 'S & V — Prismatic Evolutions',
         aspect: 'pack',
-        cost: 11.58,
+        cost: 6.58,
     },
     {
         id: 'sv10',

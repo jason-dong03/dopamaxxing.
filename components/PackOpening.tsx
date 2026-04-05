@@ -60,12 +60,17 @@ export default function PackOpening({
     const [shaking, setShaking] = useState(false)
     const [tearing, setTearing] = useState(false)
     const [opening, setOpening] = useState(false)
-    const [phase, setPhase] = useState<'idle' | 'revealing' | 'done'>('idle')
+    const [phase, setPhase] = useState<
+        'idle' | 'revealing' | 'multi-revealing' | 'done'
+    >('idle')
     const [cards, setCards] = useState<Card[]>([])
 
     const [specialActive, setSpecialActive] = useState(false)
     const [specialGlow, setSpecialGlow] = useState('156, 163, 175')
     const [revealedCount, setRevealedCount] = useState(0)
+    const [multiPackIndex, setMultiPackIndex] = useState(0)
+    const [packRevealedCount, setPackRevealedCount] = useState(0)
+    const [packTransitioning, setPackTransitioning] = useState(false)
     const [shattering, setShattering] = useState(false)
 
     const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set())
@@ -382,16 +387,25 @@ export default function PackOpening({
             })
         }
 
-        // For multi-open: sort lowest rarity first, best cards at the back
+        // For multi-open: sort within each pack group (lowest rarity first, best at the back)
         if (isMulti) {
-            openedCards.sort(
-                (a, b) =>
-                    RARITY_TIERS.indexOf(a.rarity) -
-                    RARITY_TIERS.indexOf(b.rarity),
-            )
+            const perPack = Math.round(openedCards.length / openCount)
+            for (let p = 0; p < openCount; p++) {
+                const start = p * perPack
+                const slice = openedCards.splice(start, perPack)
+                slice.sort(
+                    (a, b) =>
+                        RARITY_TIERS.indexOf(a.rarity) -
+                        RARITY_TIERS.indexOf(b.rarity),
+                )
+                openedCards.splice(start, 0, ...slice)
+            }
         }
 
         setCards(openedCards)
+        setMultiPackIndex(0)
+        setPackRevealedCount(0)
+        setPackTransitioning(false)
         const { cls: aura, rarity: auraRarity } = getPackAura(openedCards)
 
         router.refresh()
@@ -459,7 +473,7 @@ export default function PackOpening({
                     setTearing(false)
                     setOpening(true)
                     setTimeout(
-                        () => setPhase(isMulti ? 'done' : 'revealing'),
+                        () => setPhase(isMulti ? 'multi-revealing' : 'revealing'),
                         600,
                     )
                 }, 400)
@@ -470,7 +484,7 @@ export default function PackOpening({
             setTimeout(() => {
                 setTearing(false)
                 setOpening(true)
-                setTimeout(() => setPhase(isMulti ? 'done' : 'revealing'), 600)
+                setTimeout(() => setPhase(isMulti ? 'multi-revealing' : 'revealing'), 600)
             }, 400)
         }
     }
@@ -876,13 +890,66 @@ export default function PackOpening({
         }, 600)
     }
 
+    // ─── multi-pack reveal helpers ─────────────────────────────────────────────
+    const cardsPerPack = openCount > 1 ? Math.round(cards.length / openCount) : cards.length
+
+    function handlePackReveal() {
+        const next = packRevealedCount + 1
+        setPackRevealedCount(next)
+    }
+
+    function handleFlipPackAll() {
+        setFanningOut(true)
+        setTimeout(() => {
+            setFanningOut(false)
+            setPackRevealedCount(cardsPerPack)
+        }, 600)
+    }
+
+    function sortCardsRarestLast(arr: Card[]): Card[] {
+        return [...arr].sort(
+            (a, b) =>
+                RARITY_TIERS.indexOf(a.rarity) - RARITY_TIERS.indexOf(b.rarity),
+        )
+    }
+
+    function handleSkipAll() {
+        setCards(sortCardsRarestLast(cards))
+        setPackTransitioning(true)
+        setTimeout(() => {
+            setPhase('done')
+            setPackTransitioning(false)
+        }, 350)
+    }
+
+    function handleNextPack() {
+        const isLast = multiPackIndex >= openCount - 1
+        setPackTransitioning(true)
+        setTimeout(() => {
+            if (isLast) {
+                setCards(sortCardsRarestLast(cards))
+                setPhase('done')
+                setPackTransitioning(false)
+            } else {
+                setMultiPackIndex((i) => i + 1)
+                setPackRevealedCount(0)
+                setSpecialActive(false)
+                setSpecialGlow('156, 163, 175')
+                setShowRarity(false)
+                setRarityCard(null)
+                setFanningOut(false)
+                setPackTransitioning(false)
+            }
+        }, 350)
+    }
+
     const currentCard = remainingCards[doneIndex]
     const packBgTier: 'celestial' | 'divine' | 'legendary' | 'mystery' | null =
         (() => {
             const triggerCard =
                 phase === 'done'
                     ? currentCard
-                    : phase === 'revealing' && specialActive
+                    : (phase === 'revealing' || phase === 'multi-revealing') && specialActive
                       ? rarityCard
                       : null
             if (!triggerCard) return null
@@ -1320,6 +1387,189 @@ export default function PackOpening({
                         </div>
                     </div>
                 )}
+
+                {/* multi-pack reveal phase */}
+                {phase === 'multi-revealing' && (() => {
+                    const packStart = multiPackIndex * cardsPerPack
+                    const packCards = cards.slice(packStart, packStart + cardsPerPack)
+                    const allFlipped = packRevealedCount >= packCards.length
+                    const isLastPack = multiPackIndex >= openCount - 1
+                    return (
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                paddingTop: 'min(20px, 5vw)',
+                                transform: isMobile ? 'translateY(16px)' : 'translateY(21px)',
+                                opacity: packTransitioning ? 0 : 1,
+                                transition: 'opacity 350ms ease-in-out',
+                            }}
+                        >
+                            {/* pack counter */}
+                            <div
+                                style={{
+                                    marginBottom: 10,
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    letterSpacing: '0.12em',
+                                    color: '#6b7280',
+                                    textTransform: 'uppercase',
+                                }}
+                            >
+                                Pack {multiPackIndex + 1} / {openCount}
+                            </div>
+
+                            {allFlipped ? (
+                                /* all cards revealed — show face-up grid */
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                        width: 'min(340px, 92vw)',
+                                        animation: 'fadeIn 250ms ease-out',
+                                    }}
+                                >
+                                    {packCards.map((card, i) => (
+                                        <img
+                                            key={`${card.id}-${packStart + i}-face`}
+                                            src={card.image_url}
+                                            alt={card.name}
+                                            className="rounded-lg"
+                                            style={{
+                                                height: isMobile ? 'min(120px, 28vw)' : '140px',
+                                                width: 'auto',
+                                                boxShadow: `0 0 10px 2px rgba(${rarityGlowRgb(card.rarity)}, 0.5)`,
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div
+                                    className="relative flex items-center justify-center"
+                                    style={{
+                                        height: 'min(350px, 80vw)',
+                                        width: 'min(280px, 72vw)',
+                                    }}
+                                >
+                                    {/* rarity glow */}
+                                    <div
+                                        className={
+                                            specialActive && isRainbow(rarityCard?.rarity ?? '')
+                                                ? 'bg-rainbow-radial'
+                                                : ''
+                                        }
+                                        style={{
+                                            position: 'absolute',
+                                            width: '130%',
+                                            height: '130%',
+                                            borderRadius: '50%',
+                                            ...(!isRainbow(rarityCard?.rarity ?? '') && {
+                                                background: `radial-gradient(ellipse at center, rgba(${specialGlow}, 0.6) 0%, transparent 65%)`,
+                                            }),
+                                            filter: 'blur(32px)',
+                                            zIndex: 0,
+                                            pointerEvents: 'none',
+                                            opacity: specialActive ? 1 : 0,
+                                            transition: 'opacity 600ms ease-in-out',
+                                        }}
+                                    />
+                                    {packCards.map((card, i) => {
+                                        const isTop = i === packRevealedCount
+                                        const isRevealed = i < packRevealedCount
+                                        if (isRevealed) return null
+                                        const fanVisible = fanningOut
+                                        const n = packCards.length - packRevealedCount
+                                        const offset = i - packRevealedCount - (n - 1) / 2
+                                        return (
+                                            <div
+                                                key={`${card.id}-${packStart + i}`}
+                                                className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
+                                                style={
+                                                    fanVisible
+                                                        ? {
+                                                              transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
+                                                              zIndex: 50,
+                                                              pointerEvents: 'none',
+                                                              transition: 'transform 450ms cubic-bezier(0.2, 0, 0.8, 1)',
+                                                          }
+                                                        : {
+                                                              transform: `translateY(${(i - packRevealedCount) * -6}px) rotate(${(i - packRevealedCount) * -1}deg)`,
+                                                              zIndex: isTop ? 50 : 50 - i,
+                                                              pointerEvents: isTop ? 'auto' : 'none',
+                                                          }
+                                                }
+                                            >
+                                                <FlipCard
+                                                    card={card}
+                                                    onReveal={isTop ? handlePackReveal : () => {}}
+                                                    onFlipped={
+                                                        isTop
+                                                            ? () => {
+                                                                  setShowRarity(true)
+                                                                  setRarityCard(card)
+                                                              }
+                                                            : () => {}
+                                                    }
+                                                    onConfirmed={isTop ? () => setShowRarity(false) : () => {}}
+                                                    onSpecialChange={(active, glow) => {
+                                                        setSpecialActive(active)
+                                                        setSpecialGlow(glow)
+                                                    }}
+                                                />
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
+                            {/* buttons row */}
+                            <div
+                                className="flex flex-col items-center gap-2"
+                                style={{ marginTop: 'min(24px, 5vw)' }}
+                            >
+                                {allFlipped ? (
+                                    <button
+                                        onClick={handleNextPack}
+                                        disabled={packTransitioning}
+                                        className="px-6 py-2 rounded-xl text-sm font-semibold border border-gray-500 text-white hover:border-white hover:bg-white/10 active:scale-95 transition-all"
+                                        style={{ letterSpacing: '0.04em' }}
+                                    >
+                                        {isLastPack ? 'see results →' : 'next pack →'}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={handleFlipPackAll}
+                                        className="px-4 py-1.5 rounded-xl text-xs font-medium border border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+                                    >
+                                        flip all
+                                    </button>
+                                )}
+                                {!isLastPack && (
+                                    <button
+                                        onClick={handleSkipAll}
+                                        disabled={packTransitioning}
+                                        className="px-3 py-1 rounded-lg text-xs border border-gray-800 text-gray-600 hover:border-gray-600 hover:text-gray-400 active:scale-95 transition-all"
+                                    >
+                                        skip to results
+                                    </button>
+                                )}
+                                {showRarity && rarityCard && (
+                                    <p
+                                        className="text-xs tracking-widest uppercase"
+                                        style={{
+                                            color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                        }}
+                                    >
+                                        {rarityCard.rarity} · {rarityToOdds(rarityCard.rarity)}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )
+                })()}
 
                 {/* done phase */}
                 {phase === 'done' &&

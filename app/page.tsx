@@ -87,7 +87,6 @@ export default function LandingPage() {
             options: {
                 redirectTo: `${window.location.origin}/auth/callback`,
                 scopes: 'openid email profile',
-                queryParams: { prompt: 'select_account' },
             },
         })
     }
