@@ -7,8 +7,7 @@ import QuestsTab from '@/components/admin/QuestsTab'
 import PacksTab from '@/components/admin/PacksTab'
 import UsersTab from '@/components/admin/UsersTab'
 import RepriceTab from '@/components/admin/RepriceTab'
-import BackfillTypesTab from '@/components/admin/BackfillTypesTab'
-import BackfillPendingMovesTab from '@/components/admin/BackfillPendingMovesTab'
+import BackfillBattlePowerTab from '@/components/admin/BackfillBattlePowerTab'
 const TABS = [
     'Users',
     'Achievements',
@@ -16,8 +15,7 @@ const TABS = [
     'Quests',
     'Packs',
     'Reprice',
-    'BackfillTypes',
-    'BackfillMoves',
+    'BackfillBP',
 ] as const
 type Tab = (typeof TABS)[number]
 
@@ -82,8 +80,7 @@ export default function AdminPage() {
             {tab === 'Quests' && <QuestsTab />}
             {tab === 'Packs' && <PacksTab />}
             {tab === 'Reprice' && <RepriceTab />}
-            {tab === 'BackfillTypes' && <BackfillTypesTab />}
-            {tab === 'BackfillMoves' && <BackfillPendingMovesTab />}
+            {tab === 'BackfillBP' && <BackfillBattlePowerTab />}
         </div>
     )
 }
