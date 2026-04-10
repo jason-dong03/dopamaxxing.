@@ -12,8 +12,7 @@ import StashButton from '@/components/ui/StashButton'
 import LiberatorEasterEgg from '@/components/LiberatorEasterEgg'
 import { getTitleColor } from '@/lib/titleConfig'
 import MobileExpand from '@/components/ui/MobileExpand'
-import { getBPTier } from '@/lib/battlePower'
-import BPDisplay from '@/components/ui/BPDisplay'
+import BRDisplay from '@/components/ui/BRDisplay'
 
 export default async function Dashboard() {
     const supabase = await createClient()
@@ -188,7 +187,7 @@ export default async function Dashboard() {
                                     🔥 {profile?.login_streak}
                                 </span>
                             )}
-                            <BPDisplay initialBP={profile?.battle_power ?? 0} />
+                            <BRDisplay initialBP={profile?.battle_power ?? 0} />
                         </div>
                         {(profile?.first_name || profile?.last_name) && (
                             <p
@@ -212,7 +211,7 @@ export default async function Dashboard() {
                         activeTitle={profile?.active_title}
                         discordLinked={!!profile?.discord_id}
                         adminPanel={profile?.is_admin}
-                        battlePower={profile?.battle_power ?? 0}
+                        battleRating={profile?.battle_power ?? 0}
                     />
 
                     <div style={{ flex: 1 }} />

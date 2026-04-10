@@ -14,7 +14,7 @@ import { awardAchievements, getEarnedAchievements } from '@/lib/awardAchievement
 import { awardLevelUpRewards } from '@/lib/awardLevelUp'
 import { rollStats, rollNatureWithTier } from '@/lib/pokemon-stats'
 import { fetchPokemonData } from '@/lib/pokemon-moves'
-import { recalcBattlePower } from '@/lib/battlePower'
+import { recalcBattleRating } from '@/lib/battlePower'
 
 type CardRow = Record<string, unknown>
 
@@ -285,12 +285,12 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        const newBP = await recalcBattlePower(supabase, user.id)
+        const newBR = await recalcBattleRating(supabase, user.id)
 
         const xpGained = packXpGain(oldLevel) * count
         return NextResponse.json({
             cards: cardsWithMeta,
-            newBP,
+            newBR,
             xpGain: xpGained,
             xpGainPerPack: packXpGain(oldLevel),
             oldLevel,

@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { formatBP } from '@/lib/battlePower'
+import { formatBR } from '@/lib/battlePower'
 
 type FloatingLabel = { id: number; delta: number }
 
-export default function BPDisplay({ initialBP }: { initialBP: number }) {
+export default function BRDisplay({ initialBP }: { initialBP: number }) {
     const [displayed, setDisplayed] = useState(initialBP)
     const [floats, setFloats] = useState<FloatingLabel[]>([])
     const animRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null)
@@ -18,10 +18,10 @@ export default function BPDisplay({ initialBP }: { initialBP: number }) {
         setDisplayed(v)
     }
 
-    function animateTo(newBP: number) {
+    function animateTo(newBR: number) {
         if (animRef.current) cancelAnimationFrame(animRef.current)
         fromRef.current = displayedRef.current
-        toRef.current = newBP
+        toRef.current = newBR
         startRef.current = performance.now()
         const duration = 1200
 
@@ -39,22 +39,22 @@ export default function BPDisplay({ initialBP }: { initialBP: number }) {
     }
 
     useEffect(() => {
-        function onBPUpdated(e: Event) {
-            const { newBP } = (e as CustomEvent<{ newBP: number }>).detail
-            if (newBP <= toRef.current) return
-            const delta = newBP - toRef.current
-            animateTo(newBP)
+        function onBRUpdated(e: Event) {
+            const { newBR } = (e as CustomEvent<{ newBR: number }>).detail
+            if (newBR <= toRef.current) return
+            const delta = newBR - toRef.current
+            animateTo(newBR)
             const id = Date.now()
             setFloats((prev) => [...prev, { id, delta }])
             setTimeout(() => setFloats((prev) => prev.filter((f) => f.id !== id)), 1600)
         }
-        window.addEventListener('bp-updated', onBPUpdated)
-        return () => window.removeEventListener('bp-updated', onBPUpdated)
+        window.addEventListener('br-updated', onBRUpdated)
+        return () => window.removeEventListener('br-updated', onBRUpdated)
     }, [])
 
     return (
         <span
-            title={`Battle Power: ${toRef.current.toLocaleString()}`}
+            title={`Battle Rating: ${toRef.current.toLocaleString()}`}
             style={{ position: 'relative', display: 'inline-block' }}
         >
             <span
@@ -67,12 +67,12 @@ export default function BPDisplay({ initialBP }: { initialBP: number }) {
                     letterSpacing: '-0.01em',
                 }}
             >
-                {formatBP(displayed)} BP
+                {formatBR(displayed)} BR
             </span>
             {floats.map((f) => (
                 <span
                     key={f.id}
-                    className="bp-float"
+                    className="br-float"
                     style={{
                         position: 'absolute',
                         top: -18,
@@ -86,7 +86,7 @@ export default function BPDisplay({ initialBP }: { initialBP: number }) {
                         zIndex: 9999,
                     }}
                 >
-                    +{formatBP(f.delta)} BP
+                    +{formatBR(f.delta)} BR
                 </span>
             ))}
         </span>

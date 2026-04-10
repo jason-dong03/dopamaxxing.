@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
-import { recalcBattlePower } from '@/lib/battlePower'
+import { recalcBattleRating } from '@/lib/battlePower'
 
 const BATCH_SIZE = 20
 
@@ -29,7 +29,7 @@ export async function POST() {
 
     for (const profile of (users ?? [])) {
         try {
-            await recalcBattlePower(admin, profile.id)
+            await recalcBattleRating(admin, profile.id)
             updated.push(profile.id)
         } catch (e: any) {
             errors.push(`${profile.id}: ${e.message}`)

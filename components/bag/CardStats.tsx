@@ -26,7 +26,7 @@ import { SellButton } from './SellButton'
 import { GradeSection } from './GradeSection'
 import type { UserCard } from '@/lib/types'
 import { fmt } from '@/lib/utils'
-import { cardBP, getBPTier, formatBP } from '@/lib/battlePower'
+import { cardBR, getBRTier, formatBR } from '@/lib/battlePower'
 
 const RARITY_WEIGHT_DISPLAY: Record<string, number> = {
     '???': 10, Celestial: 8, Divine: 6, Legendary: 4,
@@ -196,7 +196,7 @@ export function CardStats({
             : `$${fmt(cardWorth)}`
 
     // per-card battle power
-    const thisBP = cardBP({
+    const thisBP = cardBR({
         worth: cardWorth,
         card_level: uc.card_level,
         rarity: rarity,
@@ -207,7 +207,7 @@ export function CardStats({
         grade: uc.grade,
         nature_tier: (uc as any).nature_tier ?? null,
     })
-    const bpTier = getBPTier(thisBP)
+    const bpTier = getBRTier(thisBP)
 
     // colored stat rows
     const stats = [
@@ -931,9 +931,9 @@ export function CardStats({
                                 <span
                                     className="font-mono font-bold"
                                     style={{ fontSize: '0.75rem', color: '#facc15' }}
-                                    title={`${thisBP.toLocaleString()} BP — worth×level×rarity×quality×grade×nature`}
+                                    title={`${thisBP.toLocaleString()} BR — worth×level×rarity×quality×grade×nature`}
                                 >
-                                    {formatBP(thisBP)} BP
+                                    {formatBR(thisBP)} BR
                                 </span>
                                 <span
                                     style={{
@@ -2527,9 +2527,9 @@ export function CardStats({
                                             <span
                                                 className="font-mono font-bold"
                                                 style={{ fontSize: '0.65rem', color: '#facc15' }}
-                                                title={`${thisBP.toLocaleString()} BP`}
+                                                title={`${thisBP.toLocaleString()} BR`}
                                             >
-                                                {formatBP(thisBP)} BP
+                                                {formatBR(thisBP)} BR
                                             </span>
                                             <span
                                                 style={{

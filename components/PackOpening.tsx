@@ -367,8 +367,8 @@ export default function PackOpening({
                 setLevelUpClaimed(false)
             }
             if (data.xpGainPerPack) setXpGainPerPack(data.xpGainPerPack)
-            if (data.newBP) {
-                window.dispatchEvent(new CustomEvent('bp-updated', { detail: { newBP: data.newBP } }))
+            if (data.newBR) {
+                window.dispatchEvent(new CustomEvent('br-updated', { detail: { newBR: data.newBR } }))
             }
             if (!free && pack.cost > 0) {
                 setUserCoins((prev) => (prev ?? 0) - pack.cost * openCount)
@@ -417,8 +417,8 @@ export default function PackOpening({
                 setLevelUpClaimed(false)
             }
             if (data.xpGain) setXpGainPerPack(data.xpGain)
-            if (data.newBP) {
-                window.dispatchEvent(new CustomEvent('bp-updated', { detail: { newBP: data.newBP } }))
+            if (data.newBR) {
+                window.dispatchEvent(new CustomEvent('br-updated', { detail: { newBR: data.newBR } }))
             }
             if (!free && pack.cost > 0) {
                 setUserCoins((prev) => (prev ?? 0) - pack.cost)

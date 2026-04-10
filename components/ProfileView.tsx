@@ -8,7 +8,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { rarityTextStyle, xpForLevel } from '@/lib/rarityConfig'
-import { formatBP, getBPTier } from '@/lib/battlePower'
+import { formatBR, getBRTier } from '@/lib/battlePower'
 import { NATURE_BY_NAME, NATURE_TIER_COLOR } from '@/lib/pokemon-stats'
 import { TYPE_COLOR } from '@/lib/pokemon-types'
 import { getTitleColor, getTitleRarity } from '@/lib/titleConfig'
@@ -1878,7 +1878,7 @@ export default function ProfileView({
                         scrollbarWidth: 'none',
                         padding: '24px 22px',
                         gap: 18,
-                        width: isMobile ? '100%' : 340,
+                        width: isMobile ? '100%' : 400,
                         minHeight: isMobile ? 'auto' : 580,
                         flexShrink: 0,
                     }}
@@ -2011,7 +2011,7 @@ export default function ProfileView({
                                 <span
                                     className="font-bold"
                                     style={{
-                                        fontSize: '0.95rem',
+                                        fontSize: '0.75rem',
                                         color: 'var(--app-text)',
                                     }}
                                 >
@@ -2059,10 +2059,10 @@ export default function ProfileView({
                         </div>
                     </div>
 
-                    {/* Battle Power */}
+                    {/* Battle Rating */}
                     {(() => {
                         const bp = profile?.battle_power ?? 0
-                        const tier = getBPTier(bp)
+                        const tier = getBRTier(bp)
                         return (
                             <div
                                 style={{
@@ -2085,7 +2085,7 @@ export default function ProfileView({
                                         letterSpacing: '0.1em',
                                     }}
                                 >
-                                    Battle Power
+                                    Battle Rating
                                 </span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span
@@ -2095,7 +2095,7 @@ export default function ProfileView({
                                             color: tier.color,
                                         }}
                                     >
-                                        {formatBP(bp)}
+                                        {formatBR(bp)}
                                     </span>
                                     <span
                                         style={{
