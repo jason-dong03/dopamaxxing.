@@ -167,8 +167,8 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         bagFull={bagFull}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={(p) => {
-                            setSelectedCount(1)
+                        onSelect={(p, count) => {
+                            setSelectedCount(count)
                             setSelectedPack(p)
                         }}
                         onPreview={setPreviewPack}
@@ -184,8 +184,8 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         bagFull={bagFull}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={(p) => {
-                            setSelectedCount(1)
+                        onSelect={(p, count) => {
+                            setSelectedCount(count)
                             setSelectedPack(p)
                         }}
                         onPreview={setPreviewPack}
@@ -201,8 +201,8 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         bagFull={bagFull}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={(p) => {
-                            setSelectedCount(1)
+                        onSelect={(p, count) => {
+                            setSelectedCount(count)
                             setSelectedPack(p)
                         }}
                         onPreview={setPreviewPack}
@@ -336,7 +336,7 @@ function PackShopList({
     bagFull: boolean
     hoveredId: string | null
     onHover: (id: string | null) => void
-    onSelect: (pack: Pack) => void
+    onSelect: (pack: Pack, count: number) => void
     onPreview: (pack: Pack) => void
     [key: string]: unknown
 }) {
@@ -415,7 +415,7 @@ function PackShopList({
                                 key={pack.id}
                                 pack={pack}
                                 hovered={hoveredId === pack.id}
-                                canAfford={coins >= pack.cost}
+                                coins={coins}
                                 bagFull={bagFull}
                                 gold={gold}
                                 stock={99}
@@ -434,7 +434,7 @@ function PackShopList({
 function ShopPackRow({
     pack,
     hovered,
-    canAfford,
+    coins,
     bagFull,
     gold,
     stock,
@@ -444,14 +444,17 @@ function ShopPackRow({
 }: {
     pack: Pack
     hovered: boolean
-    canAfford: boolean
+    coins: number
     bagFull: boolean
     gold?: boolean
     stock: number
     onHover: (id: string | null) => void
-    onSelect: (pack: Pack) => void
+    onSelect: (pack: Pack, count: number) => void
     onPreview: (pack: Pack) => void
 }) {
+    const canAfford1 = coins >= pack.cost
+    const canAfford10 = coins >= pack.cost * 10
+    const canAfford100 = coins >= pack.cost * 100
     const borderColor = gold ? 'rgba(234,179,8,0.22)' : 'rgba(255,255,255,0.08)'
     const hoverBorderColor = gold
         ? 'rgba(234,179,8,0.42)'
@@ -464,14 +467,10 @@ function ShopPackRow({
                 opacity: bagFull ? 0.45 : 1,
                 transition: 'opacity 300ms',
             }}
+            onMouseEnter={() => onHover(pack.id)}
+            onMouseLeave={() => onHover(null)}
         >
-            <button
-                onClick={() => {
-                    if (!bagFull) onSelect(pack)
-                }}
-                onMouseEnter={() => onHover(pack.id)}
-                onMouseLeave={() => onHover(null)}
-                disabled={bagFull}
+            <div
                 style={{
                     width: '100%',
                     background:
@@ -480,8 +479,7 @@ function ShopPackRow({
                             : 'rgba(255,255,255,0.02)',
                     border: `1px solid ${hovered && !bagFull ? hoverBorderColor : borderColor}`,
                     borderRadius: 16,
-                    cursor: bagFull ? 'not-allowed' : 'pointer',
-                    padding: '14px 18px',
+                    padding: '14px 18px 14px 18px',
                     display: 'flex',
                     alignItems: 'stretch',
                     gap: 12,
@@ -537,6 +535,7 @@ function ShopPackRow({
                         justifyContent: 'flex-start',
                         alignItems: 'flex-start',
                         paddingTop: 2,
+                        paddingBottom: 36,
                     }}
                 >
                     <ThemeLabel pack={pack} />
@@ -572,7 +571,7 @@ function ShopPackRow({
                         style={{
                             fontSize: '0.84rem',
                             fontWeight: 700,
-                            color: canAfford ? '#4ade80' : '#ef4444',
+                            color: canAfford1 ? '#4ade80' : '#ef4444',
                             marginTop: 4,
                             textAlign: 'left',
                         }}
@@ -584,21 +583,67 @@ function ShopPackRow({
                         })}
                     </div>
                 </div>
-                <span
+
+                {/* open count buttons */}
+                <div
                     style={{
                         position: 'absolute',
-                        right: 18,
                         bottom: 12,
-                        fontSize: '0.84rem',
-                        fontWeight: 600,
-                        color: '#ffffff',
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
+                        left: 116,
+                        display: 'flex',
+                        gap: 6,
+                        alignItems: 'center',
                     }}
                 >
-                    x {stock}
-                </span>
-            </button>
+                    {([1, 10, 100] as const).map((count) => {
+                        const affordable =
+                            count === 1
+                                ? canAfford1
+                                : count === 10
+                                  ? canAfford10
+                                  : canAfford100
+                        const disabled = bagFull || !affordable
+                        return (
+                            <button
+                                key={count}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (!disabled) onSelect(pack, count)
+                                }}
+                                disabled={disabled}
+                                style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 8,
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    cursor: disabled ? 'not-allowed' : 'pointer',
+                                    border: `1px solid ${
+                                        disabled
+                                            ? 'rgba(255,255,255,0.08)'
+                                            : gold
+                                              ? 'rgba(234,179,8,0.4)'
+                                              : 'rgba(255,255,255,0.2)'
+                                    }`,
+                                    background: disabled
+                                        ? 'rgba(255,255,255,0.03)'
+                                        : gold
+                                          ? 'rgba(234,179,8,0.12)'
+                                          : 'rgba(255,255,255,0.07)',
+                                    color: disabled
+                                        ? 'rgba(255,255,255,0.2)'
+                                        : gold
+                                          ? '#facc15'
+                                          : 'var(--app-text)',
+                                    transition: 'all 150ms ease',
+                                    letterSpacing: '0.02em',
+                                }}
+                            >
+                                ×{count}
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
 
             <div style={{ position: 'absolute', top: 10, right: 10 }}>
                 <CardListBtn onClick={() => onPreview(pack)} />

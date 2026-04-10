@@ -12,6 +12,7 @@ import StashButton from '@/components/ui/StashButton'
 import LiberatorEasterEgg from '@/components/LiberatorEasterEgg'
 import { getTitleColor } from '@/lib/titleConfig'
 import MobileExpand from '@/components/ui/MobileExpand'
+import VersionBadge from '@/components/ui/VersionBadge'
 
 export default async function Dashboard() {
     const supabase = await createClient()
@@ -326,6 +327,11 @@ export default async function Dashboard() {
                             </span>
                         </div>
                     </div>
+
+                    {/* version badge */}
+                    <span className="hidden sm:contents">
+                        <VersionBadge />
+                    </span>
 
                     {/* settings */}
                     <Link

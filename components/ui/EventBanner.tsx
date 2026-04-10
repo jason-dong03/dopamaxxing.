@@ -58,9 +58,50 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
         return () => window.removeEventListener('pack-opening-active', handler)
     }, [])
 
-    const ev = events[0]
-    if (!ev || new Date(ev.expiresAt).getTime() <= now) return null
-    if (packOpen || pathname.startsWith('/dashboard/bag')) return null
+    const activeEvents = events.filter(
+        (e) => new Date(e.expiresAt).getTime() > now,
+    )
+
+    if (activeEvents.length === 0 || packOpen || pathname.startsWith('/dashboard/bag'))
+        return null
+
+    return (
+        <>
+            <style>{KEYFRAMES}</style>
+            <div
+                style={{
+                    position: 'fixed',
+                    top: 73,
+                    left: 16,
+                    zIndex: 200,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                }}
+            >
+                {activeEvents.map((ev) => (
+                    <EventPill
+                        key={ev.name}
+                        ev={ev}
+                        now={now}
+                        mounted={mounted}
+                    />
+                ))}
+            </div>
+        </>
+    )
+}
+
+function EventPill({
+    ev,
+    now,
+    mounted,
+}: {
+    ev: EventWithExpiry
+    now: number
+    mounted: boolean
+}) {
+    const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
 
     const msLeft = new Date(ev.expiresAt).getTime() - now
     const rarityColor = EVENT_RARITY_COLOR[ev.eventRarity]
@@ -69,73 +110,31 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
     const isMystery = ev.eventRarity === '???'
 
     return (
-        <>
-            <style>{KEYFRAMES}</style>
-
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 73,
-                    left: 16,
-                    zIndex: 200,
-                    cursor: 'default',
-                }}
-                onMouseEnter={(e) => setMouse({ x: e.clientX, y: e.clientY })}
-                onMouseLeave={() => setMouse(null)}
-            >
-                {isLegendary || isMystery ? (
-                    <div
-                        style={{
-                            background:
-                                'conic-gradient(from 0deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff6b6b)',
-                            padding: 1,
-                            borderRadius: 20,
-                            animation: isMystery
-                                ? 'hue-spin 2s linear infinite'
-                                : undefined,
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                background: '#0e0e16',
-                                borderRadius: 19,
-                                padding: '4px 10px 4px 7px',
-                                whiteSpace: 'nowrap',
-                            }}
-                        >
-                            <span
-                                style={{ fontSize: '0.78rem', lineHeight: 1 }}
-                            >
-                                {ev.icon}
-                            </span>
-                            <span
-                                style={{
-                                    fontSize: '0.6rem',
-                                    fontWeight: 700,
-                                    color: isMystery ? undefined : ev.color,
-                                    animation: isMystery
-                                        ? 'rgb-cycle 2s linear infinite'
-                                        : undefined,
-                                }}
-                            >
-                                {ev.name}
-                            </span>
-                        </div>
-                    </div>
-                ) : (
+        <div
+            style={{ cursor: 'default' }}
+            onMouseEnter={(e) => setMouse({ x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setMouse(null)}
+        >
+            {isLegendary || isMystery ? (
+                <div
+                    style={{
+                        background:
+                            'conic-gradient(from 0deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff6b6b)',
+                        padding: 1,
+                        borderRadius: 20,
+                        animation: isMystery
+                            ? 'hue-spin 2s linear infinite'
+                            : undefined,
+                    }}
+                >
                     <div
                         style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: 5,
-                            background: `${ev.color}12`,
-                            border: `1px solid ${ev.eventRarity === 'rare' ? ev.color + '90' : ev.color + '40'}`,
-                            borderRadius: 20,
+                            background: '#0e0e16',
+                            borderRadius: 19,
                             padding: '4px 10px 4px 7px',
-                            backdropFilter: 'blur(8px)',
                             whiteSpace: 'nowrap',
                         }}
                     >
@@ -146,14 +145,44 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                             style={{
                                 fontSize: '0.6rem',
                                 fontWeight: 700,
-                                color: ev.color,
+                                color: isMystery ? undefined : ev.color,
+                                animation: isMystery
+                                    ? 'rgb-cycle 2s linear infinite'
+                                    : undefined,
                             }}
                         >
                             {ev.name}
                         </span>
                     </div>
-                )}
-            </div>
+                </div>
+            ) : (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        background: `${ev.color}12`,
+                        border: `1px solid ${ev.eventRarity === 'rare' ? ev.color + '90' : ev.color + '40'}`,
+                        borderRadius: 20,
+                        padding: '4px 10px 4px 7px',
+                        backdropFilter: 'blur(8px)',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    <span style={{ fontSize: '0.78rem', lineHeight: 1 }}>
+                        {ev.icon}
+                    </span>
+                    <span
+                        style={{
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            color: ev.color,
+                        }}
+                    >
+                        {ev.name}
+                    </span>
+                </div>
+            )}
 
             {/* tooltip */}
             {mounted &&
@@ -167,7 +196,6 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                             zIndex: 9999,
                             pointerEvents: 'none',
                             width: 220,
-                            // rainbow border wrapper for ???
                             ...(isMystery
                                 ? {
                                       background:
@@ -193,7 +221,6 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                                     : `0 6px 24px rgba(0,0,0,0.6), 0 0 0 1px ${ev.color}20`,
                             }}
                         >
-                            {/* name + rarity */}
                             <div
                                 style={{
                                     display: 'flex',
@@ -221,9 +248,7 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                                     style={{
                                         fontSize: '0.5rem',
                                         fontWeight: 700,
-                                        color: isMystery
-                                            ? undefined
-                                            : rarityColor,
+                                        color: isMystery ? undefined : rarityColor,
                                         border: `1px solid ${isMystery ? 'rgba(255,255,255,0.2)' : rarityColor + '50'}`,
                                         borderRadius: 4,
                                         padding: '0 4px',
@@ -239,8 +264,6 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                                     {EVENT_RARITY_LABEL[ev.eventRarity]}
                                 </span>
                             </div>
-
-                            {/* description */}
                             <p
                                 style={{
                                     fontSize: '0.65rem',
@@ -251,8 +274,6 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                             >
                                 {ev.description}
                             </p>
-
-                            {/* time remaining */}
                             <div
                                 style={{
                                     display: 'flex',
@@ -294,6 +315,6 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                     </div>,
                     document.body,
                 )}
-        </>
+        </div>
     )
 }

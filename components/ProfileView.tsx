@@ -1422,6 +1422,9 @@ export default function ProfileView({
                     padding: '20px 24px',
                     flexDirection: isMobile ? 'column' : 'row',
                     alignItems: isMobile ? 'stretch' : 'flex-start',
+                    maxWidth: 1200,
+                    margin: '0 auto',
+                    width: '100%',
                 }}
             >
                 {showAddFriend && (
