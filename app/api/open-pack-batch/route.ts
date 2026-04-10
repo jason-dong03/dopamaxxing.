@@ -67,14 +67,13 @@ export async function POST(request: NextRequest) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
         const { setId, count: rawCount = 10, free = false } = await request.json()
-        const count = Math.max(1, Math.min(10, Number(rawCount)))
+        const requestedCount = Math.max(1, Math.min(10, Number(rawCount)))
 
         const mergedPacks = await getMergedPacks(supabase)
         const packDef = mergedPacks.find((p) => p.id === setId)
         const baseCost = packDef?.cost ?? 0
         const costDiscount = await getEventMagnitude('cheap_packs')
         const costPerPack = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))
-        const totalCost = parseFloat((costPerPack * count).toFixed(2))
 
         const [{ data: profile }, allCards, bagCountRes, luckBoost, todayEvents] = await Promise.all([
             supabase
@@ -96,11 +95,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'bag_full', bagCount, bagCapacity }, { status: 409 })
         }
 
-        if (totalCost > 0 && (profile?.coins ?? 0) < totalCost) {
-            return NextResponse.json({ error: 'insufficient_coins', cost: totalCost, coins: profile?.coins ?? 0 }, { status: 402 })
-        }
-
-        // Check and deduct pack stock
+        // Stock check — caps count to available stock instead of blocking
+        let count = requestedCount
         if (!free) {
             const { data: stockRow } = await supabase
                 .from('pack_stock')
@@ -112,14 +108,14 @@ export async function POST(request: NextRequest) {
             if (stockRow) {
                 const refreshedAt = new Date(stockRow.refreshed_at).getTime()
                 const expired = Date.now() - refreshedAt >= 5 * 60 * 1000
-                if (!expired && stockRow.quantity < count) {
-                    return NextResponse.json(
-                        { error: 'insufficient_stock', available: stockRow.quantity },
-                        { status: 409 },
-                    )
-                }
-                if (!expired && stockRow.quantity >= count) {
-                    // Deduct synchronously so UI reflects immediately
+                if (!expired) {
+                    if (stockRow.quantity <= 0) {
+                        return NextResponse.json(
+                            { error: 'insufficient_stock', available: 0 },
+                            { status: 409 },
+                        )
+                    }
+                    count = Math.min(requestedCount, stockRow.quantity)
                     await supabase
                         .from('pack_stock')
                         .update({ quantity: stockRow.quantity - count })
@@ -128,6 +124,12 @@ export async function POST(request: NextRequest) {
                 }
                 // If expired: stock API will regenerate on next fetch — don't block opening
             }
+        }
+
+        const totalCost = parseFloat((costPerPack * count).toFixed(2))
+
+        if (totalCost > 0 && (profile?.coins ?? 0) < totalCost) {
+            return NextResponse.json({ error: 'insufficient_coins', cost: totalCost, coins: profile?.coins ?? 0 }, { status: 402 })
         }
 
         if (allCards.length === 0) {
@@ -290,6 +292,7 @@ export async function POST(request: NextRequest) {
         const xpGained = packXpGain(oldLevel) * count
         return NextResponse.json({
             cards: cardsWithMeta,
+            openedCount: count,
             newBR,
             xpGain: xpGained,
             xpGainPerPack: packXpGain(oldLevel),

@@ -370,9 +370,10 @@ export default function PackOpening({
             if (data.newBR) {
                 window.dispatchEvent(new CustomEvent('br-updated', { detail: { newBR: data.newBR } }))
             }
+            const actualOpened = data.openedCount ?? openCount
             if (!free && pack.cost > 0) {
-                setUserCoins((prev) => (prev ?? 0) - pack.cost * openCount)
-                triggerCoinFlash(pack.cost * openCount, false)
+                setUserCoins((prev) => (prev ?? 0) - pack.cost * actualOpened)
+                triggerCoinFlash(pack.cost * actualOpened, false)
             }
         } else {
             const res = await fetch(
