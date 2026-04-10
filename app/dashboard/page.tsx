@@ -187,6 +187,24 @@ export default async function Dashboard() {
                                     🔥 {profile?.login_streak}
                                 </span>
                             )}
+                            {(() => {
+                                const bp = profile?.battle_power ?? 0
+                                const tier = getBPTier(bp)
+                                return (
+                                    <span
+                                        title={`Battle Power: ${bp.toLocaleString()} — ${tier.label}`}
+                                        style={{
+                                            fontSize: '0.62rem',
+                                            fontWeight: 700,
+                                            color: tier.color,
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        ⚡{formatBP(bp)}
+                                    </span>
+                                )
+                            })()}
                         </div>
                         {(profile?.first_name || profile?.last_name) && (
                             <p
@@ -328,38 +346,6 @@ export default async function Dashboard() {
                             </span>
                         </div>
                     </div>
-
-                    {/* battle power */}
-                    {(() => {
-                        const bp = profile?.battle_power ?? 0
-                        const tier = getBPTier(bp)
-                        return (
-                            <div
-                                className="hidden sm:flex"
-                                title={`Battle Power: ${bp} — ${tier.label}`}
-                                style={{
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    background: 'var(--app-surface-2)',
-                                    border: '1px solid var(--app-border)',
-                                    borderRadius: 20,
-                                    padding: '3px 10px',
-                                    flexShrink: 0,
-                                }}
-                            >
-                                <span style={{ fontSize: '0.62rem' }}>⚡</span>
-                                <span
-                                    style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 700,
-                                        color: tier.color,
-                                    }}
-                                >
-                                    {formatBP(bp)}
-                                </span>
-                            </div>
-                        )
-                    })()}
 
                     {/* settings */}
                     <Link

@@ -17,6 +17,7 @@ export type Card = {
     storedWorth?: number
     preview_stats?: CardStats
     preview_nature?: string | null
+    nature_tier?: string | null
 }
 
 export type CardStats = {

@@ -213,6 +213,17 @@ export function rollNature(rarity: string): string | null {
     return pool[Math.floor(Math.random() * pool.length)].name
 }
 
+export function rollNatureWithTier(rarity: string): { name: string | null; tier: NatureTier | null } {
+    const chance = NATURE_CHANCE[rarity] ?? 0.40
+    if (Math.random() > chance) return { name: null, tier: null }
+
+    const tier = rollNatureTier(rarity)
+    const candidates = NATURES.filter(n => n.tier === tier)
+    const pool = candidates.length > 0 ? candidates : REGULAR_NATURES
+    const name = pool[Math.floor(Math.random() * pool.length)].name
+    return { name, tier }
+}
+
 export function applyNatureToStats(stats: CardStats, natureName: string | null): CardStats {
     if (!natureName) return stats
     const nature = NATURE_BY_NAME[natureName]

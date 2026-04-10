@@ -12,7 +12,7 @@ import { generateAttributes } from '@/lib/cardAttributes'
 import { getEventMagnitude, getTodayEvents } from '@/lib/dailyEvents'
 import { awardAchievements, getEarnedAchievements } from '@/lib/awardAchievement'
 import { awardLevelUpRewards } from '@/lib/awardLevelUp'
-import { rollStats, rollNature } from '@/lib/pokemon-stats'
+import { rollStats, rollNatureWithTier } from '@/lib/pokemon-stats'
 import { fetchPokemonData } from '@/lib/pokemon-moves'
 import { recalcBattlePower } from '@/lib/battlePower'
 
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
             const previewAttrs = generateAttributes(rarity)
             const pokeData = pokeDataResults[i].status === 'fulfilled' ? pokeDataResults[i].value : null
             const previewStats = rollStats(rarity, pokeData?.baseStats ?? undefined)
-            const previewNature = rollNature(rarity)
+            const { name: previewNatureName, tier: previewNatureTier } = rollNatureWithTier(rarity)
             const cardLevel = randomCardLevel(rarity)
             const { storedWorth, ...buybackResult } = calculateBuyback(rarity, Number(card.market_price_usd) || 0, (card.set_id as string)?.endsWith('-1ed') ?? false)
             return {
@@ -280,7 +280,8 @@ export async function POST(request: NextRequest) {
                 ...previewAttrs,
                 ...buybackResult,
                 preview_stats: previewStats,
-                preview_nature: previewNature,
+                preview_nature: previewNatureName,
+                nature_tier: previewNatureTier,
             }
         })
 

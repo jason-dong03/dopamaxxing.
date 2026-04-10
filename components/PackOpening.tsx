@@ -816,6 +816,7 @@ export default function PackOpening({
                                 cardId: card.id,
                                 coins: card.coins,
                                 isHot: card.isHot,
+                                natureTier: card.nature_tier ?? null,
                                 attrs: cardAttrs(card),
                             }
                         if (action === 'sell')

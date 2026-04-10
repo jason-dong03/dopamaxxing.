@@ -8,6 +8,7 @@ type AddAction = {
     cardId: string
     coins: number
     isHot: boolean
+    natureTier?: string | null
     attrs?: {
         attr_centering: number
         attr_corners: number
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
                               is_favorited: false,
                               worth: a.coins,
                               is_hot: a.isHot,
+                              ...(a.natureTier ? { nature_tier: a.natureTier } : {}),
                               ...(a.attrs ?? {}),
                           }),
                       ),

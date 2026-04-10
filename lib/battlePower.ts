@@ -42,9 +42,58 @@ export function formatBP(bp: number, full = false): string {
     return String(bp)
 }
 
+// Nature tier → BP multiplier bonus
+const NATURE_TIER_MULT: Record<string, number> = {
+    'regular':   1.00,
+    'legendary': 1.10,
+    'divine':    1.18,
+    'celestial': 1.26,
+    '???':       1.35,
+}
+
+/**
+ * Calculates BP contribution for a single card.
+ *
+ * Formula:
+ *   base     = worth × card_level × rarity_weight
+ *   quality  = avg(attr_centering, attr_corners, attr_edges, attr_surface) / 7.5
+ *              (default attrs = 7.0 → quality ≈ 0.93; PSA-10 style → quality up to 1.33)
+ *   grade    = grade ? 1 + (grade - 5) × 0.04 : 1   (grade 10 → ×1.20, grade 1 → ×0.84)
+ *   nature   = NATURE_TIER_MULT[nature_tier] or 1.0
+ *   bp_card  = round(base × quality × grade × nature)
+ */
+export function cardBP(card: {
+    worth: number | null
+    card_level: number | null
+    rarity: string
+    attr_centering?: number | null
+    attr_corners?: number | null
+    attr_edges?: number | null
+    attr_surface?: number | null
+    grade?: number | null
+    nature_tier?: string | null
+}): number {
+    const weight = RARITY_WEIGHT[card.rarity] ?? 1
+    const worth = Number(card.worth ?? 0)
+    const lvl = Number(card.card_level ?? 1)
+
+    const attrs = [card.attr_centering, card.attr_corners, card.attr_edges, card.attr_surface]
+        .map(v => Number(v ?? 7.0))
+    const avgAttr = attrs.reduce((a, b) => a + b, 0) / attrs.length
+    const qualityMult = avgAttr / 7.5
+
+    const grade = card.grade ? Number(card.grade) : null
+    const gradeMult = grade !== null ? 1 + (grade - 5) * 0.04 : 1
+
+    const natureMult = NATURE_TIER_MULT[card.nature_tier ?? 'regular'] ?? 1
+
+    return Math.round(worth * lvl * weight * qualityMult * gradeMult * natureMult)
+}
+
 /**
  * Recalculates and stores battle_power for a user.
- * Uses the top 30 cards by effective score: worth * card_level * rarity_weight.
+ * Formula per card: worth × card_level × rarity_weight × quality × grade × nature
+ * Top 30 cards by effective score contribute.
  * Fire-and-forget safe (errors are swallowed).
  */
 export async function recalcBattlePower(
@@ -60,19 +109,21 @@ export async function recalcBattlePower(
 
         const { data: cards } = await supabase
             .from('user_cards')
-            .select('worth, card_level, cards(rarity)')
+            .select('worth, card_level, attr_centering, attr_corners, attr_edges, attr_surface, grade, nature_tier, cards(rarity)')
             .eq('user_id', userId)
             .order('worth', { ascending: false })
-            .limit(30)
+            .limit(100) // fetch more, compute top 30 by effective bp
 
         let bp = (profile?.level ?? 1) * 10
 
-        for (const uc of (cards ?? []) as any[]) {
-            const rarity = (uc.cards?.rarity as string) ?? 'Common'
-            const weight = RARITY_WEIGHT[rarity] ?? 1
-            const worth = Number(uc.worth ?? 0)
-            const lvl = Number(uc.card_level ?? 1)
-            bp += Math.round(worth * lvl * weight)
+        const scored = ((cards ?? []) as any[]).map((uc) => ({
+            ...uc,
+            rarity: (uc.cards?.rarity as string) ?? 'Common',
+        })).map((uc) => ({ uc, score: cardBP(uc) }))
+
+        scored.sort((a, b) => b.score - a.score)
+        for (const { score } of scored.slice(0, 30)) {
+            bp += score
         }
 
         await supabase

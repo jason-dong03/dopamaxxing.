@@ -86,6 +86,18 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
         refreshStock()
     }, [refreshStock])
 
+    // Auto-refresh stock when the timer expires
+    useEffect(() => {
+        if (!nextRefreshAt) return
+        const diff = new Date(nextRefreshAt).getTime() - Date.now()
+        if (diff <= 0) {
+            refreshStock()
+            return
+        }
+        const id = setTimeout(() => refreshStock(), diff + 600)
+        return () => clearTimeout(id)
+    }, [nextRefreshAt, refreshStock])
+
     if (selectedPack) {
         const usePackOpening =
             selectedPack.aspect === 'pack' || !!selectedPack.theme_pokedex_ids
@@ -321,21 +333,6 @@ function PackTabs({
                             }}
                         >
                             <span>{tab.label}</span>
-                            <span
-                                style={{
-                                    fontSize: '0.62rem',
-                                    padding: '2px 7px',
-                                    borderRadius: 999,
-                                    background: active
-                                        ? 'rgba(250,204,21,0.16)'
-                                        : 'rgba(255,255,255,0.05)',
-                                    color: active
-                                        ? '#facc15'
-                                        : 'var(--app-text-muted)',
-                                }}
-                            >
-                                {tab.count}
-                            </span>
                         </button>
                     )
                 })}
@@ -508,15 +505,47 @@ function CountPickerModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <img src={pack.image} alt={pack.name} style={{ width: 52, height: 'auto', objectFit: 'contain' }} />
+                    <img
+                        src={pack.image}
+                        alt={pack.name}
+                        style={{
+                            width: 52,
+                            height: 'auto',
+                            objectFit: 'contain',
+                        }}
+                    />
                     <div>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--app-text)' }}>{pack.name}</div>
-                        <div style={{ fontSize: '0.62rem', color: 'var(--app-text-muted)', marginTop: 2 }}>
-                            ${Number(pack.cost).toFixed(2)} each · x{stock} in stock
+                        <div
+                            style={{
+                                fontSize: '0.88rem',
+                                fontWeight: 700,
+                                color: 'var(--app-text)',
+                            }}
+                        >
+                            {pack.name}
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '0.62rem',
+                                color: 'var(--app-text-muted)',
+                                marginTop: 2,
+                            }}
+                        >
+                            ${Number(pack.cost).toFixed(2)} each · x{stock} in
+                            stock
                         </div>
                     </div>
                 </div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--app-text-muted)', textAlign: 'center', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>
+                <div
+                    style={{
+                        fontSize: '0.68rem',
+                        color: 'var(--app-text-muted)',
+                        textAlign: 'center',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                    }}
+                >
                     How many to open?
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
@@ -535,8 +564,12 @@ function CountPickerModal({
                                     padding: '10px 4px',
                                     borderRadius: 12,
                                     border: `1px solid ${ok ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)'}`,
-                                    background: ok ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.02)',
-                                    color: ok ? 'var(--app-text)' : 'rgba(255,255,255,0.2)',
+                                    background: ok
+                                        ? 'rgba(255,255,255,0.07)'
+                                        : 'rgba(255,255,255,0.02)',
+                                    color: ok
+                                        ? 'var(--app-text)'
+                                        : 'rgba(255,255,255,0.2)',
                                     cursor: ok ? 'pointer' : 'not-allowed',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -545,8 +578,22 @@ function CountPickerModal({
                                     transition: 'all 150ms',
                                 }}
                             >
-                                <span style={{ fontSize: '1rem', fontWeight: 800 }}>×{count}</span>
-                                <span style={{ fontSize: '0.58rem', color: ok ? '#4ade80' : 'rgba(255,255,255,0.2)' }}>
+                                <span
+                                    style={{
+                                        fontSize: '1rem',
+                                        fontWeight: 800,
+                                    }}
+                                >
+                                    ×{count}
+                                </span>
+                                <span
+                                    style={{
+                                        fontSize: '0.58rem',
+                                        color: ok
+                                            ? '#4ade80'
+                                            : 'rgba(255,255,255,0.2)',
+                                    }}
+                                >
                                     ${cost.toFixed(2)}
                                 </span>
                             </button>
@@ -577,10 +624,15 @@ function StockCountdown({ nextRefreshAt }: { nextRefreshAt: string }) {
     useEffect(() => {
         function update() {
             const diff = new Date(nextRefreshAt).getTime() - Date.now()
-            if (diff <= 0) { setRemaining('refreshing…'); return }
+            if (diff <= 0) {
+                setRemaining('stock refreshing…')
+                return
+            }
             const m = Math.floor(diff / 60000)
             const s = Math.floor((diff % 60000) / 1000)
-            setRemaining(`refreshes in ${m}:${String(s).padStart(2, '0')}`)
+            setRemaining(
+                `stock refreshes in ${m}:${String(s).padStart(2, '0')}`,
+            )
         }
         update()
         const id = setInterval(update, 1000)
@@ -592,7 +644,7 @@ function StockCountdown({ nextRefreshAt }: { nextRefreshAt: string }) {
             style={{
                 textAlign: 'right',
                 fontSize: '0.58rem',
-                color: 'rgba(255,255,255,0.25)',
+                color: '#ffffff',
                 letterSpacing: '0.04em',
                 paddingRight: 4,
                 paddingBottom: 2,
@@ -645,8 +697,13 @@ function ShopPackRow({
             <div
                 role="button"
                 tabIndex={disabled ? -1 : 0}
-                onClick={() => { if (!disabled) onSelect() }}
-                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !disabled) onSelect() }}
+                onClick={() => {
+                    if (!disabled) onSelect()
+                }}
+                onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && !disabled)
+                        onSelect()
+                }}
                 style={{
                     width: '100%',
                     background:
@@ -768,12 +825,11 @@ function ShopPackRow({
                         right: 14,
                         fontSize: '0.9rem',
                         fontWeight: 700,
-                        color: stock > 0 ? 'rgba(255,255,255,0.55)' : '#ef4444',
+                        color: stock > 0 ? '#ffffff' : '#ef4444',
                     }}
                 >
                     {stock > 0 ? `x${stock}` : 'sold out'}
                 </div>
-
             </div>
 
             <div style={{ position: 'absolute', top: 10, right: 10 }}>
