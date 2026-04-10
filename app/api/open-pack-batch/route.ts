@@ -285,11 +285,12 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        void recalcBattlePower(supabase, user.id)
+        const newBP = await recalcBattlePower(supabase, user.id)
 
         const xpGained = packXpGain(oldLevel) * count
         return NextResponse.json({
             cards: cardsWithMeta,
+            newBP,
             xpGain: xpGained,
             xpGainPerPack: packXpGain(oldLevel),
             oldLevel,

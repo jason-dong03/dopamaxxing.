@@ -9,6 +9,7 @@ import { awardAchievements, getEarnedAchievements } from '@/lib/awardAchievement
 import { awardLevelUpRewards } from '@/lib/awardLevelUp'
 import { rollStats, rollNature } from '@/lib/pokemon-stats'
 import { fetchPokemonData } from '@/lib/pokemon-moves'
+import { recalcBattlePower } from '@/lib/battlePower'
 
 const pityRarities = ['Legendary', 'Divine', 'Celestial', '???']
 const GOD_PACK_CHANCE = 0.003   // 0.3% — roughly 1 in 333
@@ -364,11 +365,13 @@ export async function POST(request: NextRequest) {
             })()
         }
 
+        const newBP = await recalcBattlePower(supabase, user.id)
         const xpGained = packXpGain(oldLevel)
         return NextResponse.json({
             cards: cardsWithMeta,
             cardPool,
             godPack: isGodPack,
+            newBP,
             xpGain: xpGained,
             oldLevel,
             newLevel,

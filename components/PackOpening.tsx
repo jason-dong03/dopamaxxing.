@@ -367,6 +367,9 @@ export default function PackOpening({
                 setLevelUpClaimed(false)
             }
             if (data.xpGainPerPack) setXpGainPerPack(data.xpGainPerPack)
+            if (data.newBP) {
+                window.dispatchEvent(new CustomEvent('bp-updated', { detail: { newBP: data.newBP } }))
+            }
             if (!free && pack.cost > 0) {
                 setUserCoins((prev) => (prev ?? 0) - pack.cost * openCount)
                 triggerCoinFlash(pack.cost * openCount, false)
@@ -414,6 +417,9 @@ export default function PackOpening({
                 setLevelUpClaimed(false)
             }
             if (data.xpGain) setXpGainPerPack(data.xpGain)
+            if (data.newBP) {
+                window.dispatchEvent(new CustomEvent('bp-updated', { detail: { newBP: data.newBP } }))
+            }
             if (!free && pack.cost > 0) {
                 setUserCoins((prev) => (prev ?? 0) - pack.cost)
                 triggerCoinFlash(pack.cost, false)
@@ -1191,7 +1197,7 @@ export default function PackOpening({
                                     <div className="pack-shimmer-overlay" />
                                 )}
                         </div>
-                        <div className="flex flex-col items-center gap-3 mt-8">
+                        <div className="flex flex-col items-center gap-2 mt-8">
                             {!free && (
                                 <div
                                     style={{
@@ -1206,69 +1212,60 @@ export default function PackOpening({
                                             fontWeight: 600,
                                             color:
                                                 userCoins !== null
-                                                    ? userCoins >=
-                                                      pack.cost * openCount
+                                                    ? userCoins >= pack.cost
                                                         ? '#4ade80'
                                                         : '#f87171'
                                                     : '#6b7280',
                                             letterSpacing: '-0.01em',
                                         }}
                                     >
-                                        $ {(pack.cost * openCount).toFixed(2)}
+                                        $ {pack.cost.toFixed(2)}
                                     </span>
-                                    {pack.cost > 0 && (
-                                        <button
-                                            onClick={() =>
-                                                setOpenCount((c) =>
-                                                    c === 1 ? 10 : 1,
-                                                )
-                                            }
+                                    {xpGainPerPack !== null && (
+                                        <span
                                             style={{
-                                                fontSize: '0.6rem',
-                                                fontWeight: 700,
-                                                padding: '3px 10px',
-                                                borderRadius: 6,
-                                                background:
-                                                    openCount === 10
-                                                        ? 'rgba(251,191,36,0.12)'
-                                                        : 'rgba(255,255,255,0.04)',
-                                                border:
-                                                    openCount === 10
-                                                        ? '1px solid rgba(251,191,36,0.45)'
-                                                        : '1px solid rgba(255,255,255,0.1)',
-                                                color:
-                                                    openCount === 10
-                                                        ? '#fbbf24'
-                                                        : '#6b7280',
-                                                cursor: 'pointer',
-                                                letterSpacing: '0.05em',
-                                                transition: 'all 150ms',
+                                                fontSize: '0.65rem',
+                                                color: '#6b7280',
+                                                letterSpacing: '0.04em',
                                             }}
                                         >
-                                            ×10
-                                        </button>
+                                            +{xpGainPerPack} XP
+                                        </span>
                                     )}
                                 </div>
                             )}
-                            {/* XP per pack label */}
-                            {xpGainPerPack !== null && (
+                            {free && xpGainPerPack !== null && (
                                 <div
                                     style={{
                                         fontSize: '0.65rem',
                                         color: '#6b7280',
                                         letterSpacing: '0.04em',
-                                        marginTop: 2,
                                     }}
                                 >
-                                    +{xpGainPerPack * openCount} XP
-                                    {openCount > 1 && (
-                                        <span style={{ color: '#4b5563' }}>
-                                            {' '}({xpGainPerPack} per pack)
-                                        </span>
-                                    )}
+                                    +{xpGainPerPack} XP
                                 </div>
                             )}
-                            {/* Back button rendered in fixed top-left position below */}
+                            {/* Inline back button */}
+                            <button
+                                onClick={onBack}
+                                style={{
+                                    marginTop: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    background: 'rgba(255,255,255,0.06)',
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                    borderRadius: 20,
+                                    padding: '5px 16px',
+                                    color: 'rgba(255,255,255,0.6)',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    letterSpacing: '-0.01em',
+                                }}
+                            >
+                                ← Back
+                            </button>
                         </div>
                     </div>
                 )}
@@ -1870,44 +1867,6 @@ export default function PackOpening({
                 )}
             </div>
 
-            {/* fixed back button — top-left, only in idle phase */}
-            {phase === 'idle' && (
-                <button
-                    onClick={onBack}
-                    style={{
-                        position: 'fixed',
-                        top: 70,
-                        left: 16,
-                        zIndex: 10002,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: 20,
-                        padding: '6px 14px',
-                        color: 'rgba(255,255,255,0.7)',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        backdropFilter: 'blur(8px)',
-                        letterSpacing: '-0.01em',
-                        transition: 'all 150ms ease',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background =
-                            'rgba(255,255,255,0.1)'
-                        e.currentTarget.style.color = '#fff'
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background =
-                            'rgba(255,255,255,0.06)'
-                        e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
-                    }}
-                >
-                    ← Back
-                </button>
-            )}
 
             {/* ── level-up overlay ────────────────────────────────────── */}
             {levelUpInfo && !levelUpClaimed && createPortal(

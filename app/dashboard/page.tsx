@@ -12,7 +12,8 @@ import StashButton from '@/components/ui/StashButton'
 import LiberatorEasterEgg from '@/components/LiberatorEasterEgg'
 import { getTitleColor } from '@/lib/titleConfig'
 import MobileExpand from '@/components/ui/MobileExpand'
-import { formatBP, getBPTier } from '@/lib/battlePower'
+import { getBPTier } from '@/lib/battlePower'
+import BPDisplay from '@/components/ui/BPDisplay'
 
 export default async function Dashboard() {
     const supabase = await createClient()
@@ -187,23 +188,7 @@ export default async function Dashboard() {
                                     🔥 {profile?.login_streak}
                                 </span>
                             )}
-                            {(() => {
-                                const bp = profile?.battle_power ?? 0
-                                return (
-                                    <span
-                                        title={`Battle Power: ${bp.toLocaleString()}`}
-                                        style={{
-                                            fontSize: '0.62rem',
-                                            fontWeight: 700,
-                                            color: '#facc15',
-                                            whiteSpace: 'nowrap',
-                                            flexShrink: 0,
-                                        }}
-                                    >
-                                        {formatBP(bp)} BP
-                                    </span>
-                                )
-                            })()}
+                            <BPDisplay initialBP={profile?.battle_power ?? 0} />
                         </div>
                         {(profile?.first_name || profile?.last_name) && (
                             <p

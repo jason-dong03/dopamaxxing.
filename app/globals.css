@@ -991,3 +991,12 @@ body {
 .text-muted { color: var(--app-text-muted); }
 .text-secondary { color: var(--app-text-secondary); }
 .text-faint { color: var(--app-text-faint); }
+
+@keyframes bpFloat {
+    0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    60%  { opacity: 1; transform: translateX(-50%) translateY(-22px); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-32px); }
+}
+.bp-float {
+    animation: bpFloat 1.5s ease-out forwards;
+}
