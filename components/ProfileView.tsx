@@ -8,6 +8,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { rarityTextStyle, xpForLevel } from '@/lib/rarityConfig'
+import { formatBP, getBPTier } from '@/lib/battlePower'
 import { NATURE_BY_NAME, NATURE_TIER_COLOR } from '@/lib/pokemon-stats'
 import { TYPE_COLOR } from '@/lib/pokemon-types'
 import { getTitleColor, getTitleRarity } from '@/lib/titleConfig'
@@ -2057,6 +2058,62 @@ export default function ProfileView({
                             />
                         </div>
                     </div>
+
+                    {/* Battle Power */}
+                    {(() => {
+                        const bp = profile?.battle_power ?? 0
+                        const tier = getBPTier(bp)
+                        return (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '8px 12px',
+                                    borderRadius: 10,
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid var(--app-border)',
+                                    marginTop: 8,
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: '0.6rem',
+                                        fontWeight: 700,
+                                        color: 'var(--app-text-muted)',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.1em',
+                                    }}
+                                >
+                                    ⚡ Battle Power
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span
+                                        style={{
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700,
+                                            color: tier.color,
+                                        }}
+                                    >
+                                        {formatBP(bp)}
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '0.58rem',
+                                            fontWeight: 600,
+                                            color: tier.color,
+                                            background: `${tier.color}18`,
+                                            border: `1px solid ${tier.color}40`,
+                                            borderRadius: 20,
+                                            padding: '1px 7px',
+                                        }}
+                                    >
+                                        {tier.label}
+                                    </span>
+                                </div>
+                            </div>
+                        )
+                    })()}
 
                     {/* Friends */}
                     <div>

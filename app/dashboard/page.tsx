@@ -12,7 +12,7 @@ import StashButton from '@/components/ui/StashButton'
 import LiberatorEasterEgg from '@/components/LiberatorEasterEgg'
 import { getTitleColor } from '@/lib/titleConfig'
 import MobileExpand from '@/components/ui/MobileExpand'
-import VersionBadge from '@/components/ui/VersionBadge'
+import { formatBP, getBPTier } from '@/lib/battlePower'
 
 export default async function Dashboard() {
     const supabase = await createClient()
@@ -22,7 +22,7 @@ export default async function Dashboard() {
     const { data: profile } = await supabase
         .from('profiles')
         .select(
-            'username, first_name, last_name, profile_url, coins, xp, level, discord_id, active_title, is_admin, login_streak',
+            'username, first_name, last_name, profile_url, coins, xp, level, discord_id, active_title, is_admin, login_streak, battle_power',
         )
         .eq('id', user?.id)
         .single()
@@ -210,6 +210,7 @@ export default async function Dashboard() {
                         activeTitle={profile?.active_title}
                         discordLinked={!!profile?.discord_id}
                         adminPanel={profile?.is_admin}
+                        battlePower={profile?.battle_power ?? 0}
                     />
 
                     <div style={{ flex: 1 }} />
@@ -328,10 +329,37 @@ export default async function Dashboard() {
                         </div>
                     </div>
 
-                    {/* version badge */}
-                    <span className="hidden sm:contents">
-                        <VersionBadge />
-                    </span>
+                    {/* battle power */}
+                    {(() => {
+                        const bp = profile?.battle_power ?? 0
+                        const tier = getBPTier(bp)
+                        return (
+                            <div
+                                className="hidden sm:flex"
+                                title={`Battle Power: ${bp} — ${tier.label}`}
+                                style={{
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    background: 'var(--app-surface-2)',
+                                    border: '1px solid var(--app-border)',
+                                    borderRadius: 20,
+                                    padding: '3px 10px',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <span style={{ fontSize: '0.62rem' }}>⚡</span>
+                                <span
+                                    style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 700,
+                                        color: tier.color,
+                                    }}
+                                >
+                                    {formatBP(bp)}
+                                </span>
+                            </div>
+                        )
+                    })()}
 
                     {/* settings */}
                     <Link

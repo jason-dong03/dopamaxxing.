@@ -12,12 +12,26 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
     const [selectedCount, setSelectedCount] = useState<number>(1)
     const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [previewPack, setPreviewPack] = useState<Pack | null>(null)
+    const [pendingPack, setPendingPack] = useState<Pack | null>(null)
     const [bagCount, setBagCount] = useState<number | null>(null)
     const [bagCapacity, setBagCapacity] = useState<number>(50)
     const [allPacks, setAllPacks] = useState<Pack[]>(PACKS)
     const [activeTab, setActiveTab] = useState<
         'classic' | 'special' | 'crates'
     >('classic')
+    const [stock, setStock] = useState<Record<string, number>>({})
+    const [nextRefreshAt, setNextRefreshAt] = useState<string | null>(null)
+
+    const refreshStock = useCallback(() => {
+        fetch('/api/shop/stock')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((json) => {
+                if (!json?.stock) return
+                setStock(json.stock)
+                setNextRefreshAt(json.next_refresh_at ?? null)
+            })
+            .catch(() => {})
+    }, [])
 
     useEffect(() => {
         const supabase = createClient()
@@ -68,7 +82,9 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                 )
             })
             .catch(() => {})
-    }, [])
+
+        refreshStock()
+    }, [refreshStock])
 
     if (selectedPack) {
         const usePackOpening =
@@ -119,7 +135,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
             <div
                 style={{
                     width: '100%',
-                    maxWidth: 1040,
+                    maxWidth: 700,
                     margin: '0 auto',
                     padding: '28px 16px 96px',
                 }}
@@ -165,12 +181,11 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         packs={packs}
                         coins={coins}
                         bagFull={bagFull}
+                        stock={stock}
+                        nextRefreshAt={nextRefreshAt}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={(p, count) => {
-                            setSelectedCount(count)
-                            setSelectedPack(p)
-                        }}
+                        onSelect={setPendingPack}
                         onPreview={setPreviewPack}
                     />
                 )}
@@ -182,12 +197,11 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         packs={specialPacks}
                         coins={coins}
                         bagFull={bagFull}
+                        stock={stock}
+                        nextRefreshAt={nextRefreshAt}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={(p, count) => {
-                            setSelectedCount(count)
-                            setSelectedPack(p)
-                        }}
+                        onSelect={setPendingPack}
                         onPreview={setPreviewPack}
                     />
                 )}
@@ -199,16 +213,29 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         packs={boxes}
                         coins={coins}
                         bagFull={bagFull}
+                        stock={stock}
+                        nextRefreshAt={nextRefreshAt}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={(p, count) => {
-                            setSelectedCount(count)
-                            setSelectedPack(p)
-                        }}
+                        onSelect={setPendingPack}
                         onPreview={setPreviewPack}
                     />
                 )}
             </div>
+
+            {pendingPack && (
+                <CountPickerModal
+                    pack={pendingPack}
+                    coins={coins}
+                    stock={stock[pendingPack.id] ?? 0}
+                    onConfirm={(count) => {
+                        setSelectedCount(count)
+                        setSelectedPack(pendingPack)
+                        setPendingPack(null)
+                    }}
+                    onClose={() => setPendingPack(null)}
+                />
+            )}
 
             {previewPack && (
                 <CardListModal
@@ -247,7 +274,7 @@ function PackTabs({
         <div
             style={{
                 width: '100%',
-                maxWidth: 860,
+                maxWidth: 660,
                 margin: '0 auto 18px',
                 display: 'flex',
                 justifyContent: 'center',
@@ -323,6 +350,8 @@ function PackShopList({
     packs,
     coins,
     bagFull,
+    stock,
+    nextRefreshAt,
     hoveredId,
     onHover,
     onSelect,
@@ -334,9 +363,11 @@ function PackShopList({
     packs: Pack[]
     coins: number
     bagFull: boolean
+    stock: Record<string, number>
+    nextRefreshAt: string | null
     hoveredId: string | null
     onHover: (id: string | null) => void
-    onSelect: (pack: Pack, count: number) => void
+    onSelect: (pack: Pack) => void
     onPreview: (pack: Pack) => void
     [key: string]: unknown
 }) {
@@ -372,7 +403,7 @@ function PackShopList({
             <div
                 style={{
                     width: '100%',
-                    maxWidth: 860,
+                    maxWidth: 660,
                     margin: '0 auto',
                     borderRadius: 18,
                     border: `1px solid ${gold ? 'rgba(234,179,8,0.20)' : 'var(--app-border-2)'}`,
@@ -410,6 +441,9 @@ function PackShopList({
                         }}
                         onMouseLeave={() => onHover(null)}
                     >
+                        {nextRefreshAt && (
+                            <StockCountdown nextRefreshAt={nextRefreshAt} />
+                        )}
                         {packs.map((pack) => (
                             <ShopPackRow
                                 key={pack.id}
@@ -418,9 +452,9 @@ function PackShopList({
                                 coins={coins}
                                 bagFull={bagFull}
                                 gold={gold}
-                                stock={99}
+                                stock={stock[pack.id] ?? 0}
                                 onHover={onHover}
-                                onSelect={onSelect}
+                                onSelect={() => onSelect(pack)}
                                 onPreview={onPreview}
                             />
                         ))}
@@ -428,6 +462,144 @@ function PackShopList({
                 </div>
             </div>
         </section>
+    )
+}
+
+function CountPickerModal({
+    pack,
+    coins,
+    stock,
+    onConfirm,
+    onClose,
+}: {
+    pack: Pack
+    coins: number
+    stock: number
+    onConfirm: (count: number) => void
+    onClose: () => void
+}) {
+    return (
+        <div
+            style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 200,
+                background: 'rgba(0,0,0,0.65)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(3px)',
+            }}
+            onClick={onClose}
+        >
+            <div
+                style={{
+                    background: 'var(--app-bg)',
+                    border: '1px solid var(--app-border)',
+                    borderRadius: 20,
+                    padding: '28px 32px',
+                    maxWidth: 340,
+                    width: '90%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 20,
+                    boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <img src={pack.image} alt={pack.name} style={{ width: 52, height: 'auto', objectFit: 'contain' }} />
+                    <div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--app-text)' }}>{pack.name}</div>
+                        <div style={{ fontSize: '0.62rem', color: 'var(--app-text-muted)', marginTop: 2 }}>
+                            ${Number(pack.cost).toFixed(2)} each · x{stock} in stock
+                        </div>
+                    </div>
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--app-text-muted)', textAlign: 'center', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700 }}>
+                    How many to open?
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    {([1, 10, 100] as const).map((count) => {
+                        const cost = pack.cost * count
+                        const canAfford = coins >= cost
+                        const enoughStock = stock >= count
+                        const ok = canAfford && enoughStock
+                        return (
+                            <button
+                                key={count}
+                                onClick={() => ok && onConfirm(count)}
+                                disabled={!ok}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 4px',
+                                    borderRadius: 12,
+                                    border: `1px solid ${ok ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                                    background: ok ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.02)',
+                                    color: ok ? 'var(--app-text)' : 'rgba(255,255,255,0.2)',
+                                    cursor: ok ? 'pointer' : 'not-allowed',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    transition: 'all 150ms',
+                                }}
+                            >
+                                <span style={{ fontSize: '1rem', fontWeight: 800 }}>×{count}</span>
+                                <span style={{ fontSize: '0.58rem', color: ok ? '#4ade80' : 'rgba(255,255,255,0.2)' }}>
+                                    ${cost.toFixed(2)}
+                                </span>
+                            </button>
+                        )
+                    })}
+                </div>
+                <button
+                    onClick={onClose}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--app-text-muted)',
+                        fontSize: '0.68rem',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                    }}
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    )
+}
+
+function StockCountdown({ nextRefreshAt }: { nextRefreshAt: string }) {
+    const [remaining, setRemaining] = useState('')
+
+    useEffect(() => {
+        function update() {
+            const diff = new Date(nextRefreshAt).getTime() - Date.now()
+            if (diff <= 0) { setRemaining('refreshing…'); return }
+            const m = Math.floor(diff / 60000)
+            const s = Math.floor((diff % 60000) / 1000)
+            setRemaining(`refreshes in ${m}:${String(s).padStart(2, '0')}`)
+        }
+        update()
+        const id = setInterval(update, 1000)
+        return () => clearInterval(id)
+    }, [nextRefreshAt])
+
+    return (
+        <div
+            style={{
+                textAlign: 'right',
+                fontSize: '0.58rem',
+                color: 'rgba(255,255,255,0.25)',
+                letterSpacing: '0.04em',
+                paddingRight: 4,
+                paddingBottom: 2,
+            }}
+        >
+            {remaining}
+        </div>
     )
 }
 
@@ -449,12 +621,12 @@ function ShopPackRow({
     gold?: boolean
     stock: number
     onHover: (id: string | null) => void
-    onSelect: (pack: Pack, count: number) => void
+    onSelect: () => void
     onPreview: (pack: Pack) => void
 }) {
-    const canAfford1 = coins >= pack.cost
-    const canAfford10 = coins >= pack.cost * 10
-    const canAfford100 = coins >= pack.cost * 100
+    const canAfford = coins >= pack.cost
+    const hasStock = stock > 0
+    const disabled = bagFull || !canAfford || !hasStock
     const borderColor = gold ? 'rgba(234,179,8,0.22)' : 'rgba(255,255,255,0.08)'
     const hoverBorderColor = gold
         ? 'rgba(234,179,8,0.42)'
@@ -464,32 +636,37 @@ function ShopPackRow({
         <div
             style={{
                 position: 'relative',
-                opacity: bagFull ? 0.45 : 1,
+                opacity: disabled ? 0.45 : 1,
                 transition: 'opacity 300ms',
             }}
             onMouseEnter={() => onHover(pack.id)}
             onMouseLeave={() => onHover(null)}
         >
             <div
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                onClick={() => { if (!disabled) onSelect() }}
+                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !disabled) onSelect() }}
                 style={{
                     width: '100%',
                     background:
-                        hovered && !bagFull
+                        hovered && !disabled
                             ? 'rgba(255,255,255,0.045)'
                             : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${hovered && !bagFull ? hoverBorderColor : borderColor}`,
+                    border: `1px solid ${hovered && !disabled ? hoverBorderColor : borderColor}`,
                     borderRadius: 16,
-                    padding: '14px 18px 14px 18px',
+                    padding: '14px 18px',
                     display: 'flex',
                     alignItems: 'stretch',
                     gap: 12,
                     textAlign: 'left',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
                     transition: 'all 220ms ease',
                     boxShadow:
-                        hovered && !bagFull
+                        hovered && !disabled
                             ? '0 10px 24px rgba(0,0,0,0.16)'
                             : 'none',
-                    minHeight: 132,
+                    minHeight: 100,
                     position: 'relative',
                 }}
             >
@@ -532,10 +709,9 @@ function ShopPackRow({
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 4,
-                        justifyContent: 'flex-start',
+                        justifyContent: 'center',
                         alignItems: 'flex-start',
                         paddingTop: 2,
-                        paddingBottom: 36,
                     }}
                 >
                     <ThemeLabel pack={pack} />
@@ -571,7 +747,7 @@ function ShopPackRow({
                         style={{
                             fontSize: '0.84rem',
                             fontWeight: 700,
-                            color: canAfford1 ? '#4ade80' : '#ef4444',
+                            color: canAfford ? '#4ade80' : '#ef4444',
                             marginTop: 4,
                             textAlign: 'left',
                         }}
@@ -584,65 +760,20 @@ function ShopPackRow({
                     </div>
                 </div>
 
-                {/* open count buttons */}
+                {/* stock count — bottom right */}
                 <div
                     style={{
                         position: 'absolute',
-                        bottom: 12,
-                        left: 116,
-                        display: 'flex',
-                        gap: 6,
-                        alignItems: 'center',
+                        bottom: 10,
+                        right: 14,
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        color: stock > 0 ? 'rgba(255,255,255,0.55)' : '#ef4444',
                     }}
                 >
-                    {([1, 10, 100] as const).map((count) => {
-                        const affordable =
-                            count === 1
-                                ? canAfford1
-                                : count === 10
-                                  ? canAfford10
-                                  : canAfford100
-                        const disabled = bagFull || !affordable
-                        return (
-                            <button
-                                key={count}
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (!disabled) onSelect(pack, count)
-                                }}
-                                disabled={disabled}
-                                style={{
-                                    padding: '4px 10px',
-                                    borderRadius: 8,
-                                    fontSize: '0.68rem',
-                                    fontWeight: 700,
-                                    cursor: disabled ? 'not-allowed' : 'pointer',
-                                    border: `1px solid ${
-                                        disabled
-                                            ? 'rgba(255,255,255,0.08)'
-                                            : gold
-                                              ? 'rgba(234,179,8,0.4)'
-                                              : 'rgba(255,255,255,0.2)'
-                                    }`,
-                                    background: disabled
-                                        ? 'rgba(255,255,255,0.03)'
-                                        : gold
-                                          ? 'rgba(234,179,8,0.12)'
-                                          : 'rgba(255,255,255,0.07)',
-                                    color: disabled
-                                        ? 'rgba(255,255,255,0.2)'
-                                        : gold
-                                          ? '#facc15'
-                                          : 'var(--app-text)',
-                                    transition: 'all 150ms ease',
-                                    letterSpacing: '0.02em',
-                                }}
-                            >
-                                ×{count}
-                            </button>
-                        )
-                    })}
+                    {stock > 0 ? `x${stock}` : 'sold out'}
                 </div>
+
             </div>
 
             <div style={{ position: 'absolute', top: 10, right: 10 }}>

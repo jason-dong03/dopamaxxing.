@@ -21,7 +21,7 @@ export default async function UserProfilePage({
     const { data: profile } = await admin
         .from('profiles')
         .select(
-            'id, username, first_name, last_name, profile_url, coins, level, xp, active_title',
+            'id, username, first_name, last_name, profile_url, coins, level, xp, active_title, battle_power',
         )
         .eq('username', username)
         .single()

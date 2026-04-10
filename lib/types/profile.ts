@@ -8,6 +8,7 @@ export type Profile = {
     level: number
     xp: number
     active_title?: string | null
+    battle_power?: number | null
 }
 
 export type Friend = {

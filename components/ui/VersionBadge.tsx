@@ -12,19 +12,24 @@ export default function VersionBadge() {
             <button
                 onClick={() => setOpen(true)}
                 style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 10,
-                    padding: '2px 8px',
-                    fontSize: '0.6rem',
-                    fontWeight: 700,
-                    color: 'var(--app-text-muted)',
+                    position: 'fixed',
+                    bottom: 72,
+                    right: 16,
+                    zIndex: 30,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '2px 4px',
+                    fontSize: '0.58rem',
+                    fontWeight: 500,
+                    color: 'rgba(255,255,255,0.2)',
                     cursor: 'pointer',
                     letterSpacing: '0.04em',
                     fontFamily: 'monospace',
-                    transition: 'all 150ms ease',
-                    flexShrink: 0,
+                    transition: 'color 150ms ease',
+                    pointerEvents: 'auto',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.45)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.2)')}
                 title="View changelog"
             >
                 v{APP_VERSION}

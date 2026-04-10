@@ -1,6 +1,7 @@
 import { applyXP, RARITY_XP } from '@/lib/rarityConfig'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse, NextRequest } from 'next/server'
+import { recalcBattlePower } from '@/lib/battlePower'
 
 type AddAction = {
     type: 'add'
@@ -122,6 +123,10 @@ export async function POST(request: NextRequest) {
                 daily_cards_fed_today: needsReset ? feeds.length : (pData?.daily_cards_fed_today ?? 0) + feeds.length,
                 daily_reset_date: today,
             }).eq('id', user.id)
+        }
+
+        if (adds.length > 0 || sells.length > 0 || feeds.length > 0) {
+            void recalcBattlePower(supabase, user.id)
         }
 
         return NextResponse.json({

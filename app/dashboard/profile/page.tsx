@@ -23,7 +23,7 @@ export default async function ProfilePage() {
         supabase
             .from('profiles')
             .select(
-                'id, username, first_name, last_name, profile_url, coins, level, xp, active_title',
+                'id, username, first_name, last_name, profile_url, coins, level, xp, active_title, battle_power',
             )
             .eq('id', user?.id)
             .single(),

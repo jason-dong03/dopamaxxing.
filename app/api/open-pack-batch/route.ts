@@ -14,6 +14,7 @@ import { awardAchievements, getEarnedAchievements } from '@/lib/awardAchievement
 import { awardLevelUpRewards } from '@/lib/awardLevelUp'
 import { rollStats, rollNature } from '@/lib/pokemon-stats'
 import { fetchPokemonData } from '@/lib/pokemon-moves'
+import { recalcBattlePower } from '@/lib/battlePower'
 
 type CardRow = Record<string, unknown>
 
@@ -97,6 +98,36 @@ export async function POST(request: NextRequest) {
 
         if (totalCost > 0 && (profile?.coins ?? 0) < totalCost) {
             return NextResponse.json({ error: 'insufficient_coins', cost: totalCost, coins: profile?.coins ?? 0 }, { status: 402 })
+        }
+
+        // Check and deduct pack stock
+        if (!free) {
+            const { data: stockRow } = await supabase
+                .from('pack_stock')
+                .select('quantity, refreshed_at')
+                .eq('user_id', user.id)
+                .eq('pack_id', setId)
+                .maybeSingle()
+
+            if (stockRow) {
+                const refreshedAt = new Date(stockRow.refreshed_at).getTime()
+                const expired = Date.now() - refreshedAt >= 5 * 60 * 1000
+                if (!expired && stockRow.quantity < count) {
+                    return NextResponse.json(
+                        { error: 'insufficient_stock', available: stockRow.quantity },
+                        { status: 409 },
+                    )
+                }
+                if (!expired && stockRow.quantity >= count) {
+                    // Deduct synchronously so UI reflects immediately
+                    await supabase
+                        .from('pack_stock')
+                        .update({ quantity: stockRow.quantity - count })
+                        .eq('user_id', user.id)
+                        .eq('pack_id', setId)
+                }
+                // If expired: stock API will regenerate on next fetch — don't block opening
+            }
         }
 
         if (allCards.length === 0) {
@@ -252,6 +283,8 @@ export async function POST(request: NextRequest) {
                 preview_nature: previewNature,
             }
         })
+
+        void recalcBattlePower(supabase, user.id)
 
         const xpGained = packXpGain(oldLevel) * count
         return NextResponse.json({

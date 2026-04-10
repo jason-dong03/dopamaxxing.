@@ -2,21 +2,24 @@
 import { useState } from 'react'
 import { getTitleColor } from '@/lib/titleConfig'
 import LinkDiscord from '../LinkDiscord'
+import { formatBP, getBPTier } from '@/lib/battlePower'
 
 export default function MobileExpand({
     loginStreak,
     activeTitle,
     discordLinked,
     adminPanel,
+    battlePower,
 }: {
     loginStreak: number
     activeTitle?: string | null
     discordLinked: boolean
     adminPanel: boolean
+    battlePower?: number
 }) {
     const [open, setOpen] = useState(false)
 
-    const hasContent = loginStreak > 1 || activeTitle
+    const hasContent = loginStreak > 1 || activeTitle || (battlePower ?? 0) > 0
 
     if (!hasContent) return null
 
@@ -86,6 +89,24 @@ export default function MobileExpand({
                             {activeTitle}
                         </span>
                     )}
+                    {(battlePower ?? 0) > 0 && (() => {
+                        const tier = getBPTier(battlePower!)
+                        return (
+                            <span
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    color: tier.color,
+                                }}
+                            >
+                                ⚡ {formatBP(battlePower!)} <span style={{ opacity: 0.7, fontWeight: 500 }}>{tier.label}</span>
+                            </span>
+                        )
+                    })()}
                     {discordLinked && (
                         <span>
                             <LinkDiscord discordLinked={discordLinked} />

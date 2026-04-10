@@ -4,6 +4,7 @@ import QuestToast from '@/components/ui/QuestToast'
 import OnboardingModal from '@/components/OnboardingModal'
 import { createClient } from '@/lib/supabase/server'
 import { PendingRequestsProvider } from '@/components/PendingRequestsProvider'
+import VersionBadge from '@/components/ui/VersionBadge'
 
 export default async function DashboardLayout({
     children,
@@ -31,6 +32,7 @@ export default async function DashboardLayout({
                 tosAcceptedAt={profile?.tos_accepted_at ?? null}
             />
             <main className="pb-16">{children}</main>
+            <VersionBadge />
         </PendingRequestsProvider>
     )
 }
