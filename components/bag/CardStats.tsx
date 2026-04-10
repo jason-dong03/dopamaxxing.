@@ -2509,6 +2509,61 @@ export function CardStats({
                                                 </div>
                                             ),
                                         )}
+                                    {/* battle power row */}
+                                    <div
+                                        className="flex justify-between items-center"
+                                        style={{
+                                            borderBottom: `1px solid ${borderColor}`,
+                                            padding: '3px 0',
+                                        }}
+                                    >
+                                        <span
+                                            className="font-semibold uppercase tracking-widest text-gray-600"
+                                            style={{ fontSize: '0.48rem' }}
+                                        >
+                                            battle power
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span
+                                                className="font-mono font-bold"
+                                                style={{ fontSize: '0.65rem', color: '#facc15' }}
+                                                title={`${thisBP.toLocaleString()} BP`}
+                                            >
+                                                {formatBP(thisBP)} BP
+                                            </span>
+                                            <span
+                                                style={{
+                                                    fontSize: '0.45rem',
+                                                    fontWeight: 600,
+                                                    color: bpTier.color,
+                                                    background: `${bpTier.color}18`,
+                                                    border: `1px solid ${bpTier.color}40`,
+                                                    borderRadius: 3,
+                                                    padding: '1px 4px',
+                                                }}
+                                            >
+                                                {bpTier.label}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {/* bp formula */}
+                                    <div style={{ padding: '2px 0 3px', borderBottom: `1px solid ${borderColor}` }}>
+                                        {(() => {
+                                            const w = RARITY_WEIGHT_DISPLAY[rarity] ?? 1
+                                            const avgAttr = [uc.attr_centering, uc.attr_corners, uc.attr_edges, uc.attr_surface]
+                                                .map(v => Number(v ?? 7.0))
+                                                .reduce((a, b) => a + b, 0) / 4
+                                            const quality = (avgAttr / 7.5).toFixed(2)
+                                            const gradeM = uc.grade ? (1 + (uc.grade - 5) * 0.04).toFixed(2) : '—'
+                                            const natureTier = (uc as any).nature_tier ?? 'regular'
+                                            const natureM = NATURE_MULT_DISPLAY[natureTier] ?? 1
+                                            return (
+                                                <span style={{ fontSize: '0.44rem', color: '#475569', fontFamily: 'monospace', lineHeight: 1.4 }}>
+                                                    ${fmt(cardWorth)} × Lv{uc.card_level} × {w}w × {quality}q{uc.grade ? ` × ${gradeM}g` : ''}{natureTier !== 'regular' ? ` × ${natureM}n` : ''}
+                                                </span>
+                                            )
+                                        })()}
+                                    </div>
                                     {/* xp bar */}
                                     <div style={{ padding: '4px 0' }}>
                                         <div className="flex justify-between mb-0.5">
@@ -2556,29 +2611,47 @@ export function CardStats({
                                     onSell={handleSellWithAnimation}
                                 />
 
-                                <button
-                                    onClick={onToggleFavorite}
-                                    className="block w-1/2 mx-auto rounded-lg font-semibold transition-all active:scale-95 mt-3"
+                                {/* favorite + showcase inline */}
+                                <div
                                     style={{
-                                        padding: '5px 0',
-                                        fontSize: '0.55rem',
-                                        cursor: 'pointer',
-                                        background: uc.is_favorited
-                                            ? 'rgba(250,204,21,0.08)'
-                                            : 'rgba(255,255,255,0.04)',
-                                        border: uc.is_favorited
-                                            ? '1px solid rgba(250,204,21,0.3)'
-                                            : '1px solid rgba(255,255,255,0.08)',
-                                        color: uc.is_favorited
-                                            ? '#facc15'
-                                            : '#6b7280',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        marginTop: 10,
                                     }}
                                 >
-                                    {uc.is_favorited
-                                        ? '★ favorited'
-                                        : '☆ favorite'}
-                                </button>
-                                <ShowcaseButton uc={uc} />
+                                    <button
+                                        onClick={onToggleFavorite}
+                                        title={uc.is_favorited ? 'Remove from favorites' : 'Add to favorites'}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: 30,
+                                            height: 30,
+                                            borderRadius: 8,
+                                            flexShrink: 0,
+                                            cursor: 'pointer',
+                                            fontSize: '1rem',
+                                            background: uc.is_favorited
+                                                ? 'rgba(250,204,21,0.08)'
+                                                : 'rgba(255,255,255,0.04)',
+                                            border: uc.is_favorited
+                                                ? '1px solid rgba(250,204,21,0.3)'
+                                                : '1px solid rgba(255,255,255,0.08)',
+                                            color: uc.is_favorited ? '#facc15' : '#4b5563',
+                                            filter: uc.is_favorited
+                                                ? 'drop-shadow(0 0 5px rgba(250,204,21,0.7))'
+                                                : 'none',
+                                            transition: 'all 150ms',
+                                        }}
+                                    >
+                                        {uc.is_favorited ? '★' : '☆'}
+                                    </button>
+                                    <div style={{ flex: 1 }}>
+                                        <ShowcaseButton uc={uc} />
+                                    </div>
+                                </div>
                             </>
                         )}
 
