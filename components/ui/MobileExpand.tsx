@@ -103,7 +103,7 @@ export default function MobileExpand({
                                     color: tier.color,
                                 }}
                             >
-                                ⚡ {formatBP(battlePower!)} <span style={{ opacity: 0.7, fontWeight: 500 }}>{tier.label}</span>
+                                {formatBP(battlePower!)} BP <span style={{ opacity: 0.7, fontWeight: 500 }}>{tier.label}</span>
                             </span>
                         )
                     })()}

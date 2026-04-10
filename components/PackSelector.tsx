@@ -12,7 +12,6 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
     const [selectedCount, setSelectedCount] = useState<number>(1)
     const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [previewPack, setPreviewPack] = useState<Pack | null>(null)
-    const [pendingPack, setPendingPack] = useState<Pack | null>(null)
     const [bagCount, setBagCount] = useState<number | null>(null)
     const [bagCapacity, setBagCapacity] = useState<number>(50)
     const [allPacks, setAllPacks] = useState<Pack[]>(PACKS)
@@ -149,7 +148,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                     width: '100%',
                     maxWidth: 700,
                     margin: '0 auto',
-                    padding: '28px 16px 96px',
+                    padding: '28px 16px 24px',
                 }}
             >
                 {bagFull && (
@@ -197,7 +196,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         nextRefreshAt={nextRefreshAt}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={setPendingPack}
+                        onSelect={(p) => { setSelectedCount(1); setSelectedPack(p) }}
                         onPreview={setPreviewPack}
                     />
                 )}
@@ -213,7 +212,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         nextRefreshAt={nextRefreshAt}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={setPendingPack}
+                        onSelect={(p) => { setSelectedCount(1); setSelectedPack(p) }}
                         onPreview={setPreviewPack}
                     />
                 )}
@@ -229,25 +228,11 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         nextRefreshAt={nextRefreshAt}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
-                        onSelect={setPendingPack}
+                        onSelect={(p) => { setSelectedCount(1); setSelectedPack(p) }}
                         onPreview={setPreviewPack}
                     />
                 )}
             </div>
-
-            {pendingPack && (
-                <CountPickerModal
-                    pack={pendingPack}
-                    coins={coins}
-                    stock={stock[pendingPack.id] ?? 0}
-                    onConfirm={(count) => {
-                        setSelectedCount(count)
-                        setSelectedPack(pendingPack)
-                        setPendingPack(null)
-                    }}
-                    onClose={() => setPendingPack(null)}
-                />
-            )}
 
             {previewPack && (
                 <CardListModal

@@ -19,6 +19,7 @@ import { CardTile } from '@/components/bag/CardTile'
 import { CardStats } from '@/components/bag/CardStats'
 import { ITEM_MAP, type ItemId } from '@/lib/items'
 import { TYPE_COLOR } from '@/lib/pokemon-types'
+import { cardBP, getBPTier, formatBP } from '@/lib/battlePower'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const FILTERS = ['All', ...RARITY_ORDER]
@@ -28,11 +29,15 @@ export default function BagPage({
     userCards: initialCards,
     coins: initialCoins = 0,
     bagCapacity: initialCapacity = 50,
+    battlePower = 0,
+    profileLevel = 1,
     userItems,
 }: {
     userCards: UserCard[]
     coins?: number
     bagCapacity?: number
+    battlePower?: number
+    profileLevel?: number
     userItems?: Array<{ id: string; item_id: string; quantity: number }>
 }) {
     const router = useRouter()
@@ -61,7 +66,7 @@ export default function BagPage({
     const [setFilter, setSetFilter] = useState<string | null>(null)
     const [search, setSearch] = useState('')
     const [sort, setSort] = useState<
-        'rarity' | 'level' | 'name' | 'price' | 'grade'
+        'rarity' | 'level' | 'name' | 'price' | 'grade' | 'bp'
     >('rarity')
     const [selected, setSelected] = useState<UserCard | null>(null)
     const [selectedCol, setSelectedCol] = useState(0)
@@ -142,6 +147,7 @@ export default function BagPage({
             if (sort === 'level') return b.card_level - a.card_level
             if (sort === 'price') return b.worth - a.worth
             if (sort === 'grade') return (b.grade ?? -1) - (a.grade ?? -1)
+            if (sort === 'bp') return cardBP({ ...b, rarity: b.cards.rarity }) - cardBP({ ...a, rarity: a.cards.rarity })
             return a.cards.name.localeCompare(b.cards.name)
         })
 
@@ -408,6 +414,20 @@ export default function BagPage({
                                         +
                                     </a>
                                 </div>
+
+                                {/* battle power total */}
+                                <span
+                                    title={`Battle Power: ${battlePower.toLocaleString()}`}
+                                    style={{
+                                        fontSize: '0.62rem',
+                                        fontWeight: 700,
+                                        color: '#facc15',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    {formatBP(battlePower)} BP
+                                </span>
 
                                 {/* bag capacity */}
                                 <div
@@ -860,6 +880,7 @@ export default function BagPage({
                                             'name',
                                             'price',
                                             'grade',
+                                            'bp',
                                         ] as const
                                     ).map((s) => (
                                         <button

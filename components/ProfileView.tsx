@@ -2085,7 +2085,7 @@ export default function ProfileView({
                                         letterSpacing: '0.1em',
                                     }}
                                 >
-                                    ⚡ Battle Power
+                                    Battle Power
                                 </span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span

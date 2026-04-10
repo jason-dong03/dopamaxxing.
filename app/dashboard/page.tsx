@@ -189,19 +189,18 @@ export default async function Dashboard() {
                             )}
                             {(() => {
                                 const bp = profile?.battle_power ?? 0
-                                const tier = getBPTier(bp)
                                 return (
                                     <span
-                                        title={`Battle Power: ${bp.toLocaleString()} — ${tier.label}`}
+                                        title={`Battle Power: ${bp.toLocaleString()}`}
                                         style={{
                                             fontSize: '0.62rem',
                                             fontWeight: 700,
-                                            color: tier.color,
+                                            color: '#facc15',
                                             whiteSpace: 'nowrap',
                                             flexShrink: 0,
                                         }}
                                     >
-                                        ⚡{formatBP(bp)}
+                                        {formatBP(bp)} BP
                                     </span>
                                 )
                             })()}

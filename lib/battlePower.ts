@@ -111,19 +111,12 @@ export async function recalcBattlePower(
             .from('user_cards')
             .select('worth, card_level, attr_centering, attr_corners, attr_edges, attr_surface, grade, nature_tier, cards(rarity)')
             .eq('user_id', userId)
-            .order('worth', { ascending: false })
-            .limit(100) // fetch more, compute top 30 by effective bp
 
         let bp = (profile?.level ?? 1) * 10
 
-        const scored = ((cards ?? []) as any[]).map((uc) => ({
-            ...uc,
-            rarity: (uc.cards?.rarity as string) ?? 'Common',
-        })).map((uc) => ({ uc, score: cardBP(uc) }))
-
-        scored.sort((a, b) => b.score - a.score)
-        for (const { score } of scored.slice(0, 30)) {
-            bp += score
+        for (const uc of (cards ?? []) as any[]) {
+            const rarity = (uc.cards?.rarity as string) ?? 'Common'
+            bp += cardBP({ ...uc, rarity })
         }
 
         await supabase

@@ -51,6 +51,7 @@ export type UserCard = {
     stat_accuracy: number | null
     stat_evasion: number | null
     nature: string | null
+    nature_tier: string | null
     moves: StoredMove[] | null
     pending_moves: StoredMove[] | null
     is_showcased: boolean
