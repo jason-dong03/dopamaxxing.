@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { PACKS } from '@/lib/packs'
 
 const REFRESH_MS = 5 * 60 * 1000 // 5 minutes
-const TOTAL_STOCK = 50
+const TOTAL_STOCK = 18
 
 // Minimum level required to see each pack in the shop.
 // White Flare (sv10.5w) and Black Bolt (sv10.5b) unlock together.
@@ -56,7 +56,7 @@ function distributeStock(unlockedPackIds: string[]): Record<string, number> {
     weights.forEach(({ id, w }, i) => {
         const isLast = i === weights.length - 1
         const raw = isLast ? remaining : Math.round((w / totalWeight) * TOTAL_STOCK)
-        const qty = Math.max(1, Math.min(raw, remaining))
+        const qty = Math.max(0, Math.min(raw, remaining))
         result[id] = qty
         remaining -= qty
     })
