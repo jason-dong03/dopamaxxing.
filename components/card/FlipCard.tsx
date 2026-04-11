@@ -14,6 +14,8 @@ type Props = {
     onSpecialChange: (active: boolean, glowColor: string) => void
     onFlipped: () => void
     onConfirmed: () => void
+    cardWidth?: number
+    cardHeight?: number
 }
 
 const SPECIAL_RARITIES = [
@@ -31,6 +33,8 @@ export default function FlipCard({
     onSpecialChange,
     onFlipped,
     onConfirmed,
+    cardWidth = 260,
+    cardHeight = 364,
 }: Props) {
     const [flipped, setFlipped] = useState(false)
     const [confirmed, setConfirmed] = useState(false)
@@ -87,8 +91,8 @@ export default function FlipCard({
                 onClick={handleClick}
                 className="cursor-pointer relative"
                 style={{
-                    width: '260px',
-                    height: '364px',
+                    width: `${cardWidth}px`,
+                    height: `${cardHeight}px`,
                     perspective: '1000px',
                     zIndex: showSpecial ? 50 : 'auto',
                 }}

@@ -1382,8 +1382,8 @@ export default function PackOpening({
                         <div
                             className="relative flex items-center justify-center"
                             style={{
-                                height: 'min(350px, 80vw)',
-                                width: 'min(280px, 72vw)',
+                                height: 'min(460px, 88vw)',
+                                width: 'min(360px, 82vw)',
                             }}
                         >
                             {/* rarity glow behind the top card */}
@@ -1426,7 +1426,7 @@ export default function PackOpening({
                                         style={
                                             fanVisible
                                                 ? {
-                                                      transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
+                                                      transform: `translateX(${offset * 72}px) translateY(-80px) rotate(${offset * 13}deg)`,
                                                       zIndex: 50,
                                                       pointerEvents: 'none',
                                                       transition:
@@ -1445,6 +1445,8 @@ export default function PackOpening({
                                     >
                                         <FlipCard
                                             card={card}
+                                            cardWidth={320}
+                                            cardHeight={448}
                                             onReveal={
                                                 isTop ? handleReveal : () => {}
                                             }
