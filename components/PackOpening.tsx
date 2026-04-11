@@ -157,20 +157,9 @@ export default function PackOpening({
     >({})
     const isAutocompleting = useRef(false)
     const wasBatchOpen = useRef(false)
-    const idleDims = pack.test
-        ? { height: 'min(240px, 48vw)', width: 'auto' }
-        : pack.aspect === 'box'
-          ? { height: 'min(270px, 60vw)', width: 'min(360px, 78vw)' }
-          : { height: 'min(420px, 68vw)', width: 'auto' }
-
-    // ── dev test cards — no DB ────────────────────────────────────────────────
-    const TEST_MOCK_CARDS: Card[] = [
-        { id: 'test-legendary', name: 'Charizard', image_url: 'https://assets.tcgdex.net/en/base/base1/4/high.webp', rarity: 'Legendary', national_pokedex_number: 6, worth: 100, isNew: true, coins: 200, isHot: false },
-        { id: 'test-divine', name: 'Mewtwo', image_url: 'https://assets.tcgdex.net/en/base/base1/10/high.webp', rarity: 'Divine', national_pokedex_number: 150, worth: 500, isNew: true, coins: 1000, isHot: false },
-        { id: 'test-celestial', name: 'Blastoise', image_url: 'https://assets.tcgdex.net/en/base/base1/2/high.webp', rarity: 'Celestial', national_pokedex_number: 9, worth: 2000, isNew: true, coins: 4000, isHot: false },
-        { id: 'test-mystery', name: 'Venusaur', image_url: 'https://assets.tcgdex.net/en/base/base1/15/high.webp', rarity: '???', national_pokedex_number: 3, worth: 9999, isNew: true, coins: 9999, isHot: true },
-        { id: 'test-psa1', name: 'Raichu', image_url: 'https://assets.tcgdex.net/en/base/base1/14/high.webp', rarity: 'Celestial', national_pokedex_number: 26, worth: 1500, isNew: true, coins: 50, isHot: false, attr_centering: 1.0, attr_corners: 1.0, attr_edges: 1.0, attr_surface: 1.0 },
-    ]
+    const idleDims = pack.aspect === 'box'
+        ? { height: 'min(270px, 60vw)', width: 'min(360px, 78vw)' }
+        : { height: 'min(420px, 68vw)', width: 'auto' }
 
     useEffect(() => {
         const session = loadSession()
@@ -328,18 +317,11 @@ export default function PackOpening({
                 triggerCoinFlash(pack.cost * actualOpened, false)
             }
         } else {
-            const res = await fetch(
-                pack.test_override_url ?? '/api/open-pack',
-                {
-                    method: pack.test_override_url ? 'GET' : 'POST',
-                    ...(pack.test_override_url
-                        ? {}
-                        : {
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ setId: pack.id, free }),
-                          }),
-                },
-            )
+            const res = await fetch('/api/open-pack', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setId: pack.id, free }),
+            })
             if (res.status === 409) {
                 setShaking(false)
                 setCoinError({ cost: 0, coins: -1 })
@@ -523,22 +505,20 @@ export default function PackOpening({
         setAddedCardIds((prev) => new Set(prev).add(card.id))
         setBagCount((prev) => (prev ?? 0) + 1)
         setAnimatingIndex(doneIndex)
-        if (!pack.test) {
-            fetch('/api/add-to-bag', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    cardId: card.id,
-                    worth: card.storedWorth ?? getCardWorth(card),
-                    isHot: card.isHot,
-                    rarity: card.rarity,
-                    cardLevel: card.card_level,
-                    attrs: cardAttrs(card),
-                    previewStats: card.preview_stats,
-                    previewNature: card.preview_nature,
-                }),
-            }).catch(console.error)
-        }
+        fetch('/api/add-to-bag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cardId: card.id,
+                worth: card.storedWorth ?? getCardWorth(card),
+                isHot: card.isHot,
+                rarity: card.rarity,
+                cardLevel: card.card_level,
+                attrs: cardAttrs(card),
+                previewStats: card.preview_stats,
+                previewNature: card.preview_nature,
+            }),
+        }).catch(console.error)
     }
 
     function handleAddToBagDuplicate() {
@@ -547,22 +527,20 @@ export default function PackOpening({
         setAddedCardIds((prev) => new Set(prev).add(card.id))
         setBagCount((prev) => (prev ?? 0) + 1)
         setAnimatingIndex(doneIndex)
-        if (!pack.test) {
-            fetch('/api/add-to-bag', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    cardId: card.id,
-                    worth: card.storedWorth ?? getCardWorth(card),
-                    isHot: card.isHot,
-                    rarity: card.rarity,
-                    cardLevel: card.card_level,
-                    attrs: cardAttrs(card),
-                    previewStats: card.preview_stats,
-                    previewNature: card.preview_nature,
-                }),
-            }).catch(console.error)
-        }
+        fetch('/api/add-to-bag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cardId: card.id,
+                worth: card.storedWorth ?? getCardWorth(card),
+                isHot: card.isHot,
+                rarity: card.rarity,
+                cardLevel: card.card_level,
+                attrs: cardAttrs(card),
+                previewStats: card.preview_stats,
+                previewNature: card.preview_nature,
+            }),
+        }).catch(console.error)
     }
 
     function removeCard(index: number) {
@@ -612,15 +590,13 @@ export default function PackOpening({
         setShattering(true)
         setUserCoins((prev) => (prev ?? 0) + card.coins)
         triggerCoinFlash(card.coins, true)
-        if (!pack.test) {
-            fetch('/api/buyback-card', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    card_buyback_amount: getBuyback(card, null),
-                }),
-            }).catch(console.error)
-        }
+        fetch('/api/buyback-card', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                card_buyback_amount: getBuyback(card, null),
+            }),
+        }).catch(console.error)
         setTimeout(() => {
             setShattering(false)
             removeCard(doneIndex)
@@ -645,22 +621,18 @@ export default function PackOpening({
         const toSell = remainingCardsRef.current
         if (toSell.length === 0) return
         const totalCoins = toSell.reduce((sum, c) => sum + c.coins, 0)
-        if (!pack.test) {
-            setUserCoins((prev) => (prev ?? 0) + totalCoins)
-            triggerCoinFlash(totalCoins, true)
-        }
-        if (!pack.test) {
-            fetch('/api/batch-action', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    actions: toSell.map((c) => ({
-                        type: 'sell',
-                        coins: c.coins,
-                    })),
-                }),
-            }).catch(console.error)
-        }
+        setUserCoins((prev) => (prev ?? 0) + totalCoins)
+        triggerCoinFlash(totalCoins, true)
+        fetch('/api/batch-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                actions: toSell.map((c) => ({
+                    type: 'sell',
+                    coins: c.coins,
+                })),
+            }),
+        }).catch(console.error)
         const realIndices = toSell.map((card) =>
             cards.findIndex((c) => c === card),
         )
@@ -705,13 +677,11 @@ export default function PackOpening({
     async function feedInto(userCardId: string) {
         setFeedPickerCopies(null)
         setAnimatingIndex(doneIndex)
-        if (!pack.test) {
-            await fetch('/api/feed-card', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userCardId }),
-            })
-        }
+        await fetch('/api/feed-card', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userCardId }),
+        })
     }
 
     // ─── batch autocomplete ────────────────────────────────────────────────────
@@ -771,28 +741,26 @@ export default function PackOpening({
             return next
         })
 
-        if (!pack.test) {
-            fetch('/api/batch-action', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    actions: queue.map(({ card, action }) => {
-                        if (action === 'add')
-                            return {
-                                type: 'add',
-                                cardId: card.id,
-                                coins: card.coins,
-                                isHot: card.isHot,
-                                natureTier: card.nature_tier ?? null,
-                                attrs: cardAttrs(card),
-                            }
-                        if (action === 'sell')
-                            return { type: 'sell', coins: card.coins }
-                        return { type: 'feed', cardId: card.id }
-                    }),
+        fetch('/api/batch-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                actions: queue.map(({ card, action }) => {
+                    if (action === 'add')
+                        return {
+                            type: 'add',
+                            cardId: card.id,
+                            coins: card.coins,
+                            isHot: card.isHot,
+                            natureTier: card.nature_tier ?? null,
+                            attrs: cardAttrs(card),
+                        }
+                    if (action === 'sell')
+                        return { type: 'sell', coins: card.coins }
+                    return { type: 'feed', cardId: card.id }
                 }),
-            }).catch(console.error)
-        }
+            }),
+        }).catch(console.error)
 
         autocompleteQueue.current = queue.map(({ card }) => card.id)
         processNextAutocomplete()
@@ -1004,8 +972,7 @@ export default function PackOpening({
                 className="flex flex-col items-center justify-center"
                 style={{
                     minHeight: 'calc(100vh - 64px)',
-                    paddingTop: isMobile ? 24 : 48,
-                    paddingBottom: 88,
+                    padding: '24px 16px',
                     position: 'relative',
                     zIndex: 10001,
                 }}
@@ -1019,9 +986,6 @@ export default function PackOpening({
                 {phase === 'idle' && (
                     <div
                         style={{
-                            transform: isMobile
-                                ? 'translateY(32px)'
-                                : 'translateY(15px)',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -1241,7 +1205,7 @@ export default function PackOpening({
                                     marginTop: 4,
                                 }}
                             >
-                                {stock > 1 && !pack.test && (
+                                {stock > 1 && (
                                     <button
                                         onClick={() => setBatchMode((v) => !v)}
                                         disabled={shaking || opening}
