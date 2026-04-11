@@ -43,6 +43,7 @@ type Props = {
     autoBack?: boolean
     free?: boolean
     count?: number
+    stock?: number
 }
 
 export default function PackOpening({
@@ -52,6 +53,7 @@ export default function PackOpening({
     autoBack = false,
     free = false,
     count = 1,
+    stock = 1,
 }: Props) {
     const router = useRouter()
     const isMobile = useIsMobile()
@@ -153,6 +155,7 @@ export default function PackOpening({
         Record<string, 'add' | 'sell' | 'feed'>
     >({})
     const isAutocompleting = useRef(false)
+    const wasBatchOpen = useRef(false)
     const idleDims = pack.test
         ? { height: 'min(240px, 48vw)', width: 'auto' }
         : pack.aspect === 'box'
@@ -312,18 +315,23 @@ export default function PackOpening({
         setResumeSession(null)
     }
 
-    async function handleClick() {
+    async function handleClick(batchCount?: number) {
         if (shaking || opening) return
         setCoinError(null)
+        if (batchCount && batchCount > 1) {
+            setOpenCount(batchCount)
+            wasBatchOpen.current = true
+        }
         setShaking(true)
-        const isMulti = openCount > 1
+        const isMulti = (batchCount ?? openCount) > 1
+        const effectiveCount = batchCount ?? openCount
 
         let openedCards: Card[] = []
 
         if (pack.test) {
             openedCards = isMulti
                 ? Array.from(
-                      { length: openCount },
+                      { length: effectiveCount },
                       () => TEST_MOCK_CARDS,
                   ).flat()
                 : TEST_MOCK_CARDS
@@ -334,7 +342,7 @@ export default function PackOpening({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     setId: pack.id,
-                    count: openCount,
+                    count: effectiveCount,
                     free,
                 }),
             })
@@ -370,7 +378,7 @@ export default function PackOpening({
             if (data.newBR) {
                 window.dispatchEvent(new CustomEvent('br-updated', { detail: { newBR: data.newBR } }))
             }
-            const actualOpened = data.openedCount ?? openCount
+            const actualOpened = data.openedCount ?? effectiveCount
             if (!free && pack.cost > 0) {
                 setUserCoins((prev) => (prev ?? 0) - pack.cost * actualOpened)
                 triggerCoinFlash(pack.cost * actualOpened, false)
@@ -440,8 +448,8 @@ export default function PackOpening({
 
         // For multi-open: sort within each pack group (lowest rarity first, best at the back)
         if (isMulti) {
-            const perPack = Math.round(openedCards.length / openCount)
-            for (let p = 0; p < openCount; p++) {
+            const perPack = Math.round(openedCards.length / effectiveCount)
+            for (let p = 0; p < effectiveCount; p++) {
                 const start = p * perPack
                 const slice = openedCards.splice(start, perPack)
                 slice.sort(
@@ -623,7 +631,7 @@ export default function PackOpening({
             clearSession()
             isAutocompleting.current = false
             setAutoRunning(false)
-            if (autoBack) {
+            if (autoBack || wasBatchOpen.current) {
                 router.refresh()
                 ;(onComplete ?? onBack)()
                 return
@@ -707,7 +715,7 @@ export default function PackOpening({
         clearSession()
         isAutocompleting.current = false
         setAutoRunning(false)
-        if (autoBack) {
+        if (autoBack || wasBatchOpen.current) {
             router.refresh()
             ;(onComplete ?? onBack)()
             return
@@ -903,7 +911,7 @@ export default function PackOpening({
             autocompleteQueue.current = []
             autocompleteActionMap.current = {}
             setAutoRunning(false)
-            if (autoBack) {
+            if (autoBack || wasBatchOpen.current) {
                 router.refresh()
                 ;(onComplete ?? onBack)()
                 return
@@ -1245,6 +1253,30 @@ export default function PackOpening({
                                 >
                                     +{xpGainPerPack} XP
                                 </div>
+                            )}
+                            {/* Batch open button — only shown when >1 pack in stock */}
+                            {stock > 1 && !pack.test && (
+                                <button
+                                    onClick={() => handleClick(stock)}
+                                    disabled={shaking || opening}
+                                    style={{
+                                        marginTop: 2,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        background: 'rgba(96,165,250,0.12)',
+                                        border: '1px solid rgba(96,165,250,0.3)',
+                                        borderRadius: 20,
+                                        padding: '6px 18px',
+                                        color: '#93c5fd',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        letterSpacing: '-0.01em',
+                                    }}
+                                >
+                                    open x{stock}
+                                </button>
                             )}
                             {/* Inline back button */}
                             <button

@@ -128,6 +128,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
             <PackOpening
                 pack={selectedPack}
                 count={selectedCount}
+                stock={stock[selectedPack.id] ?? 1}
                 onBack={() => {
                     setSelectedPack(null)
                     setSelectedCount(1)

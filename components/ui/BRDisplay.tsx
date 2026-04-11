@@ -55,13 +55,14 @@ export default function BRDisplay({ initialBP }: { initialBP: number }) {
     return (
         <span
             title={`Battle Rating: ${toRef.current.toLocaleString()}`}
-            style={{ position: 'relative', display: 'inline-block' }}
+            style={{ position: 'relative', display: 'inline-block', cursor: 'default' }}
         >
             <span
                 style={{
                     fontSize: '0.82rem',
                     fontWeight: 700,
-                    color: '#facc15',
+                    color: 'rgba(255,255,255,0.92)',
+                    textShadow: '0 0 8px rgba(255,255,255,0.5), 0 0 16px rgba(255,255,255,0.25)',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
                     letterSpacing: '-0.01em',
@@ -81,7 +82,8 @@ export default function BRDisplay({ initialBP }: { initialBP: number }) {
                         whiteSpace: 'nowrap',
                         fontSize: '0.7rem',
                         fontWeight: 700,
-                        color: '#4ade80',
+                        color: 'rgba(255,255,255,0.85)',
+                        textShadow: '0 0 6px rgba(255,255,255,0.4)',
                         pointerEvents: 'none',
                         zIndex: 9999,
                     }}

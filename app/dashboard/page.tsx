@@ -187,6 +187,8 @@ export default async function Dashboard() {
                                     🔥 {profile?.login_streak}
                                 </span>
                             )}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
                             <BRDisplay initialBP={profile?.battle_power ?? 0} />
                         </div>
                         {(profile?.first_name || profile?.last_name) && (
