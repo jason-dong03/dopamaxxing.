@@ -1254,51 +1254,67 @@ export default function PackOpening({
                                     +{xpGainPerPack} XP
                                 </div>
                             )}
-                            {/* Batch open button — only shown when >1 pack in stock */}
-                            {stock > 1 && !pack.test && (
+                            {/* Batch + back buttons — horizontal row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                {stock > 1 && !pack.test && (
+                                    <button
+                                        onClick={() => handleClick(stock)}
+                                        disabled={shaking || opening}
+                                        className="idle-batch-btn"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            background: 'rgba(96,165,250,0.12)',
+                                            border: '1px solid rgba(96,165,250,0.35)',
+                                            borderRadius: 20,
+                                            padding: '6px 18px',
+                                            color: '#93c5fd',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            letterSpacing: '-0.01em',
+                                            transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
+                                        }}
+                                        onMouseEnter={e => {
+                                            const b = e.currentTarget
+                                            b.style.transform = 'scale(1.08) translateY(-2px)'
+                                            b.style.boxShadow = '0 6px 20px rgba(96,165,250,0.35)'
+                                            b.style.background = 'rgba(96,165,250,0.22)'
+                                        }}
+                                        onMouseLeave={e => {
+                                            const b = e.currentTarget
+                                            b.style.transform = ''
+                                            b.style.boxShadow = ''
+                                            b.style.background = 'rgba(96,165,250,0.12)'
+                                        }}
+                                    >
+                                        x{stock}
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => handleClick(stock)}
-                                    disabled={shaking || opening}
+                                    onClick={onBack}
                                     style={{
-                                        marginTop: 2,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6,
-                                        background: 'rgba(96,165,250,0.12)',
-                                        border: '1px solid rgba(96,165,250,0.3)',
+                                        gap: 5,
+                                        background: 'rgba(255,255,255,0.06)',
+                                        border: '1px solid rgba(255,255,255,0.12)',
                                         borderRadius: 20,
-                                        padding: '6px 18px',
-                                        color: '#93c5fd',
-                                        fontSize: '0.72rem',
-                                        fontWeight: 700,
+                                        padding: '5px 16px',
+                                        color: 'rgba(255,255,255,0.6)',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 600,
                                         cursor: 'pointer',
                                         letterSpacing: '-0.01em',
+                                        transition: 'transform 0.15s ease',
                                     }}
+                                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05) translateY(-1px)' }}
+                                    onMouseLeave={e => { e.currentTarget.style.transform = '' }}
                                 >
-                                    open x{stock}
+                                    ← Back
                                 </button>
-                            )}
-                            {/* Inline back button */}
-                            <button
-                                onClick={onBack}
-                                style={{
-                                    marginTop: 4,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 5,
-                                    background: 'rgba(255,255,255,0.06)',
-                                    border: '1px solid rgba(255,255,255,0.12)',
-                                    borderRadius: 20,
-                                    padding: '5px 16px',
-                                    color: 'rgba(255,255,255,0.6)',
-                                    fontSize: '0.68rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    letterSpacing: '-0.01em',
-                                }}
-                            >
-                                ← Back
-                            </button>
+                            </div>
                         </div>
                     </div>
                 )}
