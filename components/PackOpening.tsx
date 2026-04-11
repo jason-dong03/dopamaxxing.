@@ -82,6 +82,7 @@ export default function PackOpening({
         'condition',
     )
     const [openCount, setOpenCount] = useState(count)
+    const [batchMode, setBatchMode] = useState(false)
 
     const [addedCardIds, setAddedCardIds] = useState<Set<string>>(new Set())
     const [showRarity, setShowRarity] = useState(false)
@@ -161,69 +162,6 @@ export default function PackOpening({
         : pack.aspect === 'box'
           ? { height: 'min(270px, 60vw)', width: 'min(360px, 78vw)' }
           : { height: 'min(420px, 68vw)', width: 'auto' }
-
-    // ── dev test cards — no DB ────────────────────────────────────────────────
-    const TEST_MOCK_CARDS: Card[] = [
-        {
-            id: 'test-legendary',
-            name: 'Charizard',
-            image_url: 'https://assets.tcgdex.net/en/base/base1/4/high.webp',
-            rarity: 'Legendary',
-            national_pokedex_number: 6,
-            worth: 100,
-            isNew: true,
-            coins: 200,
-            isHot: false,
-        },
-        {
-            id: 'test-divine',
-            name: 'Mewtwo',
-            image_url: 'https://assets.tcgdex.net/en/base/base1/10/high.webp',
-            rarity: 'Divine',
-            national_pokedex_number: 150,
-            worth: 500,
-            isNew: true,
-            coins: 1000,
-            isHot: false,
-        },
-        {
-            id: 'test-celestial',
-            name: 'Blastoise',
-            image_url: 'https://assets.tcgdex.net/en/base/base1/2/high.webp',
-            rarity: 'Celestial',
-            national_pokedex_number: 9,
-            worth: 2000,
-            isNew: true,
-            coins: 4000,
-            isHot: false,
-        },
-        {
-            id: 'test-mystery',
-            name: 'Venusaur',
-            image_url: 'https://assets.tcgdex.net/en/base/base1/15/high.webp',
-            rarity: '???',
-            national_pokedex_number: 3,
-            worth: 9999,
-            isNew: true,
-            coins: 9999,
-            isHot: true,
-        },
-        {
-            id: 'test-psa1',
-            name: 'Raichu',
-            image_url: 'https://assets.tcgdex.net/en/base/base1/14/high.webp',
-            rarity: 'Celestial',
-            national_pokedex_number: 26,
-            worth: 1500,
-            isNew: true,
-            coins: 50,
-            isHot: false,
-            attr_centering: 1.0,
-            attr_corners: 1.0,
-            attr_edges: 1.0,
-            attr_surface: 1.0,
-        },
-    ]
 
     useEffect(() => {
         const session = loadSession()
@@ -376,7 +314,11 @@ export default function PackOpening({
             }
             if (data.xpGainPerPack) setXpGainPerPack(data.xpGainPerPack)
             if (data.newBR) {
-                window.dispatchEvent(new CustomEvent('br-updated', { detail: { newBR: data.newBR } }))
+                window.dispatchEvent(
+                    new CustomEvent('br-updated', {
+                        detail: { newBR: data.newBR },
+                    }),
+                )
             }
             const actualOpened = data.openedCount ?? effectiveCount
             if (!free && pack.cost > 0) {
@@ -427,7 +369,11 @@ export default function PackOpening({
             }
             if (data.xpGain) setXpGainPerPack(data.xpGain)
             if (data.newBR) {
-                window.dispatchEvent(new CustomEvent('br-updated', { detail: { newBR: data.newBR } }))
+                window.dispatchEvent(
+                    new CustomEvent('br-updated', {
+                        detail: { newBR: data.newBR },
+                    }),
+                )
             }
             if (!free && pack.cost > 0) {
                 setUserCoins((prev) => (prev ?? 0) - pack.cost)
@@ -532,7 +478,8 @@ export default function PackOpening({
                     setTearing(false)
                     setOpening(true)
                     setTimeout(
-                        () => setPhase(isMulti ? 'multi-revealing' : 'revealing'),
+                        () =>
+                            setPhase(isMulti ? 'multi-revealing' : 'revealing'),
                         600,
                     )
                 }, 400)
@@ -543,7 +490,10 @@ export default function PackOpening({
             setTimeout(() => {
                 setTearing(false)
                 setOpening(true)
-                setTimeout(() => setPhase(isMulti ? 'multi-revealing' : 'revealing'), 600)
+                setTimeout(
+                    () => setPhase(isMulti ? 'multi-revealing' : 'revealing'),
+                    600,
+                )
             }, 400)
         }
     }
@@ -951,7 +901,8 @@ export default function PackOpening({
     }
 
     // ─── multi-pack reveal helpers ─────────────────────────────────────────────
-    const cardsPerPack = openCount > 1 ? Math.round(cards.length / openCount) : cards.length
+    const cardsPerPack =
+        openCount > 1 ? Math.round(cards.length / openCount) : cards.length
 
     function handlePackReveal() {
         const next = packRevealedCount + 1
@@ -1009,7 +960,8 @@ export default function PackOpening({
             const triggerCard =
                 phase === 'done'
                     ? currentCard
-                    : (phase === 'revealing' || phase === 'multi-revealing') && specialActive
+                    : (phase === 'revealing' || phase === 'multi-revealing') &&
+                        specialActive
                       ? rarityCard
                       : null
             if (!triggerCard) return null
@@ -1188,7 +1140,11 @@ export default function PackOpening({
                             <img
                                 src={pack.image}
                                 alt={pack.name}
-                                onClick={handleClick}
+                                onClick={() =>
+                                    batchMode
+                                        ? handleClick(stock)
+                                        : handleClick()
+                                }
                                 className="cursor-pointer"
                                 style={{
                                     ...idleDims,
@@ -1221,15 +1177,32 @@ export default function PackOpening({
                                             fontWeight: 600,
                                             color:
                                                 userCoins !== null
-                                                    ? userCoins >= pack.cost
+                                                    ? userCoins >=
+                                                      (batchMode
+                                                          ? pack.cost * stock
+                                                          : pack.cost)
                                                         ? '#4ade80'
                                                         : '#f87171'
                                                     : '#6b7280',
                                             letterSpacing: '-0.01em',
+                                            transition: 'color 0.15s',
                                         }}
                                     >
-                                        $ {pack.cost.toFixed(2)}
+                                        {batchMode
+                                            ? `$ ${(pack.cost * stock).toFixed(2)}`
+                                            : `$ ${pack.cost.toFixed(2)}`}
                                     </span>
+                                    {batchMode && (
+                                        <span
+                                            style={{
+                                                fontSize: '0.62rem',
+                                                color: '#475569',
+                                                letterSpacing: '-0.01em',
+                                            }}
+                                        >
+                                            ({stock} × ${pack.cost.toFixed(2)})
+                                        </span>
+                                    )}
                                     {xpGainPerPack !== null && (
                                         <span
                                             style={{
@@ -1238,7 +1211,10 @@ export default function PackOpening({
                                                 letterSpacing: '0.04em',
                                             }}
                                         >
-                                            +{xpGainPerPack} XP
+                                            +
+                                            {xpGainPerPack *
+                                                (batchMode ? stock : 1)}{' '}
+                                            XP
                                         </span>
                                     )}
                                 </div>
@@ -1255,38 +1231,49 @@ export default function PackOpening({
                                 </div>
                             )}
                             {/* Batch + back buttons — horizontal row */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    marginTop: 4,
+                                }}
+                            >
                                 {stock > 1 && !pack.test && (
                                     <button
-                                        onClick={() => handleClick(stock)}
+                                        onClick={() => setBatchMode((v) => !v)}
                                         disabled={shaking || opening}
-                                        className="idle-batch-btn"
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: 6,
-                                            background: 'rgba(96,165,250,0.12)',
-                                            border: '1px solid rgba(96,165,250,0.35)',
+                                            background: batchMode
+                                                ? 'rgba(96,165,250,0.28)'
+                                                : 'rgba(96,165,250,0.08)',
+                                            border: batchMode
+                                                ? '1px solid rgba(96,165,250,0.7)'
+                                                : '1px solid rgba(96,165,250,0.25)',
                                             borderRadius: 20,
                                             padding: '6px 18px',
-                                            color: '#93c5fd',
+                                            color: batchMode
+                                                ? '#bfdbfe'
+                                                : '#60a5fa',
                                             fontSize: '0.72rem',
                                             fontWeight: 700,
                                             cursor: 'pointer',
                                             letterSpacing: '-0.01em',
-                                            transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
+                                            transition:
+                                                'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+                                            boxShadow: batchMode
+                                                ? '0 0 14px rgba(96,165,250,0.3)'
+                                                : 'none',
                                         }}
-                                        onMouseEnter={e => {
-                                            const b = e.currentTarget
-                                            b.style.transform = 'scale(1.08) translateY(-2px)'
-                                            b.style.boxShadow = '0 6px 20px rgba(96,165,250,0.35)'
-                                            b.style.background = 'rgba(96,165,250,0.22)'
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform =
+                                                'scale(1.08) translateY(-2px)'
                                         }}
-                                        onMouseLeave={e => {
-                                            const b = e.currentTarget
-                                            b.style.transform = ''
-                                            b.style.boxShadow = ''
-                                            b.style.background = 'rgba(96,165,250,0.12)'
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = ''
                                         }}
                                     >
                                         x{stock}
@@ -1309,8 +1296,13 @@ export default function PackOpening({
                                         letterSpacing: '-0.01em',
                                         transition: 'transform 0.15s ease',
                                     }}
-                                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05) translateY(-1px)' }}
-                                    onMouseLeave={e => { e.currentTarget.style.transform = '' }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform =
+                                            'scale(1.05) translateY(-1px)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = ''
+                                    }}
                                 >
                                     ← Back
                                 </button>
@@ -1498,187 +1490,238 @@ export default function PackOpening({
                 )}
 
                 {/* multi-pack reveal phase */}
-                {phase === 'multi-revealing' && (() => {
-                    const packStart = multiPackIndex * cardsPerPack
-                    const packCards = cards.slice(packStart, packStart + cardsPerPack)
-                    const allFlipped = packRevealedCount >= packCards.length
-                    const isLastPack = multiPackIndex >= openCount - 1
-                    return (
-                        <div
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                paddingTop: 'min(20px, 5vw)',
-                                transform: isMobile ? 'translateY(16px)' : 'translateY(21px)',
-                                opacity: packTransitioning ? 0 : 1,
-                                transition: 'opacity 350ms ease-in-out',
-                            }}
-                        >
-                            {/* pack counter */}
+                {phase === 'multi-revealing' &&
+                    (() => {
+                        const packStart = multiPackIndex * cardsPerPack
+                        const packCards = cards.slice(
+                            packStart,
+                            packStart + cardsPerPack,
+                        )
+                        const allFlipped = packRevealedCount >= packCards.length
+                        const isLastPack = multiPackIndex >= openCount - 1
+                        return (
                             <div
                                 style={{
-                                    marginBottom: 10,
-                                    fontSize: '0.68rem',
-                                    fontWeight: 700,
-                                    letterSpacing: '0.12em',
-                                    color: '#6b7280',
-                                    textTransform: 'uppercase',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    paddingTop: 'min(20px, 5vw)',
+                                    transform: isMobile
+                                        ? 'translateY(16px)'
+                                        : 'translateY(21px)',
+                                    opacity: packTransitioning ? 0 : 1,
+                                    transition: 'opacity 350ms ease-in-out',
                                 }}
                             >
-                                Pack {multiPackIndex + 1} / {openCount}
-                            </div>
-
-                            {allFlipped ? (
-                                /* all cards revealed — show face-up grid */
+                                {/* pack counter */}
                                 <div
                                     style={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        justifyContent: 'center',
-                                        gap: 10,
-                                        width: 'min(620px, 96vw)',
-                                        animation: 'fadeIn 250ms ease-out',
+                                        marginBottom: 10,
+                                        fontSize: '0.68rem',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.12em',
+                                        color: '#6b7280',
+                                        textTransform: 'uppercase',
                                     }}
                                 >
-                                    {packCards.map((card, i) => (
-                                        <img
-                                            key={`${card.id}-${packStart + i}-face`}
-                                            src={card.image_url}
-                                            alt={card.name}
-                                            className="rounded-lg"
+                                    Pack {multiPackIndex + 1} / {openCount}
+                                </div>
+
+                                {allFlipped ? (
+                                    /* all cards revealed — show face-up grid */
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            justifyContent: 'center',
+                                            gap: 10,
+                                            width: 'min(620px, 96vw)',
+                                            animation: 'fadeIn 250ms ease-out',
+                                        }}
+                                    >
+                                        {packCards.map((card, i) => (
+                                            <img
+                                                key={`${card.id}-${packStart + i}-face`}
+                                                src={card.image_url}
+                                                alt={card.name}
+                                                className="rounded-lg"
+                                                style={{
+                                                    height: isMobile
+                                                        ? 'min(160px, 32vw)'
+                                                        : '190px',
+                                                    width: 'auto',
+                                                    boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div
+                                        className="relative flex items-center justify-center"
+                                        style={{
+                                            height: 'min(350px, 80vw)',
+                                            width: 'min(280px, 72vw)',
+                                        }}
+                                    >
+                                        {/* rarity glow */}
+                                        <div
+                                            className={
+                                                specialActive &&
+                                                isRainbow(
+                                                    rarityCard?.rarity ?? '',
+                                                )
+                                                    ? 'bg-rainbow-radial'
+                                                    : ''
+                                            }
                                             style={{
-                                                height: isMobile ? 'min(160px, 32vw)' : '190px',
-                                                width: 'auto',
-                                                boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
+                                                position: 'absolute',
+                                                width: '130%',
+                                                height: '130%',
+                                                borderRadius: '50%',
+                                                ...(!isRainbow(
+                                                    rarityCard?.rarity ?? '',
+                                                ) && {
+                                                    background: `radial-gradient(ellipse at center, rgba(${specialGlow}, 0.6) 0%, transparent 65%)`,
+                                                }),
+                                                filter: 'blur(32px)',
+                                                zIndex: 0,
+                                                pointerEvents: 'none',
+                                                opacity: specialActive ? 1 : 0,
+                                                transition:
+                                                    'opacity 600ms ease-in-out',
                                             }}
                                         />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div
-                                    className="relative flex items-center justify-center"
-                                    style={{
-                                        height: 'min(350px, 80vw)',
-                                        width: 'min(280px, 72vw)',
-                                    }}
-                                >
-                                    {/* rarity glow */}
-                                    <div
-                                        className={
-                                            specialActive && isRainbow(rarityCard?.rarity ?? '')
-                                                ? 'bg-rainbow-radial'
-                                                : ''
-                                        }
-                                        style={{
-                                            position: 'absolute',
-                                            width: '130%',
-                                            height: '130%',
-                                            borderRadius: '50%',
-                                            ...(!isRainbow(rarityCard?.rarity ?? '') && {
-                                                background: `radial-gradient(ellipse at center, rgba(${specialGlow}, 0.6) 0%, transparent 65%)`,
-                                            }),
-                                            filter: 'blur(32px)',
-                                            zIndex: 0,
-                                            pointerEvents: 'none',
-                                            opacity: specialActive ? 1 : 0,
-                                            transition: 'opacity 600ms ease-in-out',
-                                        }}
-                                    />
-                                    {packCards.map((card, i) => {
-                                        const isTop = i === packRevealedCount
-                                        const isRevealed = i < packRevealedCount
-                                        if (isRevealed) return null
-                                        const fanVisible = fanningOut
-                                        const n = packCards.length - packRevealedCount
-                                        const offset = i - packRevealedCount - (n - 1) / 2
-                                        return (
-                                            <div
-                                                key={`${card.id}-${packStart + i}`}
-                                                className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
-                                                style={
-                                                    fanVisible
-                                                        ? {
-                                                              transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
-                                                              zIndex: 50,
-                                                              pointerEvents: 'none',
-                                                              transition: 'transform 450ms cubic-bezier(0.2, 0, 0.8, 1)',
-                                                          }
-                                                        : {
-                                                              transform: `translateY(${(i - packRevealedCount) * -6}px) rotate(${(i - packRevealedCount) * -1}deg)`,
-                                                              zIndex: isTop ? 50 : 50 - i,
-                                                              pointerEvents: isTop ? 'auto' : 'none',
-                                                          }
-                                                }
-                                            >
-                                                <FlipCard
-                                                    card={card}
-                                                    onReveal={isTop ? handlePackReveal : () => {}}
-                                                    onFlipped={
-                                                        isTop
-                                                            ? () => {
-                                                                  setShowRarity(true)
-                                                                  setRarityCard(card)
+                                        {packCards.map((card, i) => {
+                                            const isTop =
+                                                i === packRevealedCount
+                                            const isRevealed =
+                                                i < packRevealedCount
+                                            if (isRevealed) return null
+                                            const fanVisible = fanningOut
+                                            const n =
+                                                packCards.length -
+                                                packRevealedCount
+                                            const offset =
+                                                i -
+                                                packRevealedCount -
+                                                (n - 1) / 2
+                                            return (
+                                                <div
+                                                    key={`${card.id}-${packStart + i}`}
+                                                    className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
+                                                    style={
+                                                        fanVisible
+                                                            ? {
+                                                                  transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
+                                                                  zIndex: 50,
+                                                                  pointerEvents:
+                                                                      'none',
+                                                                  transition:
+                                                                      'transform 450ms cubic-bezier(0.2, 0, 0.8, 1)',
                                                               }
-                                                            : () => {}
+                                                            : {
+                                                                  transform: `translateY(${(i - packRevealedCount) * -6}px) rotate(${(i - packRevealedCount) * -1}deg)`,
+                                                                  zIndex: isTop
+                                                                      ? 50
+                                                                      : 50 - i,
+                                                                  pointerEvents:
+                                                                      isTop
+                                                                          ? 'auto'
+                                                                          : 'none',
+                                                              }
                                                     }
-                                                    onConfirmed={isTop ? () => setShowRarity(false) : () => {}}
-                                                    onSpecialChange={(active, glow) => {
-                                                        setSpecialActive(active)
-                                                        setSpecialGlow(glow)
-                                                    }}
-                                                />
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
+                                                >
+                                                    <FlipCard
+                                                        card={card}
+                                                        onReveal={
+                                                            isTop
+                                                                ? handlePackReveal
+                                                                : () => {}
+                                                        }
+                                                        onFlipped={
+                                                            isTop
+                                                                ? () => {
+                                                                      setShowRarity(
+                                                                          true,
+                                                                      )
+                                                                      setRarityCard(
+                                                                          card,
+                                                                      )
+                                                                  }
+                                                                : () => {}
+                                                        }
+                                                        onConfirmed={
+                                                            isTop
+                                                                ? () =>
+                                                                      setShowRarity(
+                                                                          false,
+                                                                      )
+                                                                : () => {}
+                                                        }
+                                                        onSpecialChange={(
+                                                            active,
+                                                            glow,
+                                                        ) => {
+                                                            setSpecialActive(
+                                                                active,
+                                                            )
+                                                            setSpecialGlow(glow)
+                                                        }}
+                                                    />
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
 
-                            {/* buttons row */}
-                            <div
-                                className="flex flex-col items-center gap-2"
-                                style={{ marginTop: 'min(24px, 5vw)' }}
-                            >
-                                {allFlipped ? (
-                                    <button
-                                        onClick={handleNextPack}
-                                        disabled={packTransitioning}
-                                        className="px-6 py-2 rounded-xl text-sm font-semibold border border-gray-500 text-white hover:border-white hover:bg-white/10 active:scale-95 transition-all"
-                                        style={{ letterSpacing: '0.04em' }}
-                                    >
-                                        {isLastPack ? 'see results →' : 'next pack →'}
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleFlipPackAll}
-                                        className="px-4 py-1.5 rounded-xl text-xs font-medium border border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
-                                    >
-                                        flip all
-                                    </button>
-                                )}
-                                {!isLastPack && (
-                                    <button
-                                        onClick={handleSkipAll}
-                                        disabled={packTransitioning}
-                                        className="px-3 py-1 rounded-lg text-xs border border-gray-800 text-gray-600 hover:border-gray-600 hover:text-gray-400 active:scale-95 transition-all"
-                                    >
-                                        skip to results
-                                    </button>
-                                )}
-                                {showRarity && rarityCard && (
-                                    <p
-                                        className="text-xs tracking-widest uppercase"
-                                        style={{
-                                            color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
-                                        }}
-                                    >
-                                        {rarityCard.rarity} · {rarityToOdds(rarityCard.rarity)}
-                                    </p>
-                                )}
+                                {/* buttons row */}
+                                <div
+                                    className="flex flex-col items-center gap-2"
+                                    style={{ marginTop: 'min(24px, 5vw)' }}
+                                >
+                                    {allFlipped ? (
+                                        <button
+                                            onClick={handleNextPack}
+                                            disabled={packTransitioning}
+                                            className="px-6 py-2 rounded-xl text-sm font-semibold border border-gray-500 text-white hover:border-white hover:bg-white/10 active:scale-95 transition-all"
+                                            style={{ letterSpacing: '0.04em' }}
+                                        >
+                                            {isLastPack
+                                                ? 'see results →'
+                                                : 'next pack →'}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleFlipPackAll}
+                                            className="px-4 py-1.5 rounded-xl text-xs font-medium border border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+                                        >
+                                            flip all
+                                        </button>
+                                    )}
+                                    {!isLastPack && (
+                                        <button
+                                            onClick={handleSkipAll}
+                                            disabled={packTransitioning}
+                                            className="px-3 py-1 rounded-lg text-xs border border-gray-800 text-gray-600 hover:border-gray-600 hover:text-gray-400 active:scale-95 transition-all"
+                                        >
+                                            skip to results
+                                        </button>
+                                    )}
+                                    {showRarity && rarityCard && (
+                                        <p
+                                            className="text-xs tracking-widest uppercase"
+                                            style={{
+                                                color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                            }}
+                                        >
+                                            {rarityCard.rarity} ·{' '}
+                                            {rarityToOdds(rarityCard.rarity)}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )
-                })()}
+                        )
+                    })()}
 
                 {/* done phase */}
                 {phase === 'done' &&
@@ -1916,23 +1959,26 @@ export default function PackOpening({
                 )}
             </div>
 
-
             {/* ── level-up overlay ────────────────────────────────────── */}
-            {levelUpInfo && !levelUpClaimed && createPortal(
-                <LevelUpOverlay
-                    info={levelUpInfo}
-                    claiming={levelUpClaiming}
-                    onClaim={async () => {
-                        setLevelUpClaiming(true)
-                        await fetch('/api/claim-level-rewards', { method: 'POST' })
-                        window.dispatchEvent(new Event('stash-claimed'))
-                        setLevelUpClaiming(false)
-                        setLevelUpClaimed(true)
-                        setLevelUpInfo(null)
-                    }}
-                />,
-                document.body,
-            )}
+            {levelUpInfo &&
+                !levelUpClaimed &&
+                createPortal(
+                    <LevelUpOverlay
+                        info={levelUpInfo}
+                        claiming={levelUpClaiming}
+                        onClaim={async () => {
+                            setLevelUpClaiming(true)
+                            await fetch('/api/claim-level-rewards', {
+                                method: 'POST',
+                            })
+                            window.dispatchEvent(new Event('stash-claimed'))
+                            setLevelUpClaiming(false)
+                            setLevelUpClaimed(true)
+                            setLevelUpInfo(null)
+                        }}
+                    />,
+                    document.body,
+                )}
         </>
     )
 }
@@ -1973,7 +2019,8 @@ function LevelUpOverlay({ info, claiming, onClaim }: LevelUpOverlayProps) {
         >
             <div
                 style={{
-                    background: 'linear-gradient(160deg, rgba(20,20,32,0.98), rgba(10,10,20,0.98))',
+                    background:
+                        'linear-gradient(160deg, rgba(20,20,32,0.98), rgba(10,10,20,0.98))',
                     border: '1px solid rgba(251,191,36,0.35)',
                     borderRadius: 24,
                     padding: '36px 40px',
@@ -1988,31 +2035,83 @@ function LevelUpOverlay({ info, claiming, onClaim }: LevelUpOverlayProps) {
                 }}
             >
                 {/* level badge */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.14em', color: '#fbbf24', textTransform: 'uppercase', margin: 0 }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                    }}
+                >
+                    <p
+                        style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.14em',
+                            color: '#fbbf24',
+                            textTransform: 'uppercase',
+                            margin: 0,
+                        }}
+                    >
                         Level Up{levelsGained > 1 ? ` ×${levelsGained}` : ''}!
                     </p>
-                    <p style={{ fontSize: '2.4rem', fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1 }}>
+                    <p
+                        style={{
+                            fontSize: '2.4rem',
+                            fontWeight: 900,
+                            color: '#fff',
+                            margin: 0,
+                            lineHeight: 1,
+                        }}
+                    >
                         {oldLevel}
-                        <span style={{ color: '#fbbf24', margin: '0 8px' }}>→</span>
+                        <span style={{ color: '#fbbf24', margin: '0 8px' }}>
+                            →
+                        </span>
                         {newLevel}
                     </p>
                 </div>
 
                 {/* XP bar */}
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.62rem', color: '#6b7280' }}>
+                <div
+                    style={{
+                        width: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                    }}
+                >
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: '0.62rem',
+                            color: '#6b7280',
+                        }}
+                    >
                         <span>XP</span>
-                        <span>{newXP} / {xpRequired}</span>
+                        <span>
+                            {newXP} / {xpRequired}
+                        </span>
                     </div>
-                    <div style={{ width: '100%', height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                    <div
+                        style={{
+                            width: '100%',
+                            height: 6,
+                            borderRadius: 999,
+                            background: 'rgba(255,255,255,0.06)',
+                            overflow: 'hidden',
+                        }}
+                    >
                         <div
                             style={{
                                 height: '100%',
                                 width: `${barPct}%`,
                                 borderRadius: 999,
-                                background: 'linear-gradient(90deg, #fbbf24, #f59e0b)',
-                                transition: 'width 800ms cubic-bezier(0.4,0,0.2,1)',
+                                background:
+                                    'linear-gradient(90deg, #fbbf24, #f59e0b)',
+                                transition:
+                                    'width 800ms cubic-bezier(0.4,0,0.2,1)',
                                 boxShadow: '0 0 8px rgba(251,191,36,0.6)',
                             }}
                         />
@@ -2020,7 +2119,14 @@ function LevelUpOverlay({ info, claiming, onClaim }: LevelUpOverlayProps) {
                 </div>
 
                 {/* rewards note */}
-                <p style={{ fontSize: '0.68rem', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
+                <p
+                    style={{
+                        fontSize: '0.68rem',
+                        color: '#9ca3af',
+                        margin: 0,
+                        textAlign: 'center',
+                    }}
+                >
                     Rewards are waiting in your stash
                 </p>
 
@@ -2032,7 +2138,9 @@ function LevelUpOverlay({ info, claiming, onClaim }: LevelUpOverlayProps) {
                         marginTop: 4,
                         padding: '10px 36px',
                         borderRadius: 12,
-                        background: claiming ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.18)',
+                        background: claiming
+                            ? 'rgba(251,191,36,0.15)'
+                            : 'rgba(251,191,36,0.18)',
                         border: '1px solid rgba(251,191,36,0.5)',
                         color: '#fbbf24',
                         fontSize: '0.8rem',
@@ -2043,12 +2151,15 @@ function LevelUpOverlay({ info, claiming, onClaim }: LevelUpOverlayProps) {
                     }}
                     onMouseEnter={(e) => {
                         if (!claiming) {
-                            e.currentTarget.style.background = 'rgba(251,191,36,0.28)'
-                            e.currentTarget.style.boxShadow = '0 0 20px rgba(251,191,36,0.2)'
+                            e.currentTarget.style.background =
+                                'rgba(251,191,36,0.28)'
+                            e.currentTarget.style.boxShadow =
+                                '0 0 20px rgba(251,191,36,0.2)'
                         }
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(251,191,36,0.18)'
+                        e.currentTarget.style.background =
+                            'rgba(251,191,36,0.18)'
                         e.currentTarget.style.boxShadow = 'none'
                     }}
                 >
