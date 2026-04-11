@@ -1928,6 +1928,21 @@ export default function ProfileView({
                                         ✎
                                     </button>
                                 )}
+                                {/* BR — flushed right in the name row */}
+                                <span style={{ flex: 1 }} />
+                                <span
+                                    title={`${(profile?.battle_power ?? 0).toLocaleString()} BR`}
+                                    style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        color: 'rgba(255,255,255,0.92)',
+                                        textShadow: '0 0 8px rgba(255,255,255,0.5), 0 0 16px rgba(255,255,255,0.25)',
+                                        flexShrink: 0,
+                                        cursor: 'default',
+                                    }}
+                                >
+                                    {formatBR(profile?.battle_power ?? 0)} BR
+                                </span>
                             </div>
                             <div className="flex items-center gap-1.5 flex-wrap">
                                 <p
@@ -2057,43 +2072,6 @@ export default function ProfileView({
                                 }}
                             />
                         </div>
-                    </div>
-
-                    {/* Battle Rating */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '8px 12px',
-                            borderRadius: 10,
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid var(--app-border)',
-                            marginTop: 8,
-                        }}
-                    >
-                        <span
-                            style={{
-                                fontSize: '0.6rem',
-                                fontWeight: 700,
-                                color: 'var(--app-text-muted)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Battle Rating
-                        </span>
-                        <span
-                            title={`${(profile?.battle_power ?? 0).toLocaleString()} BR`}
-                            style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                color: 'rgba(255,255,255,0.92)',
-                                textShadow: '0 0 8px rgba(255,255,255,0.5), 0 0 16px rgba(255,255,255,0.25)',
-                            }}
-                        >
-                            {formatBR(profile?.battle_power ?? 0)} BR
-                        </span>
                     </div>
 
                     {/* Friends */}
