@@ -1,15 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+// Rarity weight — exponential spread so rarity meaningfully separates cards
 export const RARITY_WEIGHT: Record<string, number> = {
-    '???':       10,
-    Celestial:   8,
-    Divine:      6,
-    Legendary:   4,
-    Mythical:    3,
-    Epic:        2.5,
-    Rare:        2,
-    Uncommon:    1.5,
-    Common:      1,
+    Common:    1,
+    Uncommon:  3,
+    Rare:      8,
+    Epic:      20,
+    Mythical:  50,
+    Legendary: 100,
+    Divine:    160,
+    Celestial: 210,
+    '???':     260,
 }
 
 export type BRTier = {
@@ -18,7 +19,6 @@ export type BRTier = {
     min: number
 }
 
-// Thresholds calibrated for worth-in-cents scale
 export const BR_TIERS: BRTier[] = [
     { label: 'Bronze',    color: '#cd7f32',  min: 0 },
     { label: 'Silver',    color: '#94a3b8',  min: 10_000 },
@@ -37,6 +37,10 @@ export function getBRTier(bp: number): BRTier {
 
 export function formatBR(bp: number, full = false): string {
     if (full) return bp.toLocaleString()
+    if (bp >= 1_000_000_000) {
+        const s = (bp / 1_000_000_000).toFixed(2).replace(/\.?0+$/, '')
+        return `${s}B`
+    }
     if (bp >= 1_000_000) {
         const s = (bp / 1_000_000).toFixed(2).replace(/\.?0+$/, '')
         return `${s}M`
@@ -46,58 +50,66 @@ export function formatBR(bp: number, full = false): string {
     return String(bp)
 }
 
-// Nature tier → BP multiplier bonus
+// Nature tier → BR multiplier
 const NATURE_TIER_MULT: Record<string, number> = {
     'regular':   1.00,
-    'legendary': 1.10,
-    'divine':    1.18,
-    'celestial': 1.26,
-    '???':       1.35,
+    'legendary': 1.12,
+    'divine':    1.25,
+    'celestial': 1.40,
+    '???':       1.60,
 }
 
 /**
  * Calculates BR contribution for a single card.
  *
- * Formula (worth treated as cents = ×100 scale):
- *   base     = (worth × 100) × card_level × rarity_weight
- *   quality  = avg(attrs) / 7.5   (default 7.0 → ≈0.93)
- *   grade    = grade ? 1 + (grade − 5) × 0.04 : 1
- *   nature   = nature tier multiplier (1.0–1.35)
- *   br_card  = round(base × quality × grade × nature)
+ * Formula:
+ *   stats_sum   = atk + def + spatk + spdef + spd + accuracy + evasion
+ *   level_score = card_level × 10
+ *   card_BR     = round(level_score × stats_sum × rarity_weight × nature_mult)
  *
- * Typical values: Common $0.50 → ~47 BR | Legendary $25 Lv3 → ~27,900 BR
+ * Drivers (in order of weight): card level > stats > rarity > nature
+ *
+ * Example ranges:
+ *   Common   Lv1  low stats  →     ~2K BR
+ *   Common   Lv50 avg stats  →   ~100K BR
+ *   Legendary Lv50 avg stats →    ~45M BR
+ *   ???      Lv100 celestial →   ~500M BR
  */
 export function cardBR(card: {
-    worth: number | null
     card_level: number | null
     rarity: string
-    attr_centering?: number | null
-    attr_corners?: number | null
-    attr_edges?: number | null
-    attr_surface?: number | null
-    grade?: number | null
+    stat_atk?: number | null
+    stat_def?: number | null
+    stat_spatk?: number | null
+    stat_spdef?: number | null
+    stat_spd?: number | null
+    stat_accuracy?: number | null
+    stat_evasion?: number | null
     nature_tier?: string | null
 }): number {
     const weight = RARITY_WEIGHT[card.rarity] ?? 1
-    const worth = Number(card.worth ?? 0) * 100   // scale to cents
-    const lvl = Number(card.card_level ?? 1)
+    const lvl = Math.max(1, Number(card.card_level ?? 1))
+    const levelScore = lvl * 10
 
-    const attrs = [card.attr_centering, card.attr_corners, card.attr_edges, card.attr_surface]
-        .map(v => Number(v ?? 7.0))
-    const avgAttr = attrs.reduce((a, b) => a + b, 0) / attrs.length
-    const qualityMult = avgAttr / 7.5
+    const statsSum =
+        Number(card.stat_atk      ?? 0) +
+        Number(card.stat_def      ?? 0) +
+        Number(card.stat_spatk    ?? 0) +
+        Number(card.stat_spdef    ?? 0) +
+        Number(card.stat_spd      ?? 0) +
+        Number(card.stat_accuracy ?? 0) +
+        Number(card.stat_evasion  ?? 0)
 
-    const grade = card.grade ? Number(card.grade) : null
-    const gradeMult = grade !== null ? 1 + (grade - 5) * 0.04 : 1
+    // If stats haven't been rolled yet, use a rarity-appropriate default
+    const effectiveStats = statsSum > 0 ? statsSum : weight * 50
 
     const natureMult = NATURE_TIER_MULT[card.nature_tier ?? 'regular'] ?? 1
 
-    return Math.round(worth * lvl * weight * qualityMult * gradeMult * natureMult)
+    return Math.round(levelScore * effectiveStats * weight * natureMult)
 }
 
 /**
  * Recalculates and stores battle_power for a user.
- * Returns the computed BR value (0 on error).
  */
 export async function recalcBattleRating(
     supabase: SupabaseClient,
@@ -112,10 +124,10 @@ export async function recalcBattleRating(
 
         const { data: cards } = await supabase
             .from('user_cards')
-            .select('worth, card_level, attr_centering, attr_corners, attr_edges, attr_surface, grade, nature_tier, cards(rarity)')
+            .select('card_level, stat_atk, stat_def, stat_spatk, stat_spdef, stat_spd, stat_accuracy, stat_evasion, nature_tier, cards(rarity)')
             .eq('user_id', userId)
 
-        let bp = (profile?.level ?? 1) * 1000  // level contributes 1K per level
+        let bp = (profile?.level ?? 1) * 1000  // small level baseline
 
         for (const uc of (cards ?? []) as any[]) {
             const rarity = (uc.cards?.rarity as string) ?? 'Common'

@@ -189,15 +189,16 @@ export function CardStats({
 
     // per-card battle rating
     const thisBP = cardBR({
-        worth: cardWorth,
         card_level: uc.card_level,
         rarity: rarity,
-        attr_centering: uc.attr_centering,
-        attr_corners: uc.attr_corners,
-        attr_edges: uc.attr_edges,
-        attr_surface: uc.attr_surface,
-        grade: uc.grade,
-        nature_tier: (uc as any).nature_tier ?? null,
+        stat_atk:      (uc as any).stat_atk      ?? null,
+        stat_def:      (uc as any).stat_def      ?? null,
+        stat_spatk:    (uc as any).stat_spatk    ?? null,
+        stat_spdef:    (uc as any).stat_spdef    ?? null,
+        stat_spd:      (uc as any).stat_spd      ?? null,
+        stat_accuracy: (uc as any).stat_accuracy ?? null,
+        stat_evasion:  (uc as any).stat_evasion  ?? null,
+        nature_tier:   (uc as any).nature_tier   ?? null,
     })
 
 
