@@ -490,10 +490,15 @@ export function rarityGlowClass(rarity: string): string {
 }
 
 export const RAINBOW_TEXT_STYLE: React.CSSProperties = {
-    background:
-        'linear-gradient(90deg,#f87171,#fb923c,#facc15,#4ade80,#60a5fa,#a855f7,#f472b4)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
+    animationName: 'rainbow-text',
+    animationDuration: '2s',
+    animationTimingFunction: 'linear',
+    animationIterationCount: 'infinite',
+}
+
+/** Returns the CSS class to apply for rarity-coloured text. '???' → 'rainbow-text' */
+export function rarityTextClass(rarity: string): string {
+    return isRainbow(rarity as Rarity) ? 'rainbow-text' : ''
 }
 
 export function rarityTextStyle(rarity: string): React.CSSProperties {

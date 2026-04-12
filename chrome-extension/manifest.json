@@ -38,7 +38,12 @@
         "*://www.jstor.org/*",
         "*://www.notion.so/*",
         "*://quizlet.com/*",
-        "*://ankiweb.net/*"
+        "*://ankiweb.net/*",
+        "*://canvas.its.virginia.edu/*",
+        "*://chatgpt.com/*",
+        "*://chat.openai.com/*",
+        "*://claude.ai/*",
+        "*://gemini.google.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"

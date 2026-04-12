@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { PACKS } from '@/lib/packs'
+import { getMergedPacks } from '@/lib/packMeta'
+import type { Pack } from '@/lib/packs'
 
 /**
  * GET /api/cron/daily-pack
@@ -12,22 +13,15 @@ import { PACKS } from '@/lib/packs'
  * Secured via Authorization: Bearer <CRON_SECRET>.
  */
 
-// Classic packs only — no theme packs, no boxes, no test pack
-const CLASSIC_PACKS = PACKS.filter(
-    (p) => p.aspect === 'pack' && !p.theme_pokedex_ids && !p.test_override_url,
-)
-
-// Weighted inverse cost: cheaper = higher probability
-const WEIGHTS = CLASSIC_PACKS.map((p) => 1 / p.cost)
-const WEIGHT_SUM = WEIGHTS.reduce((a, b) => a + b, 0)
-
-function pickWeightedPack(): string {
-    let r = Math.random() * WEIGHT_SUM
-    for (let i = 0; i < CLASSIC_PACKS.length; i++) {
-        r -= WEIGHTS[i]
-        if (r <= 0) return CLASSIC_PACKS[i].id
+function pickWeightedPack(classicPacks: Pack[]): string {
+    const weights = classicPacks.map((p) => 1 / p.cost)
+    const weightSum = weights.reduce((a, b) => a + b, 0)
+    let r = Math.random() * weightSum
+    for (let i = 0; i < classicPacks.length; i++) {
+        r -= weights[i]
+        if (r <= 0) return classicPacks[i].id
     }
-    return CLASSIC_PACKS[CLASSIC_PACKS.length - 1].id
+    return classicPacks[classicPacks.length - 1].id
 }
 
 export async function GET(request: NextRequest) {
@@ -38,6 +32,12 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient()
+
+    const allPacks = await getMergedPacks(supabase)
+    const classicPacks = allPacks.filter(
+        (p) => p.aspect === 'pack' && !p.theme_pokedex_ids && !(p as any).test,
+    )
+
     const today = new Date().toISOString().slice(0, 10)
 
     // Get all users who haven't received a daily pack today
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
         const inserts = batch.map((u) => ({
             user_id: u.id,
-            pack_id: pickWeightedPack(),
+            pack_id: pickWeightedPack(classicPacks),
             source: 'daily',
         }))
 

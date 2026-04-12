@@ -9,7 +9,9 @@ const STUDY_PATTERNS = [
   /docs\.google\.com\/(document|presentation|spreadsheets|forms)/,
   /\.pdf($|\?)/i,
   /\/pdf\b/i,
-  /instructure\.com\/courses\/\d+\/(pages|quizzes|assignments|discussion_topics|modules|files|media_attachments)/,  // Canvas course content only (not dashboard/grades/inbox)
+  /instructure\.com\/courses\/\d+\/(pages|quizzes|assignments|discussion_topics|modules|files|media_attachments)/,  // Canvas LMS (instructure-hosted)
+  /\/courses\/\d+\/files\/[^?]*[?&]preview=\d+/,  // Canvas PDF file preview on any host (e.g. canvas.its.virginia.edu)
+  /canvas\.its\.virginia\.edu\/courses\//,          // UVA Canvas
   /blackboard\.com/,
   /brightspace\.com/,
   /moodle\./,
@@ -24,6 +26,11 @@ const STUDY_PATTERNS = [
   /notion\.so/,
   /quizlet\.com/,
   /ankiweb\.net/,
+  // AI note tools — classified by Groq to confirm study context
+  /chatgpt\.com/,
+  /chat\.openai\.com/,
+  /claude\.ai/,
+  /gemini\.google\.com/,
 ]
 
 function isStudyUrl(url) {
@@ -38,6 +45,11 @@ const NEEDS_CONTENT_CHECK = [
   /notion\.so/,
   /\.pdf($|\?)/i,
   /\/pdf\b/i,
+  // AI tools — verify the conversation is study-related, not random chat
+  /chatgpt\.com/,
+  /chat\.openai\.com/,
+  /claude\.ai/,
+  /gemini\.google\.com/,
 ]
 
 function needsContentCheck(url) {

@@ -115,8 +115,12 @@ function fmt(n) {
 
 // ─── Render profile ───────────────────────────────────────────────────────────
 function renderProfile(profile) {
-  const initial = (profile.username || profile.first_name || '?')[0].toUpperCase()
-  $('user-avatar').textContent = initial
+  const avatarEl = $('user-avatar')
+  if (profile.avatar_url) {
+    avatarEl.innerHTML = `<img src="${profile.avatar_url}" alt="avatar" />`
+  } else {
+    avatarEl.textContent = (profile.username || profile.first_name || '?')[0].toUpperCase()
+  }
   $('username-label').textContent = profile.username || profile.first_name || '—'
   $('title-label').textContent = profile.active_title || ''
   $('level-badge').textContent = `Lv.${profile.level ?? 1}`
@@ -178,7 +182,7 @@ function renderCrates(stock, crateKeys) {
     const hasKey = keyCount >= 1
     return `
       <div class="crate-row">
-        <span class="crate-key-icon">${hasKey ? '🗝️' : '🔒'}</span>
+        <span class="crate-status-dot${hasKey ? ' has-key' : ''}"></span>
         <div class="crate-info">
           <span class="crate-name">${crate.name}</span>
           <span class="crate-chance">${crate.chance} drop rate</span>
@@ -309,6 +313,9 @@ chrome.runtime.onMessage.addListener((msg) => {
     if (msg.keys_earned && msg.keys_earned.length > 0) {
       msg.keys_earned.forEach(k => showKeyNotification(k.name))
     }
+    if (msg.packs_earned && msg.packs_earned.length > 0) {
+      msg.packs_earned.forEach(p => showPackNotification(p.name))
+    }
   }
   if (msg.type === 'tab-changed') {
     renderStudyStatus(msg.is_studying, msg.url)
@@ -318,10 +325,19 @@ chrome.runtime.onMessage.addListener((msg) => {
 function showKeyNotification(keyName) {
   const el = document.createElement('div')
   el.className = 'key-toast'
-  el.textContent = `🗝️ ${keyName} dropped!`
+  el.textContent = `${keyName} dropped!`
   document.body.appendChild(el)
   setTimeout(() => el.classList.add('show'), 10)
   setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300) }, 3000)
+}
+
+function showPackNotification(packName) {
+  const el = document.createElement('div')
+  el.className = 'key-toast pack-toast'
+  el.textContent = `${packName} pack dropped!`
+  document.body.appendChild(el)
+  setTimeout(() => el.classList.add('show'), 10)
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300) }, 4000)
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────

@@ -39,6 +39,7 @@ export const LEGENDARY_DEX_IDS: number[] = [
 ]
 
 export const PACKS: Pack[] = [
+    // ── Level 1 (no gate) ──────────────────────────────────────────────────────
     {
         id: 'sv02',
         name: 'Paldea Evolved',
@@ -55,6 +56,7 @@ export const PACKS: Pack[] = [
         aspect: 'pack',
         cost: 12.0,
     },
+    // ── Level 5 ────────────────────────────────────────────────────────────────
     {
         id: 'sv03.5',
         name: '151',
@@ -62,6 +64,7 @@ export const PACKS: Pack[] = [
         description: 'S & V — 151',
         aspect: 'pack',
         cost: 24.5,
+        level_required: 5,
     },
     {
         id: 'sv04.5',
@@ -70,6 +73,7 @@ export const PACKS: Pack[] = [
         description: 'S & V - Paldean Fates',
         aspect: 'pack',
         cost: 19.75,
+        level_required: 5,
     },
     {
         id: 'sv08',
@@ -78,6 +82,7 @@ export const PACKS: Pack[] = [
         description: 'S & V — Surging Sparks',
         aspect: 'pack',
         cost: 9.53,
+        level_required: 5,
     },
     {
         id: 'sv08.5',
@@ -86,7 +91,9 @@ export const PACKS: Pack[] = [
         description: 'S & V — Prismatic Evolutions',
         aspect: 'pack',
         cost: 17.5,
+        level_required: 5,
     },
+    // ── Level 10 ───────────────────────────────────────────────────────────────
     {
         id: 'sv10',
         name: 'Destined Rivals',
@@ -94,6 +101,7 @@ export const PACKS: Pack[] = [
         description: 'S & V - Destined Rivals',
         aspect: 'pack',
         cost: 9.15,
+        level_required: 10,
     },
     {
         id: 'sv10.5b',
@@ -102,6 +110,7 @@ export const PACKS: Pack[] = [
         description: 'S & V — Black Bolt',
         aspect: 'pack',
         cost: 15.5,
+        level_required: 10,
     },
     {
         id: 'sv10.5w',
@@ -110,7 +119,9 @@ export const PACKS: Pack[] = [
         description: 'S & V — White Flare',
         aspect: 'pack',
         cost: 15.5,
+        level_required: 10,
     },
+    // ── Level 15 ───────────────────────────────────────────────────────────────
     {
         id: 'swsh1',
         name: 'Sword & Shield',
@@ -118,7 +129,9 @@ export const PACKS: Pack[] = [
         description: 'Sword & Shield — Crown Zenith',
         aspect: 'pack',
         cost: 9.19,
+        level_required: 15,
     },
+    // ── Level 20 ───────────────────────────────────────────────────────────────
     {
         id: 'swsh11',
         name: 'Lost Origin',
@@ -126,6 +139,7 @@ export const PACKS: Pack[] = [
         description: 'Sword & Shield — Lost Origin',
         aspect: 'pack',
         cost: 14.92,
+        level_required: 20,
     },
     {
         id: 'swsh12.5',
@@ -134,7 +148,9 @@ export const PACKS: Pack[] = [
         description: 'Sword & Shield — Crown Zenith',
         aspect: 'pack',
         cost: 22.0,
+        level_required: 20,
     },
+    // ── Level 25 ───────────────────────────────────────────────────────────────
     {
         id: 'me02',
         name: 'Phantasmal Flames',
@@ -142,6 +158,7 @@ export const PACKS: Pack[] = [
         description: 'Mega Evolutions — Phantasmal Flames',
         aspect: 'pack',
         cost: 15.75,
+        level_required: 25,
     },
     {
         id: 'me02.5',
@@ -150,7 +167,9 @@ export const PACKS: Pack[] = [
         description: 'Mega Evolutions — Ascended Heroes',
         aspect: 'pack',
         cost: 14.94,
+        level_required: 25,
     },
+    // ── Level 30 ───────────────────────────────────────────────────────────────
     {
         id: 'base1',
         name: 'Base Set',
@@ -159,6 +178,7 @@ export const PACKS: Pack[] = [
         aspect: 'pack',
         cost: 386.83,
         card_count: 11,
+        level_required: 30,
     },
     {
         id: 'base5',
@@ -168,6 +188,7 @@ export const PACKS: Pack[] = [
         aspect: 'pack',
         cost: 320,
         card_count: 11,
+        level_required: 30,
     },
     {
         id: 'ex4',
@@ -177,6 +198,7 @@ export const PACKS: Pack[] = [
         aspect: 'pack',
         cost: 574.08,
         card_count: 11,
+        level_required: 30,
     },
     {
         id: 'ex7',
@@ -186,7 +208,9 @@ export const PACKS: Pack[] = [
         aspect: 'pack',
         cost: 1805.77,
         card_count: 11,
+        level_required: 30,
     },
+    // ── Level 35 ───────────────────────────────────────────────────────────────
     {
         id: 'sm9',
         name: 'Team Up',
@@ -195,15 +219,9 @@ export const PACKS: Pack[] = [
         aspect: 'pack',
         cost: 102.92,
         card_count: 10,
+        level_required: 35,
     },
-    /*{
-        id: 'smp',
-        name: 'SM Black Star Promos',
-        image: '/packs/blackstar-promo.png',
-        description: 'Sun & Moon - Black Star Promos',
-        aspect: 'box',
-        cost: 500,
-    },*/
+    // ── Level 40 ───────────────────────────────────────────────────────────────
     {
         id: 'xy7',
         name: 'Ancient Origins',
@@ -212,6 +230,7 @@ export const PACKS: Pack[] = [
         aspect: 'pack',
         cost: 120.98,
         card_count: 10,
+        level_required: 40,
     },
     {
         id: 'theme-charizard',

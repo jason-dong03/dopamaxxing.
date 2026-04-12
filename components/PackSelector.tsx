@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PACKS, type Pack } from '@/lib/packs'
 import PackOpening from './PackOpening'
 import CrateOpening from './CrateOpening'
-import { RARITY_ORDER, RARITY_COLOR } from '@/lib/rarityConfig'
+import { RARITY_ORDER, RARITY_COLOR, rarityTextStyle, rarityTextClass, rarityGlowClass, isRainbow } from '@/lib/rarityConfig'
 
 // ─── main selector ────────────────────────────────────────────────────────────
 export default function PackSelector({ coins = 0 }: { coins?: number }) {
@@ -15,6 +15,14 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
     const [bagCount, setBagCount] = useState<number | null>(null)
     const [bagCapacity, setBagCapacity] = useState<number>(50)
     const [allPacks, setAllPacks] = useState<Pack[]>(PACKS)
+
+    // Hydrate from DB — replaces static fallback once loaded
+    useEffect(() => {
+        fetch('/api/packs')
+            .then(r => r.ok ? r.json() : null)
+            .then(json => { if (json?.packs?.length) setAllPacks(json.packs) })
+            .catch(() => {})
+    }, [])
     const [activeTab, setActiveTab] = useState<
         'classic' | 'special' | 'crates'
     >('classic')
@@ -58,35 +66,6 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
             })
         })
 
-        fetch('/api/pack-prices')
-            .then((r) => (r.ok ? r.json() : null))
-            .then((json) => {
-                if (!json?.prices) return
-                const priceMap = new Map<string, (typeof json.prices)[0]>(
-                    json.prices.map((p: any) => [p.id, p]),
-                )
-                setAllPacks(
-                    PACKS.map((pack) => {
-                        const meta = priceMap.get(pack.id)
-                        if (!meta) return pack
-                        return {
-                            ...pack,
-                            cost: meta.cost,
-                            ...(meta.name != null && { name: meta.name }),
-                            ...(meta.description != null && {
-                                description: meta.description,
-                            }),
-                            ...(meta.special != null && {
-                                special: meta.special,
-                            }),
-                            ...(meta.card_count != null && {
-                                card_count: meta.card_count,
-                            }),
-                        }
-                    }),
-                )
-            })
-            .catch(() => {})
 
         refreshStock()
     }, [refreshStock])
@@ -182,7 +161,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                     width: '100%',
                     maxWidth: 700,
                     margin: '0 auto',
-                    padding: '28px 16px 24px',
+                    padding: '28px 16px 0',
                 }}
             >
                 {bagFull && (
@@ -401,7 +380,7 @@ function PackShopList({
     const textColor = gold ? '#92400e' : 'var(--app-text-secondary)'
 
     return (
-        <section style={{ marginBottom: 48 }} {...rest}>
+        <section style={{ marginBottom: 0 }} {...rest}>
             <div
                 style={{
                     display: 'flex',
@@ -1866,25 +1845,23 @@ function CardListModal({ pack, onClose }: { pack: Pack; onClose: () => void }) {
                                             }}
                                         >
                                             <div
+                                                className={rarityGlowClass(rarity)}
                                                 style={{
                                                     width: 8,
                                                     height: 8,
                                                     borderRadius: '50%',
-                                                    background:
-                                                        RARITY_COLOR[rarity] ??
-                                                        '#9ca3af',
+                                                    background: isRainbow(rarity) ? '#fff' : (RARITY_COLOR[rarity] ?? '#9ca3af'),
                                                     flexShrink: 0,
                                                 }}
                                             />
                                             <span
+                                                className={rarityTextClass(rarity)}
                                                 style={{
                                                     fontSize: '0.6rem',
                                                     fontWeight: 700,
-                                                    color:
-                                                        RARITY_COLOR[rarity] ??
-                                                        'var(--app-text-muted)',
                                                     letterSpacing: '0.08em',
                                                     textTransform: 'uppercase',
+                                                    ...rarityTextStyle(rarity),
                                                 }}
                                             >
                                                 {rarity} —{' '}
@@ -1894,7 +1871,7 @@ function CardListModal({ pack, onClose }: { pack: Pack; onClose: () => void }) {
                                                 style={{
                                                     flex: 1,
                                                     height: 1,
-                                                    background: `${RARITY_COLOR[rarity] ?? '#374151'}30`,
+                                                    background: isRainbow(rarity) ? 'rgba(255,255,255,0.15)' : `${RARITY_COLOR[rarity] ?? '#374151'}30`,
                                                 }}
                                             />
                                         </div>

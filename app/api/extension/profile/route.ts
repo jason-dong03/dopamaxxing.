@@ -42,9 +42,13 @@ export const GET = withExtensionAuth(async ({ user, supabase }) => {
 
     const br = await recalcBattleRating(supabase, user.id)
 
+    // Google OAuth stores the profile picture in user_metadata
+    const avatar_url = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null
+
     return NextResponse.json({
         username: profile.username,
         first_name: profile.first_name,
+        avatar_url,
         coins: profile.coins,
         xp: profile.xp,
         level: profile.level,

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { rarityTextStyle } from '@/lib/rarityConfig'
+import { rarityTextStyle, RARITY_COLOR, type Rarity } from '@/lib/rarityConfig'
 import { conditionFilter, centeringSkew } from '@/lib/cardAttributes'
 import WearOverlay from '@/components/card/WearOverlay'
 import type { Binder, BinderCard, BinderUserCard, BinderMyCard, CardInfo } from '@/lib/types'
@@ -180,7 +180,7 @@ function CardPocket({
                         </Tag>
                         <Tag
                             bg="rgba(0,0,0,0.7)"
-                            color={rarityTextStyle(card.rarity).color ?? '#fff'}
+                            color={RARITY_COLOR[card.rarity as Rarity] ?? '#fff'}
                         >
                             {card.rarity}
                         </Tag>
@@ -333,7 +333,7 @@ function CardDetailModal({
                             </h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
                                 <Tag bg="rgba(30,64,175,0.85)" color="#93c5fd">Lv {uc.card_level}</Tag>
-                                <Tag bg="rgba(0,0,0,0.7)" color={rarityTextStyle(card.rarity).color ?? '#fff'}>
+                                <Tag bg="rgba(0,0,0,0.7)" color={RARITY_COLOR[card.rarity as Rarity] ?? '#fff'}>
                                     {card.rarity}
                                 </Tag>
                                 {uc.grade != null && (

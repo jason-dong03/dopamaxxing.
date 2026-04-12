@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { PACKS } from '@/lib/packs'
+import { getMergedPacks } from '@/lib/packMeta'
 
 const STARTER_PACK_IDS = ['sv10.5b', 'sv10.5w', 'sv08.5', 'sv03.5', 'me02.5']
 
@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid starter pack' }, { status: 400 })
     }
 
-    const validPack = PACKS.find(p => p.id === packId)
+    const allPacks = await getMergedPacks(supabase)
+    const validPack = allPacks.find(p => p.id === packId)
     if (!validPack) return NextResponse.json({ error: 'Pack not found' }, { status: 400 })
 
     // Check if already claimed

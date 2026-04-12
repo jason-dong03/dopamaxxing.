@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse, NextRequest } from 'next/server'
-import { PACKS } from '@/lib/packs'
+import { getMergedPacks } from '@/lib/packMeta'
 
 export async function GET(request: NextRequest) {
     const id = request.nextUrl.searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-    const pack = PACKS.find((p) => p.id === id)
-    if (!pack) return NextResponse.json({ error: 'Pack not found' }, { status: 404 })
-
     const supabase = await createClient()
+    const allPacks = await getMergedPacks(supabase)
+    const pack = allPacks.find((p) => p.id === id)
+    if (!pack) return NextResponse.json({ error: 'Pack not found' }, { status: 404 })
 
     let query = supabase
         .from('cards')
