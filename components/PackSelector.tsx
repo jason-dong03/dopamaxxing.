@@ -14,6 +14,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
     const [previewPack, setPreviewPack] = useState<Pack | null>(null)
     const [bagCount, setBagCount] = useState<number | null>(null)
     const [bagCapacity, setBagCapacity] = useState<number>(50)
+    const [isAdmin, setIsAdmin] = useState(false)
     const [allPacks, setAllPacks] = useState<Pack[]>(PACKS)
 
     // Hydrate from DB — replaces static fallback once loaded
@@ -57,17 +58,17 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                     .eq('user_id', user.id),
                 supabase
                     .from('profiles')
-                    .select('bag_capacity')
+                    .select('bag_capacity, is_admin')
                     .eq('id', user.id)
                     .single(),
             ]).then(([countRes, profileRes]) => {
                 setBagCount(countRes.count ?? 0)
                 setBagCapacity(profileRes.data?.bag_capacity ?? 50)
+                const admin = !!(profileRes.data as any)?.is_admin
+                setIsAdmin(admin)
+                if (!admin) refreshStock()
             })
         })
-
-
-        refreshStock()
     }, [refreshStock])
 
     // Independent auto-refresh timers per group
@@ -109,8 +110,9 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
             <PackOpening
                 pack={selectedPack}
                 count={selectedCount}
-                stock={stock[selectedPack.id] ?? 1}
+                stock={isAdmin ? 999 : (stock[selectedPack.id] ?? 1)}
                 discount={discounts[selectedPack.id] ?? 0}
+                isAdmin={isAdmin}
                 onBack={() => {
                     setSelectedPack(null)
                     setSelectedCount(1)
@@ -207,7 +209,8 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         bagFull={bagFull}
                         stock={stock}
                         discounts={discounts}
-                        nextRefreshAt={nextRefreshStandard}
+                        isAdmin={isAdmin}
+                        nextRefreshAt={isAdmin ? null : nextRefreshStandard}
                         onStockExpired={refreshStock}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
@@ -225,7 +228,8 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         bagFull={bagFull}
                         stock={stock}
                         discounts={discounts}
-                        nextRefreshAt={nextRefreshSpecial}
+                        isAdmin={isAdmin}
+                        nextRefreshAt={isAdmin ? null : nextRefreshSpecial}
                         onStockExpired={refreshStock}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
@@ -243,7 +247,8 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         bagFull={bagFull}
                         stock={stock}
                         discounts={discounts}
-                        nextRefreshAt={nextRefreshBox}
+                        isAdmin={isAdmin}
+                        nextRefreshAt={isAdmin ? null : nextRefreshBox}
                         onStockExpired={refreshStock}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
@@ -353,6 +358,7 @@ function PackShopList({
     bagFull,
     stock,
     discounts,
+    isAdmin,
     nextRefreshAt,
     onStockExpired,
     hoveredId,
@@ -368,6 +374,7 @@ function PackShopList({
     bagFull: boolean
     stock: Record<string, number>
     discounts: Record<string, number>
+    isAdmin?: boolean
     nextRefreshAt: string | null
     onStockExpired?: () => void
     hoveredId: string | null
@@ -459,6 +466,7 @@ function PackShopList({
                                 gold={gold}
                                 stock={stock[pack.id] ?? 0}
                                 discount={discounts[pack.id] ?? 0}
+                                isAdmin={isAdmin}
                                 onHover={onHover}
                                 onSelect={() => onSelect(pack)}
                                 onPreview={onPreview}
@@ -693,6 +701,7 @@ function ShopPackRow({
     gold,
     stock,
     discount,
+    isAdmin,
     onHover,
     onSelect,
     onPreview,
@@ -704,13 +713,14 @@ function ShopPackRow({
     gold?: boolean
     stock: number
     discount: number
+    isAdmin?: boolean
     onHover: (id: string | null) => void
     onSelect: () => void
     onPreview: (pack: Pack) => void
 }) {
     const discountedCost = parseFloat((pack.cost * (1 - discount)).toFixed(2))
-    const canAfford = coins >= discountedCost
-    const hasStock = stock > 0
+    const canAfford = isAdmin || coins >= discountedCost
+    const hasStock = isAdmin || stock > 0
     const disabled = bagFull || !canAfford || !hasStock
     const borderColor = gold ? 'rgba(234,179,8,0.22)' : 'rgba(255,255,255,0.08)'
     const hoverBorderColor = gold
@@ -877,18 +887,20 @@ function ShopPackRow({
                 </div>
 
                 {/* stock count — bottom right */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: 10,
-                        right: 14,
-                        fontSize: '0.9rem',
-                        fontWeight: 700,
-                        color: stock > 0 ? '#ffffff' : '#ef4444',
-                    }}
-                >
-                    {stock > 0 ? `x${stock}` : 'out of stock'}
-                </div>
+                {!isAdmin && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: 10,
+                            right: 14,
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: stock > 0 ? '#ffffff' : '#ef4444',
+                        }}
+                    >
+                        {stock > 0 ? `x${stock}` : 'out of stock'}
+                    </div>
+                )}
             </div>
 
             <div style={{ position: 'absolute', top: 10, right: 10 }}>

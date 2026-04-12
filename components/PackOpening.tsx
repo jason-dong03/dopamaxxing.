@@ -47,6 +47,7 @@ type Props = {
     count?: number
     stock?: number
     discount?: number
+    isAdmin?: boolean
     onPackOpened?: (packId: string, countOpened: number) => void
 }
 
@@ -59,6 +60,7 @@ export default function PackOpening({
     count = 1,
     stock = 1,
     discount = 0,
+    isAdmin = false,
     onPackOpened,
 }: Props) {
     const router = useRouter()
@@ -264,7 +266,7 @@ export default function PackOpening({
 
     async function handleClick(batchCount?: number) {
         if (shaking || opening) return
-        if (!free && stock <= 0) return
+        if (!free && !isAdmin && stock <= 0) return
         if (isLevelGated) return
         setCoinError(null)
         if (batchCount && batchCount > 1) {
@@ -1102,14 +1104,14 @@ export default function PackOpening({
                             )}
                         <div
                             ref={packImgRef}
-                            className={`${isLevelGated || (!free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer animate-subtle-pulse hover:scale-105'} ${shaking ? 'animate-shake' : ''} ${opening ? 'animate-fade-out' : ''}${!shaking && !tearing && !opening && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
+                            className={`${isLevelGated || (!isAdmin && !free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer animate-subtle-pulse hover:scale-105'} ${shaking ? 'animate-shake' : ''} ${opening ? 'animate-fade-out' : ''}${!shaking && !tearing && !opening && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
                             style={{
                                 ...(!pack.idle_aura ||
                                 shaking ||
                                 tearing ||
                                 opening
                                     ? {
-                                          filter: isLevelGated || (!free && stock <= 0)
+                                          filter: isLevelGated || (!isAdmin && !free && stock <= 0)
                                               ? 'grayscale(1) opacity(0.4)'
                                               : 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
                                       }
@@ -1127,11 +1129,11 @@ export default function PackOpening({
                                 src={pack.image}
                                 alt={pack.name}
                                 onClick={() => {
-                                    if (!free && stock <= 0) return
+                                    if (!free && !isAdmin && stock <= 0) return
                                     if (isLevelGated) return
                                     batchMode ? handleClick(stock) : handleClick()
                                 }}
-                                className={isLevelGated || (!free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer'}
+                                className={isLevelGated || (!isAdmin && !free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer'}
                                 style={{
                                     ...idleDims,
                                     objectFit: 'contain',
@@ -1154,12 +1156,12 @@ export default function PackOpening({
                                     Level {pack.level_required} required
                                 </div>
                             )}
-                            {!isLevelGated && !free && stock <= 0 && (
+                            {!isAdmin && !isLevelGated && !free && stock <= 0 && (
                                 <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ef4444' }}>
                                     Out of Stock
                                 </div>
                             )}
-                            {!isLevelGated && !free && stock > 0 && (
+                            {!isLevelGated && !free && (isAdmin || stock > 0) && (
                                 <div
                                     style={{
                                         display: 'flex',
@@ -1200,7 +1202,7 @@ export default function PackOpening({
                                             transition: 'color 0.15s',
                                         }}
                                     >
-                                        {batchMode
+                                        {batchMode && !isAdmin
                                             ? `$ ${(effectiveCost * stock).toFixed(2)}`
                                             : `$ ${effectiveCost.toFixed(2)}`}
                                     </span>
@@ -1216,7 +1218,7 @@ export default function PackOpening({
                                             ${pack.cost.toFixed(2)}
                                         </span>
                                     )}
-                                    {batchMode && (
+                                    {batchMode && !isAdmin && (
                                         <span
                                             style={{
                                                 fontSize: '0.62rem',
@@ -1238,7 +1240,7 @@ export default function PackOpening({
                                         >
                                             +
                                             {xpGainPerPack *
-                                                (batchMode ? stock : 1)}{' '}
+                                                (batchMode && !isAdmin ? stock : 1)}{' '}
                                             XP
                                         </span>
                                     )}
@@ -1264,7 +1266,7 @@ export default function PackOpening({
                                     marginTop: 4,
                                 }}
                             >
-                                {stock > 1 && (
+                                {!isAdmin && stock > 1 && (
                                     <button
                                         onClick={() => setBatchMode((v) => !v)}
                                         disabled={shaking || opening}

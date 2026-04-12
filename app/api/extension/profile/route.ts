@@ -6,7 +6,7 @@ export const GET = withExtensionAuth(async ({ user, supabase }) => {
     const [profileRes, stockRes, crateKeyRes] = await Promise.all([
         supabase
             .from('profiles')
-            .select('username, first_name, coins, xp, level, active_title, study_minutes_today, study_reset_date')
+            .select('username, first_name, coins, xp, level, active_title, study_minutes_today, study_reset_date, is_admin, bag_capacity')
             .eq('id', user.id)
             .single(),
         supabase
@@ -58,6 +58,8 @@ export const GET = withExtensionAuth(async ({ user, supabase }) => {
         needs_migration,
         br,
         stock,
+        is_admin: !!(profile as any).is_admin,
+        bag_capacity: (profile as any).bag_capacity ?? 50,
     })
 })
 
