@@ -82,6 +82,13 @@ export default function UsersTab() {
     const [gifting, setGifting]       = useState(false)
     const [giftMsg, setGiftMsg]       = useState('')
 
+    // force stock modal
+    const [stockTarget, setStockTarget] = useState<UserRow | null>(null)
+    const [stockPack, setStockPack]     = useState(PACKS[0].id)
+    const [stockQty, setStockQty]       = useState(10)
+    const [stockSaving, setStockSaving] = useState(false)
+    const [stockMsg, setStockMsg]       = useState('')
+
     const fetchUsers = useCallback(() => {
         setLoading(true)
         const params = new URLSearchParams({ page: String(page), search })
@@ -144,6 +151,20 @@ export default function UsersTab() {
             const b = await res.json().catch(() => ({}))
             setDeleteMsg(b.error ?? 'Error deleting user')
         }
+    }
+
+    async function forceStock() {
+        if (!stockTarget) return
+        setStockSaving(true)
+        setStockMsg('')
+        const res = await fetch('/api/admin/force-stock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: stockTarget.id, packId: stockPack, quantity: stockQty }),
+        })
+        setStockSaving(false)
+        const b = await res.json().catch(() => ({}))
+        setStockMsg(res.ok ? `✓ Set ${stockPack} stock to ${stockQty}` : (b.error ?? 'Error'))
     }
 
     async function giftPacks() {
@@ -233,6 +254,12 @@ export default function UsersTab() {
                                                 style={{ fontSize: '0.65rem', padding: '3px 8px', borderRadius: 5, border: '1px solid rgba(129,140,248,0.4)', background: 'rgba(129,140,248,0.1)', color: '#818cf8', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                             >
                                                 Gift Pack
+                                            </button>
+                                            <button
+                                                onClick={() => { setStockTarget(u); setStockMsg('') }}
+                                                style={{ fontSize: '0.65rem', padding: '3px 8px', borderRadius: 5, border: '1px solid rgba(234,179,8,0.4)', background: 'rgba(234,179,8,0.08)', color: '#fbbf24', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                            >
+                                                Stock
                                             </button>
                                         </div>
                                     </td>
@@ -326,6 +353,41 @@ export default function UsersTab() {
                         <button onClick={giftPacks} disabled={gifting}
                             style={{ width: '100%', padding: '10px 0', borderRadius: 9, fontSize: '0.82rem', fontWeight: 700, background: 'rgba(129,140,248,0.15)', border: '1px solid rgba(129,140,248,0.4)', color: '#818cf8', cursor: gifting ? 'not-allowed' : 'pointer' }}>
                             {gifting ? 'Gifting…' : `Gift ${giftQty} Pack${giftQty !== 1 ? 's' : ''}`}
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* Force stock modal */}
+            {stockTarget && (
+                <div onClick={() => setStockTarget(null)} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+                    <div onClick={e => e.stopPropagation()} style={{ background: '#0e0e16', border: '1px solid rgba(234,179,8,0.2)', borderRadius: 14, width: '100%', maxWidth: 420, padding: 24 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fbbf24' }}>Force Stock</span>
+                            <button onClick={() => setStockTarget(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.1rem' }}>×</button>
+                        </div>
+                        <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '0 0 16px' }}>
+                            Set pack stock for <strong style={{ color: '#a5b4fc' }}>{stockTarget.username ?? ([stockTarget.first_name, stockTarget.last_name].filter(Boolean).join(' ') || stockTarget.id)}</strong>
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+                            <div>
+                                <label style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, display: 'block', marginBottom: 4 }}>PACK</label>
+                                <select value={stockPack} onChange={e => setStockPack(e.target.value)}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '7px 10px', fontSize: '0.78rem', color: '#e2e8f0', outline: 'none' }}>
+                                    {PACKS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700, display: 'block', marginBottom: 4 }}>QUANTITY</label>
+                                <input type="number" min={0} max={999} value={stockQty} onChange={e => setStockQty(Math.max(0, Number(e.target.value)))}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '7px 10px', fontSize: '0.78rem', color: '#e2e8f0', outline: 'none', boxSizing: 'border-box' }} />
+                            </div>
+                        </div>
+                        {stockMsg && (
+                            <div style={{ fontSize: '0.7rem', marginBottom: 12, color: stockMsg.startsWith('✓') ? '#4ade80' : '#f87171' }}>{stockMsg}</div>
+                        )}
+                        <button onClick={forceStock} disabled={stockSaving}
+                            style={{ width: '100%', padding: '10px 0', borderRadius: 9, fontSize: '0.82rem', fontWeight: 700, background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.35)', color: '#fbbf24', cursor: stockSaving ? 'not-allowed' : 'pointer' }}>
+                            {stockSaving ? 'Saving…' : `Set to ${stockQty}`}
                         </button>
                     </div>
                 </div>

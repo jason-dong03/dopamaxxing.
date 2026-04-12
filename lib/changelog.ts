@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.3.0'
+export const APP_VERSION = '1.3.2'
 
 export type ChangelogEntry = {
     version: string
@@ -7,6 +7,18 @@ export type ChangelogEntry = {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+    {
+        version: '1.3.2',
+        date: '2026-04-12',
+        changes: [
+            'Packs are now fully database-driven — new packs can be added via admin panel without a deploy',
+            'Admin panel: pack config with image upload, card seeding, and per-user force stock controls',
+            'Admin accounts bypass stock limits for unlimited pack opening (single and batch)',
+            '??? rarity text now cycles RGB colors with animation',
+            'Card condition and scratches visible during pack reveal',
+            'Mobile: sell all amount shown inline, action buttons right-aligned',
+        ],
+    },
     {
         version: '1.3.1',
         date: '2026-04-12',

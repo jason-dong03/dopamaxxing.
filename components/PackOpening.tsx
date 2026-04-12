@@ -8,6 +8,8 @@ import {
     getCardWorth,
     isRainbow,
     rarityGlowRgb,
+    rarityTextClass,
+    rarityTextStyle,
     rarityToOdds,
 } from '@/lib/rarityConfig'
 import { useRouter } from 'next/navigation'
@@ -1953,6 +1955,7 @@ export default function PackOpening({
                                     }}
                                 >
                                     <span
+                                        className={rarityTextClass(currentCard.rarity)}
                                         style={{
                                             fontSize: '0.55rem',
                                             fontWeight: 700,
@@ -1961,9 +1964,9 @@ export default function PackOpening({
                                             borderRadius: 9999,
                                             background: 'rgba(10,10,15,0.82)',
                                             border: '1px solid rgba(255,255,255,0.1)',
-                                            color: `rgba(${rarityGlowRgb(currentCard.rarity)}, 1)`,
                                             letterSpacing: '0.03em',
                                             textTransform: 'uppercase',
+                                            ...rarityTextStyle(currentCard.rarity),
                                         }}
                                     >
                                         {currentCard.rarity}

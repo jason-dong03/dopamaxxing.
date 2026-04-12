@@ -279,8 +279,9 @@ body {
     100% { color: hsl(360, 100%, 65%); }
 }
 .rainbow-text {
+    color: hsl(0, 100%, 65%) !important;
     animation: rainbow-text 2s linear infinite;
-    -webkit-text-fill-color: unset !important;
+    -webkit-text-fill-color: currentColor !important;
     background: none !important;
     -webkit-background-clip: unset !important;
 }

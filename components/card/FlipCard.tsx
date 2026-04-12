@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { rarityGlowRgb, isRainbow, rarityToOdds } from '@/lib/rarityConfig'
+import WearOverlay from '@/components/card/WearOverlay'
+import { conditionFilter } from '@/lib/cardAttributes'
 
 type Props = {
     card: {
@@ -9,6 +11,10 @@ type Props = {
         name: string
         image_url: string
         rarity: string
+        attr_surface?: number
+        attr_centering?: number
+        attr_corners?: number
+        attr_edges?: number
     }
     onReveal: () => void
     onSpecialChange: (active: boolean, glowColor: string) => void
@@ -46,6 +52,13 @@ export default function FlipCard({
     const glowRgb = rarityGlowRgb(card.rarity)
     const cardIsRainbow = isRainbow(card.rarity)
     const isSpecial = SPECIAL_RARITIES.includes(card.rarity)
+
+    const overallCond = (() => {
+        const vals = [card.attr_centering, card.attr_corners, card.attr_edges, card.attr_surface]
+            .filter((v): v is number => v != null)
+        return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
+    })()
+    const condFilterVal = conditionFilter(overallCond)
 
     const glowStyle = cardIsRainbow
         ? undefined
@@ -163,11 +176,19 @@ export default function FlipCard({
                             src={card.image_url}
                             alt={card.name}
                             className="w-full h-full object-cover rounded-xl"
+                            style={{ filter: flipped ? condFilterVal : undefined }}
                         />
                         {isSpecial && flipped && (
                             <div
                                 className="absolute inset-0 rounded-xl animate-shine pointer-events-none"
                                 style={{ zIndex: 10 }}
+                            />
+                        )}
+                        {flipped && (
+                            <WearOverlay
+                                ucId={card.id}
+                                overallCond={overallCond}
+                                attrSurface={card.attr_surface ?? null}
                             />
                         )}
                     </div>

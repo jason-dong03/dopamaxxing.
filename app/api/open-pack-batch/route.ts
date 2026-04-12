@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         const [{ data: profile }, allCards, bagCountRes, luckBoost, todayEvents, crateKeyRes] = await Promise.all([
             supabase
                 .from('profiles')
-                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened')
+                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened, is_admin')
                 .eq('id', user.id)
                 .single(),
             packDef?.theme_pokedex_ids
@@ -101,14 +101,15 @@ export async function POST(request: NextRequest) {
 
         // ── crate key check ───────────────────────────────────────────────────
         const crateKeyCount = (crateKeyRes as { data: { quantity: number } | null })?.data?.quantity ?? 0
-        if (!free && isCrate && crateKeyCount < 1) {
+        if (!free && !isAdmin && isCrate && crateKeyCount < 1) {
             return NextResponse.json({ error: 'no_key', crate_keys: 0 }, { status: 402 })
         }
 
         // Stock check — regenerates if expired, caps count to available stock, derives pack discount
+        const isAdmin = !!(profile as any)?.is_admin
         let count = requestedCount
         let costPerPack = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))
-        if (!free) {
+        if (!free && !isAdmin) {
             const { stock, discounts } = await getOrRefreshStock(supabase, user.id)
             const available = stock[setId] ?? 0
             if (available <= 0) {

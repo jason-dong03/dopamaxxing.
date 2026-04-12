@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         const [{ data: profile }, allCards, bagCountRes, crateKeyRes] = await Promise.all([
             supabase
                 .from('profiles')
-                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened')
+                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened, is_admin')
                 .eq('id', user.id)
                 .single(),
             packDef?.theme_pokedex_ids
@@ -123,37 +123,39 @@ export async function POST(request: NextRequest) {
         }
 
         // ── stock check + decrement (also derives per-pack discount) ─────────
+        const isAdmin = !!(profile as any)?.is_admin
         let cost = 0
         if (!effectiveFree) {
-            const { stock, discounts } = await getOrRefreshStock(supabase, user.id)
-            const available = stock[setId] ?? 0
-            if (available <= 0) {
-                return NextResponse.json(
-                    { error: 'insufficient_stock', available: 0 },
-                    { status: 409 },
-                )
-            }
-            const packDiscount = discounts[setId] ?? 0
-            cost = parseFloat((baseCost * costDiscount * (1 - packDiscount)).toFixed(2))
+            if (!isAdmin) {
+                const { stock, discounts } = await getOrRefreshStock(supabase, user.id)
+                const available = stock[setId] ?? 0
+                if (available <= 0) {
+                    return NextResponse.json(
+                        { error: 'insufficient_stock', available: 0 },
+                        { status: 409 },
+                    )
+                }
+                const packDiscount = discounts[setId] ?? 0
+                cost = parseFloat((baseCost * costDiscount * (1 - packDiscount)).toFixed(2))
 
-            // Re-check coins with the final cost (pack discount may have lowered it)
-            if (cost > 0 && (profile?.coins ?? 0) < cost) {
-                return NextResponse.json(
-                    { error: 'insufficient_coins', cost, coins: profile?.coins ?? 0 },
-                    { status: 402 },
-                )
-            }
+                if (cost > 0 && (profile?.coins ?? 0) < cost) {
+                    return NextResponse.json(
+                        { error: 'insufficient_coins', cost, coins: profile?.coins ?? 0 },
+                        { status: 402 },
+                    )
+                }
 
-            await supabase
-                .from('pack_stock')
-                .update({ quantity: available - 1 })
-                .eq('user_id', user.id)
-                .eq('pack_id', setId)
+                await supabase
+                    .from('pack_stock')
+                    .update({ quantity: available - 1 })
+                    .eq('user_id', user.id)
+                    .eq('pack_id', setId)
+            }
         }
 
         // ── crate key check ───────────────────────────────────────────────────
         const crateKeyCount = (crateKeyRes as { data: { quantity: number } | null })?.data?.quantity ?? 0
-        if (!free && isCrate) {
+        if (!free && !isAdmin && isCrate) {
             if (crateKeyCount < 1) {
                 return NextResponse.json({ error: 'no_key', crate_keys: 0 }, { status: 402 })
             }
