@@ -28,6 +28,7 @@ type Props = {
     handleAddToBagDuplicate: () => void
     handleFeedCard: () => void
     handleBuyback: () => void
+    onAction?: () => void
 }
 
 export function CardStatsPanel({
@@ -47,6 +48,7 @@ export function CardStatsPanel({
     handleAddToBagDuplicate,
     handleFeedCard,
     handleBuyback,
+    onAction,
 }: Props) {
     const [hoveredBtn, setHoveredBtn] = useState<string | null>(null)
     const [statsTooltipPos, setStatsTooltipPos] = useState<{
@@ -81,22 +83,43 @@ export function CardStatsPanel({
     const bagFull = bagCount !== null && bagCount >= bagCapacity
     const actDisabled = animatingIndex !== null || shattering
 
-    const iconBtnStyle = (color: string): React.CSSProperties => ({
-        width: 34,
-        height: 34,
-        borderRadius: 8,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: actDisabled ? 'not-allowed' : 'pointer',
-        border: `1px solid ${color}55`,
-        background: `${color}12`,
-        color: color,
-        opacity: actDisabled ? 0.3 : 1,
-        transition: 'all 120ms',
-        flexShrink: 0,
-        position: 'relative' as const,
-    })
+    const iconBtnStyle = (color: string): React.CSSProperties => (
+        isMobile
+            ? {
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5,
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  cursor: actDisabled ? 'not-allowed' : 'pointer',
+                  border: `1px solid ${color}55`,
+                  background: `${color}12`,
+                  color: color,
+                  opacity: actDisabled ? 0.3 : 1,
+                  transition: 'all 120ms',
+                  flexShrink: 0,
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap' as const,
+              }
+            : {
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: actDisabled ? 'not-allowed' : 'pointer',
+                  border: `1px solid ${color}55`,
+                  background: `${color}12`,
+                  color: color,
+                  opacity: actDisabled ? 0.3 : 1,
+                  transition: 'all 120ms',
+                  flexShrink: 0,
+                  position: 'relative' as const,
+              }
+    )
 
     return (
         <>
@@ -1071,17 +1094,15 @@ export function CardStatsPanel({
                         <div style={{ position: 'relative' }}>
                             <button
                                 disabled={actDisabled}
-                                onClick={
-                                    currentCardIsNew
-                                        ? handleAddToBag
-                                        : handleAddToBagDuplicate
-                                }
-                                onMouseEnter={() => setHoveredBtn('bag')}
+                                onClick={() => {
+                                    currentCardIsNew ? handleAddToBag() : handleAddToBagDuplicate()
+                                    onAction?.()
+                                }}
+                                onMouseEnter={() => !isMobile && setHoveredBtn('bag')}
                                 onMouseLeave={() => setHoveredBtn(null)}
                                 className="active:scale-95 transition-all"
                                 style={iconBtnStyle('#818cf8')}
                             >
-                                {/* shopping bag icon */}
                                 <svg
                                     width={14}
                                     height={14}
@@ -1096,8 +1117,9 @@ export function CardStatsPanel({
                                     <line x1="3" y1="6" x2="21" y2="6" />
                                     <path d="M16 10a4 4 0 01-8 0" />
                                 </svg>
+                                {isMobile && <span>Add to Bag</span>}
                             </button>
-                            {hoveredBtn === 'bag' && (
+                            {!isMobile && hoveredBtn === 'bag' && (
                                 <div
                                     style={{
                                         position: 'absolute',
@@ -1128,13 +1150,15 @@ export function CardStatsPanel({
                         <div style={{ position: 'relative' }}>
                             <button
                                 disabled={actDisabled || isFetchingCopies}
-                                onClick={handleFeedCard}
-                                onMouseEnter={() => setHoveredBtn('feed')}
+                                onClick={() => {
+                                    handleFeedCard()
+                                    onAction?.()
+                                }}
+                                onMouseEnter={() => !isMobile && setHoveredBtn('feed')}
                                 onMouseLeave={() => setHoveredBtn(null)}
                                 className="active:scale-95 transition-all"
                                 style={iconBtnStyle('#fbbf24')}
                             >
-                                {/* lightning bolt */}
                                 <svg
                                     width={14}
                                     height={14}
@@ -1147,8 +1171,9 @@ export function CardStatsPanel({
                                 >
                                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                                 </svg>
+                                {isMobile && <span>{isFetchingCopies ? 'Loading…' : 'Feed'}</span>}
                             </button>
-                            {hoveredBtn === 'feed' && (
+                            {!isMobile && hoveredBtn === 'feed' && (
                                 <div
                                     style={{
                                         position: 'absolute',
@@ -1175,13 +1200,15 @@ export function CardStatsPanel({
                     <div style={{ position: 'relative' }}>
                         <button
                             disabled={actDisabled}
-                            onClick={handleBuyback}
-                            onMouseEnter={() => setHoveredBtn('sell')}
+                            onClick={() => {
+                                handleBuyback()
+                                onAction?.()
+                            }}
+                            onMouseEnter={() => !isMobile && setHoveredBtn('sell')}
                             onMouseLeave={() => setHoveredBtn(null)}
                             className="active:scale-95 transition-all"
                             style={iconBtnStyle('#4ade80')}
                         >
-                            {/* dollar sign */}
                             <svg
                                 width={14}
                                 height={14}
@@ -1195,8 +1222,9 @@ export function CardStatsPanel({
                                 <line x1="12" y1="1" x2="12" y2="23" />
                                 <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
                             </svg>
+                            {isMobile && <span>Sell (${fmt(Number(buyback.amount))})</span>}
                         </button>
-                        {hoveredBtn === 'sell' && (
+                        {!isMobile && hoveredBtn === 'sell' && (
                             <div
                                 style={{
                                     position: 'absolute',

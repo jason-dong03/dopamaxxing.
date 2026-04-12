@@ -44,6 +44,7 @@ type Props = {
     free?: boolean
     count?: number
     stock?: number
+    discount?: number
     onPackOpened?: (packId: string, countOpened: number) => void
 }
 
@@ -55,11 +56,13 @@ export default function PackOpening({
     free = false,
     count = 1,
     stock = 1,
+    discount = 0,
     onPackOpened,
 }: Props) {
     const router = useRouter()
     const isMobile = useIsMobile()
     const supabase = createClient()
+    const effectiveCost = parseFloat((pack.cost * (1 - discount)).toFixed(2))
     const [userCoins, setUserCoins] = useState<number | null>(null)
     const [shaking, setShaking] = useState(false)
     const [tearing, setTearing] = useState(false)
@@ -258,6 +261,7 @@ export default function PackOpening({
 
     async function handleClick(batchCount?: number) {
         if (shaking || opening) return
+        if (!free && stock <= 0) return
         setCoinError(null)
         if (batchCount && batchCount > 1) {
             setOpenCount(batchCount)
@@ -317,9 +321,11 @@ export default function PackOpening({
                 )
             }
             const actualOpened = data.openedCount ?? effectiveCount
-            if (!free && pack.cost > 0) {
-                setUserCoins((prev) => (prev ?? 0) - pack.cost * actualOpened)
-                triggerCoinFlash(pack.cost * actualOpened, false)
+            if (!free && effectiveCost > 0) {
+                setUserCoins(
+                    (prev) => (prev ?? 0) - effectiveCost * actualOpened,
+                )
+                triggerCoinFlash(effectiveCost * actualOpened, false)
             }
             onPackOpened?.(pack.id, actualOpened)
         } else {
@@ -365,9 +371,9 @@ export default function PackOpening({
                     }),
                 )
             }
-            if (!free && pack.cost > 0) {
-                setUserCoins((prev) => (prev ?? 0) - pack.cost)
-                triggerCoinFlash(pack.cost, false)
+            if (!free && effectiveCost > 0) {
+                setUserCoins((prev) => (prev ?? 0) - effectiveCost)
+                triggerCoinFlash(effectiveCost, false)
             }
             onPackOpened?.(pack.id, 1)
 
@@ -1092,14 +1098,16 @@ export default function PackOpening({
                             )}
                         <div
                             ref={packImgRef}
-                            className={`cursor-pointer animate-subtle-pulse hover:scale-105 ${shaking ? 'animate-shake' : ''} ${opening ? 'animate-fade-out' : ''}${!shaking && !tearing && !opening && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
+                            className={`${!free && stock <= 0 ? 'cursor-not-allowed' : 'cursor-pointer animate-subtle-pulse hover:scale-105'} ${shaking ? 'animate-shake' : ''} ${opening ? 'animate-fade-out' : ''}${!shaking && !tearing && !opening && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
                             style={{
                                 ...(!pack.idle_aura ||
                                 shaking ||
                                 tearing ||
                                 opening
                                     ? {
-                                          filter: 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
+                                          filter: !free && stock <= 0
+                                              ? 'grayscale(1) opacity(0.4)'
+                                              : 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
                                       }
                                     : {}),
                                 transform: tearing
@@ -1114,12 +1122,11 @@ export default function PackOpening({
                             <img
                                 src={pack.image}
                                 alt={pack.name}
-                                onClick={() =>
-                                    batchMode
-                                        ? handleClick(stock)
-                                        : handleClick()
-                                }
-                                className="cursor-pointer"
+                                onClick={() => {
+                                    if (!free && stock <= 0) return
+                                    batchMode ? handleClick(stock) : handleClick()
+                                }}
+                                className={!free && stock <= 0 ? 'cursor-not-allowed' : 'cursor-pointer'}
                                 style={{
                                     ...idleDims,
                                     objectFit: 'contain',
@@ -1137,7 +1144,12 @@ export default function PackOpening({
                                 )}
                         </div>
                         <div className="flex flex-col items-center gap-2 mt-8">
-                            {!free && (
+                            {!free && stock <= 0 && (
+                                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ef4444' }}>
+                                    Out of Stock
+                                </div>
+                            )}
+                            {!free && stock > 0 && (
                                 <div
                                     style={{
                                         display: 'flex',
@@ -1145,6 +1157,21 @@ export default function PackOpening({
                                         gap: 8,
                                     }}
                                 >
+                                    {discount > 0 && (
+                                        <span
+                                            style={{
+                                                fontSize: '0.55rem',
+                                                fontWeight: 800,
+                                                background: '#22c55e',
+                                                color: '#000',
+                                                borderRadius: 4,
+                                                padding: '1px 5px',
+                                                letterSpacing: '0.04em',
+                                            }}
+                                        >
+                                            -{Math.round(discount * 100)}% OFF
+                                        </span>
+                                    )}
                                     <span
                                         style={{
                                             fontSize: '0.82rem',
@@ -1153,8 +1180,9 @@ export default function PackOpening({
                                                 userCoins !== null
                                                     ? userCoins >=
                                                       (batchMode
-                                                          ? pack.cost * stock
-                                                          : pack.cost)
+                                                          ? effectiveCost *
+                                                            stock
+                                                          : effectiveCost)
                                                         ? '#4ade80'
                                                         : '#f87171'
                                                     : '#6b7280',
@@ -1163,9 +1191,21 @@ export default function PackOpening({
                                         }}
                                     >
                                         {batchMode
-                                            ? `$ ${(pack.cost * stock).toFixed(2)}`
-                                            : `$ ${pack.cost.toFixed(2)}`}
+                                            ? `$ ${(effectiveCost * stock).toFixed(2)}`
+                                            : `$ ${effectiveCost.toFixed(2)}`}
                                     </span>
+                                    {discount > 0 && (
+                                        <span
+                                            style={{
+                                                fontSize: '0.62rem',
+                                                color: '#475569',
+                                                textDecoration: 'line-through',
+                                                letterSpacing: '-0.01em',
+                                            }}
+                                        >
+                                            ${pack.cost.toFixed(2)}
+                                        </span>
+                                    )}
                                     {batchMode && (
                                         <span
                                             style={{
@@ -1174,7 +1214,8 @@ export default function PackOpening({
                                                 letterSpacing: '-0.01em',
                                             }}
                                         >
-                                            ({stock} × ${pack.cost.toFixed(2)})
+                                            ({stock} × $
+                                            {effectiveCost.toFixed(2)})
                                         </span>
                                     )}
                                     {xpGainPerPack !== null && (
@@ -1333,6 +1374,7 @@ export default function PackOpening({
                 )}
 
                 {/* card stack + flip button — offset downward to sit more centred */}
+                {/* ↓ vertical position: adjust translateY below (mobile / desktop) */}
                 {phase === 'revealing' && (
                     <div
                         style={{
@@ -1341,8 +1383,8 @@ export default function PackOpening({
                             alignItems: 'center',
                             paddingTop: 'min(20px, 5vw)',
                             transform: isMobile
-                                ? 'translateY(16px)'
-                                : 'translateY(21px)',
+                                ? 'translateY(11px)'
+                                : 'translateY(16px)',
                         }}
                     >
                         <div
@@ -1464,6 +1506,7 @@ export default function PackOpening({
                 )}
 
                 {/* multi-pack reveal phase */}
+                {/* ↓ vertical position: adjust paddingTop below */}
                 {phase === 'multi-revealing' &&
                     (() => {
                         const packStart = multiPackIndex * cardsPerPack
@@ -1479,7 +1522,7 @@ export default function PackOpening({
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
-                                    paddingTop: 'min(48px, 10vw)',
+                                    paddingTop: 'min(10px, 8vw)',
                                 }}
                             >
                                 {/* pack counter — always visible above cards */}
@@ -1645,36 +1688,39 @@ export default function PackOpening({
                                                 </div>
                                             </div>
                                         ) : (
-                                            /* Desktop: single row */
-                                            <div
-                                                style={{
-                                                    display: 'flex',
-                                                    flexWrap: 'nowrap',
-                                                    justifyContent: 'center',
-                                                    alignItems: 'center',
-                                                    gap: 10,
-                                                    overflowX: 'auto',
-                                                    maxWidth: '98vw',
-                                                    padding: '4px 8px',
-                                                    animation:
-                                                        'fadeIn 250ms ease-out',
-                                                }}
-                                            >
-                                                {packCards.map((card, i) => (
-                                                    <img
-                                                        key={`${card.id}-${packStart + i}-face`}
-                                                        src={card.image_url}
-                                                        alt={card.name}
-                                                        className="rounded-lg"
+                                            /* Desktop: 1 row ≤5 cards, 2 rows >5 cards */
+                                            (() => {
+                                                const twoRows = packCards.length > 5
+                                                const cols = twoRows ? Math.ceil(packCards.length / 2) : packCards.length
+                                                const cardH = twoRows ? 155 : 220
+                                                return (
+                                                    <div
                                                         style={{
-                                                            height: '220px',
-                                                            width: 'auto',
-                                                            flexShrink: 0,
-                                                            boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
+                                                            display: 'grid',
+                                                            gridTemplateColumns: `repeat(${cols}, auto)`,
+                                                            justifyContent: 'center',
+                                                            gap: 10,
+                                                            maxWidth: '98vw',
+                                                            padding: '4px 8px',
+                                                            animation: 'fadeIn 250ms ease-out',
                                                         }}
-                                                    />
-                                                ))}
-                                            </div>
+                                                    >
+                                                        {packCards.map((card, i) => (
+                                                            <img
+                                                                key={`${card.id}-${packStart + i}-face`}
+                                                                src={card.image_url}
+                                                                alt={card.name}
+                                                                className="rounded-lg"
+                                                                style={{
+                                                                    height: `${cardH}px`,
+                                                                    width: 'auto',
+                                                                    boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )
+                                            })()
                                         )
                                     ) : (
                                         <div
@@ -1867,7 +1913,11 @@ export default function PackOpening({
                                 onAnimationEnd={handleAnimationEnd}
                             >
                                 <img
-                                    src={currentCard.image_url}
+                                    src={
+                                        currentOverallCond !== null && currentOverallCond > 8 && currentCard.image_url_hi
+                                            ? currentCard.image_url_hi
+                                            : currentCard.image_url
+                                    }
                                     alt={currentCard.name}
                                     className={`rounded-xl${currentIsRainbow ? ' glow-rainbow' : ''}`}
                                     style={{
@@ -1926,7 +1976,11 @@ export default function PackOpening({
                                 {shattering && (
                                     <ShatterEffect
                                         rarity={currentCard.rarity}
-                                        imageUrl={currentCard.image_url}
+                                        imageUrl={
+                                            currentOverallCond !== null && currentOverallCond > 8 && currentCard.image_url_hi
+                                                ? currentCard.image_url_hi
+                                                : currentCard.image_url
+                                        }
                                     />
                                 )}
                                 <WearOverlay
@@ -1965,6 +2019,7 @@ export default function PackOpening({
                                 }
                                 handleFeedCard={handleFeedCard}
                                 handleBuyback={handleBuyback}
+                                onAction={() => setShowDetails(false)}
                             />
                         )
 

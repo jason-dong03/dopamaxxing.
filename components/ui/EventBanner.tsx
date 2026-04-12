@@ -39,9 +39,9 @@ const KEYFRAMES = `
 
 export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
     const [now, setNow] = useState(0)
-    const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
     const [mounted, setMounted] = useState(false)
     const [packOpen, setPackOpen] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
     const pathname = usePathname()
 
     useEffect(() => {
@@ -49,6 +49,13 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
         setNow(Date.now())
         const id = setInterval(() => setNow(Date.now()), 1000)
         return () => clearInterval(id)
+    }, [])
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768)
+        check()
+        window.addEventListener('resize', check)
+        return () => window.removeEventListener('resize', check)
     }, [])
 
     useEffect(() => {
@@ -71,8 +78,9 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
             <div
                 style={{
                     position: 'fixed',
-                    top: 73,
-                    left: 16,
+                    ...(isMobile
+                        ? { bottom: 72, left: 8, right: 8, alignItems: 'flex-start' }
+                        : { top: 73, left: 16 }),
                     zIndex: 200,
                     display: 'flex',
                     flexDirection: 'column',
@@ -102,6 +110,7 @@ function EventPill({
     mounted: boolean
 }) {
     const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
+    const [touch, setTouch] = useState<{ x: number; y: number } | null>(null)
 
     const msLeft = new Date(ev.expiresAt).getTime() - now
     const rarityColor = EVENT_RARITY_COLOR[ev.eventRarity]
@@ -109,11 +118,18 @@ function EventPill({
     const isLegendary = ev.eventRarity === 'legendary'
     const isMystery = ev.eventRarity === '???'
 
+    const tooltipPos = mouse ?? touch
+
     return (
         <div
             style={{ cursor: 'default' }}
             onMouseEnter={(e) => setMouse({ x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setMouse(null)}
+            onTouchStart={(e) => {
+                const t = e.touches[0]
+                setTouch({ x: t.clientX, y: t.clientY })
+            }}
+            onTouchEnd={() => setTimeout(() => setTouch(null), 1500)}
         >
             {isLegendary || isMystery ? (
                 <div
@@ -161,11 +177,10 @@ function EventPill({
                         display: 'flex',
                         alignItems: 'center',
                         gap: 5,
-                        background: `${ev.color}12`,
+                        background: '#0e0e1a',
                         border: `1px solid ${ev.eventRarity === 'rare' ? ev.color + '90' : ev.color + '40'}`,
                         borderRadius: 20,
                         padding: '4px 10px 4px 7px',
-                        backdropFilter: 'blur(8px)',
                         whiteSpace: 'nowrap',
                     }}
                 >
@@ -186,13 +201,13 @@ function EventPill({
 
             {/* tooltip */}
             {mounted &&
-                mouse &&
+                tooltipPos &&
                 createPortal(
                     <div
                         style={{
                             position: 'fixed',
-                            left: mouse.x,
-                            top: mouse.y + 10,
+                            left: tooltipPos.x,
+                            top: tooltipPos.y + 10,
                             zIndex: 9999,
                             pointerEvents: 'none',
                             width: 220,

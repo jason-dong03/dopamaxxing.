@@ -2,6 +2,7 @@ export type Card = {
     id: string
     name: string
     image_url: string
+    image_url_hi?: string
     rarity: string
     national_pokedex_number: number
     worth: number

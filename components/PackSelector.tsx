@@ -19,6 +19,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
         'classic' | 'special' | 'crates'
     >('classic')
     const [stock, setStock] = useState<Record<string, number>>({})
+    const [discounts, setDiscounts] = useState<Record<string, number>>({})
     const [nextRefreshStandard, setNextRefreshStandard] = useState<string | null>(null)
     const [nextRefreshSpecial, setNextRefreshSpecial] = useState<string | null>(null)
     const [nextRefreshBox, setNextRefreshBox] = useState<string | null>(null)
@@ -29,6 +30,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
             .then((json) => {
                 if (!json?.stock) return
                 setStock(json.stock)
+                if (json.discounts) setDiscounts(json.discounts)
                 if (json.next_refresh_standard) setNextRefreshStandard(json.next_refresh_standard)
                 if (json.next_refresh_special)  setNextRefreshSpecial(json.next_refresh_special)
                 if (json.next_refresh_box)       setNextRefreshBox(json.next_refresh_box)
@@ -129,6 +131,7 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                 pack={selectedPack}
                 count={selectedCount}
                 stock={stock[selectedPack.id] ?? 1}
+                discount={discounts[selectedPack.id] ?? 0}
                 onBack={() => {
                     setSelectedPack(null)
                     setSelectedCount(1)
@@ -224,7 +227,9 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         coins={coins}
                         bagFull={bagFull}
                         stock={stock}
+                        discounts={discounts}
                         nextRefreshAt={nextRefreshStandard}
+                        onStockExpired={refreshStock}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
                         onSelect={(p) => { setSelectedCount(1); setSelectedPack(p) }}
@@ -240,7 +245,9 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         coins={coins}
                         bagFull={bagFull}
                         stock={stock}
+                        discounts={discounts}
                         nextRefreshAt={nextRefreshSpecial}
+                        onStockExpired={refreshStock}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
                         onSelect={(p) => { setSelectedCount(1); setSelectedPack(p) }}
@@ -256,7 +263,9 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
                         coins={coins}
                         bagFull={bagFull}
                         stock={stock}
+                        discounts={discounts}
                         nextRefreshAt={nextRefreshBox}
+                        onStockExpired={refreshStock}
                         hoveredId={hoveredId}
                         onHover={setHoveredId}
                         onSelect={(p) => { setSelectedCount(1); setSelectedPack(p) }}
@@ -364,7 +373,9 @@ function PackShopList({
     coins,
     bagFull,
     stock,
+    discounts,
     nextRefreshAt,
+    onStockExpired,
     hoveredId,
     onHover,
     onSelect,
@@ -377,7 +388,9 @@ function PackShopList({
     coins: number
     bagFull: boolean
     stock: Record<string, number>
+    discounts: Record<string, number>
     nextRefreshAt: string | null
+    onStockExpired?: () => void
     hoveredId: string | null
     onHover: (id: string | null) => void
     onSelect: (pack: Pack) => void
@@ -455,7 +468,7 @@ function PackShopList({
                         onMouseLeave={() => onHover(null)}
                     >
                         {nextRefreshAt && (
-                            <StockCountdown nextRefreshAt={nextRefreshAt} />
+                            <StockCountdown nextRefreshAt={nextRefreshAt} onExpired={onStockExpired} />
                         )}
                         {packs.map((pack) => (
                             <ShopPackRow
@@ -466,6 +479,7 @@ function PackShopList({
                                 bagFull={bagFull}
                                 gold={gold}
                                 stock={stock[pack.id] ?? 0}
+                                discount={discounts[pack.id] ?? 0}
                                 onHover={onHover}
                                 onSelect={() => onSelect(pack)}
                                 onPreview={onPreview}
@@ -634,7 +648,7 @@ function CountPickerModal({
     )
 }
 
-function StockCountdown({ nextRefreshAt }: { nextRefreshAt: string }) {
+function StockCountdown({ nextRefreshAt, onExpired }: { nextRefreshAt: string; onExpired?: () => void }) {
     const [remaining, setRemaining] = useState('')
     const [refreshing, setRefreshing] = useState(false)
 
@@ -652,10 +666,28 @@ function StockCountdown({ nextRefreshAt }: { nextRefreshAt: string }) {
             setRemaining(`restocks in ${m}:${String(s).padStart(2, '0')}`)
             return false
         }
-        if (update()) return // already expired, don't start interval
-        const id = setInterval(() => { if (update()) clearInterval(id) }, 1000)
+        if (update()) {
+            // Already expired on mount — trigger refresh and set a safety reset
+            onExpired?.()
+            const safety = setTimeout(() => {
+                setRefreshing(false)
+                setRemaining('')
+            }, 10000)
+            return () => clearTimeout(safety)
+        }
+        const id = setInterval(() => {
+            if (update()) {
+                clearInterval(id)
+                onExpired?.()
+                // Safety: if parent doesn't push new nextRefreshAt within 10s, clear the "restocking…" label
+                setTimeout(() => {
+                    setRefreshing(false)
+                    setRemaining('')
+                }, 10000)
+            }
+        }, 1000)
         return () => clearInterval(id)
-    }, [nextRefreshAt])
+    }, [nextRefreshAt, onExpired])
 
     return (
         <div
@@ -681,6 +713,7 @@ function ShopPackRow({
     bagFull,
     gold,
     stock,
+    discount,
     onHover,
     onSelect,
     onPreview,
@@ -691,11 +724,13 @@ function ShopPackRow({
     bagFull: boolean
     gold?: boolean
     stock: number
+    discount: number
     onHover: (id: string | null) => void
     onSelect: () => void
     onPreview: (pack: Pack) => void
 }) {
-    const canAfford = coins >= pack.cost
+    const discountedCost = parseFloat((pack.cost * (1 - discount)).toFixed(2))
+    const canAfford = coins >= discountedCost
     const hasStock = stock > 0
     const disabled = bagFull || !canAfford || !hasStock
     const borderColor = gold ? 'rgba(234,179,8,0.22)' : 'rgba(255,255,255,0.08)'
@@ -819,20 +854,46 @@ function ShopPackRow({
                         {pack.description}
                     </div>
 
-                    <div
-                        style={{
-                            fontSize: '0.84rem',
-                            fontWeight: 700,
-                            color: canAfford ? '#4ade80' : '#ef4444',
-                            marginTop: 4,
-                            textAlign: 'left',
-                        }}
-                    >
-                        Cost $
-                        {Number(pack.cost).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                        })}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+                        {discount > 0 && (
+                            <span
+                                style={{
+                                    fontSize: '0.58rem',
+                                    fontWeight: 800,
+                                    background: '#22c55e',
+                                    color: '#000',
+                                    borderRadius: 4,
+                                    padding: '1px 5px',
+                                    letterSpacing: '0.04em',
+                                }}
+                            >
+                                -{Math.round(discount * 100)}% OFF
+                            </span>
+                        )}
+                        <div
+                            style={{
+                                fontSize: '0.84rem',
+                                fontWeight: 700,
+                                color: canAfford ? '#4ade80' : '#ef4444',
+                            }}
+                        >
+                            Cost $
+                            {discountedCost.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })}
+                        </div>
+                        {discount > 0 && (
+                            <span
+                                style={{
+                                    fontSize: '0.67rem',
+                                    color: 'var(--app-text-muted)',
+                                    textDecoration: 'line-through',
+                                }}
+                            >
+                                ${Number(pack.cost).toFixed(2)}
+                            </span>
+                        )}
                     </div>
                 </div>
 

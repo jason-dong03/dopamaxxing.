@@ -62,12 +62,15 @@ export async function GET() {
             ownerProfile?.id
                 ? safeQuery(supabase.from('friendships').select('*', { count: 'exact', head: true }).eq('status', 'accepted').or(`and(requester_id.eq.${user.id},addressee_id.eq.${ownerProfile.id}),and(requester_id.eq.${ownerProfile.id},addressee_id.eq.${user.id})`))
                 : Promise.resolve({ data: null, count: 0 }),
-            safeQuery(supabase.from('user_quests').select('quest_id').eq('user_id', user.id).eq('status', 'completed')),
+            safeQuery(supabase.from('user_quests').select('quest_id, updated_at').eq('user_id', user.id).eq('status', 'completed')),
             safeQuery(supabase.from('purchases').select('id', { count: 'exact', head: true }).eq('user_id', user.id)),
             safeQuery(supabase.from('n_quest_progress').select('found_liberator_phrase, found_n_farewell').eq('user_id', user.id).maybeSingle() as any),
         ])
 
-        const completedIds = new Set(((completionsRes.data ?? []) as any[]).map((c) => c.quest_id))
+        type CompletionRow = { quest_id: string; updated_at: string }
+        const completionRows = (completionsRes.data ?? []) as CompletionRow[]
+        const completedIds = new Set(completionRows.map((c) => c.quest_id))
+        const lastCompletedAt = new Map(completionRows.map(c => [c.quest_id, new Date(c.updated_at).getTime()]))
         const profile = (profileRes.data ?? {}) as Record<string, unknown>
         const nqp = (nqpRes.data ?? {}) as Record<string, unknown>
         const cardsOwned = userMetricsRes.count
@@ -132,9 +135,17 @@ export async function GET() {
         const playerLevel = Number(profile.level) || 1
         const isVisible = buildIsVisible(allQuests, completedIds, playerLevel)
 
+        const nowMs = Date.now()
         const count = allQuests.filter((q) => {
             if (!isVisible(q)) return false
-            if (completedIds.has(q.id)) return false
+            if (completedIds.has(q.id)) {
+                // Repeatable quest — check if cooldown has elapsed
+                if (q.cooldown_hours == null) return false
+                const last = lastCompletedAt.get(q.id) ?? 0
+                if (nowMs - last < q.cooldown_hours * 60 * 60 * 1000) return false
+                // Auto quests must still meet requirements; self_report quests are always ready
+                return q.quest_type === 'auto' ? isAutoComplete(q, metrics) : true
+            }
             return isAutoComplete(q, metrics)
         }).length
 

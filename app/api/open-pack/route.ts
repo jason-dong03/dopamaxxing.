@@ -87,7 +87,9 @@ export async function POST(request: NextRequest) {
         const packDef = mergedPacks.find((p) => p.id === setId)
         const baseCost = packDef?.cost ?? 0
         const costDiscount = await getEventMagnitude('cheap_packs') // e.g. 0.75 = 25% off
-        const cost = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))
+        const freePackChance = free ? 0 : await getEventMagnitude('free_pack') // e.g. 0.15 = 15% chance
+        const luckyFree = !free && freePackChance > 0 && Math.random() < freePackChance
+        const effectiveFree = free || luckyFree
 
         // fetch profile + all set cards + bag count in parallel
         const [{ data: profile }, allCards, bagCountRes] = await Promise.all([
@@ -115,21 +117,10 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // ── coin check ────────────────────────────────────────────────────────
-        if (cost > 0 && (profile?.coins ?? 0) < cost) {
-            return NextResponse.json(
-                {
-                    error: 'insufficient_coins',
-                    cost,
-                    coins: profile?.coins ?? 0,
-                },
-                { status: 402 },
-            )
-        }
-
-        // ── stock check + decrement ───────────────────────────────────────────
-        if (!free) {
-            const { stock } = await getOrRefreshStock(supabase, user.id)
+        // ── stock check + decrement (also derives per-pack discount) ─────────
+        let cost = 0
+        if (!effectiveFree) {
+            const { stock, discounts } = await getOrRefreshStock(supabase, user.id)
             const available = stock[setId] ?? 0
             if (available <= 0) {
                 return NextResponse.json(
@@ -137,6 +128,17 @@ export async function POST(request: NextRequest) {
                     { status: 409 },
                 )
             }
+            const packDiscount = discounts[setId] ?? 0
+            cost = parseFloat((baseCost * costDiscount * (1 - packDiscount)).toFixed(2))
+
+            // Re-check coins with the final cost (pack discount may have lowered it)
+            if (cost > 0 && (profile?.coins ?? 0) < cost) {
+                return NextResponse.json(
+                    { error: 'insufficient_coins', cost, coins: profile?.coins ?? 0 },
+                    { status: 402 },
+                )
+            }
+
             await supabase
                 .from('pack_stock')
                 .update({ quantity: available - 1 })
@@ -389,6 +391,7 @@ export async function POST(request: NextRequest) {
             cards: cardsWithMeta,
             cardPool,
             godPack: isGodPack,
+            luckyFree,
             newBR,
             xpGain: xpGained,
             oldLevel,

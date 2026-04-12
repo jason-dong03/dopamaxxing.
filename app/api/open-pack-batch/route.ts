@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
         const packDef = mergedPacks.find((p) => p.id === setId)
         const baseCost = packDef?.cost ?? 0
         const costDiscount = await getEventMagnitude('cheap_packs')
-        const costPerPack = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))
 
         const [{ data: profile }, allCards, bagCountRes, luckBoost, todayEvents] = await Promise.all([
             supabase
@@ -96,10 +95,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'bag_full', bagCount, bagCapacity }, { status: 409 })
         }
 
-        // Stock check — regenerates if expired, caps count to available stock
+        // Stock check — regenerates if expired, caps count to available stock, derives pack discount
         let count = requestedCount
+        let costPerPack = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))
         if (!free) {
-            const { stock } = await getOrRefreshStock(supabase, user.id)
+            const { stock, discounts } = await getOrRefreshStock(supabase, user.id)
             const available = stock[setId] ?? 0
             if (available <= 0) {
                 return NextResponse.json(
@@ -108,6 +108,8 @@ export async function POST(request: NextRequest) {
                 )
             }
             count = Math.min(requestedCount, available)
+            const packDiscount = discounts[setId] ?? 0
+            costPerPack = parseFloat((baseCost * costDiscount * (1 - packDiscount)).toFixed(2))
             await supabase
                 .from('pack_stock')
                 .update({ quantity: available - count })

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { PACKS } from '@/lib/packs'
+import { getEventMagnitude } from '@/lib/dailyEvents'
 
 // Each group refreshes on its own independent timer
 export const REFRESH_MS = {
@@ -43,50 +44,74 @@ function getGroup(pack: { aspect?: string; special?: boolean; theme_pokedex_ids?
 }
 
 /** Random stock roll per pack — up to 8 for standard, scarcer for rarer types */
-function rollStock(packId: string): number {
+function rollStock(packId: string, surgeMult: number = 1): number {
     const pack = PACKS.find(p => p.id === packId)
     if (!pack) return 0
 
     const r = Math.random()
+    let qty: number
 
     // Crates/boxes: extremely rare — 90% chance of 0, 10% chance of 1
     if (pack.aspect === 'box') {
-        return r < 0.90 ? 0 : 1
+        qty = r < 0.90 ? 0 : 1
+    } else if (packId.includes('base')) {
+        // Base sets: rare
+        if (r < 0.25) qty = 0
+        else if (r < 0.55) qty = 1
+        else if (r < 0.80) qty = 2
+        else if (r < 0.95) qty = 3
+        else qty = 4
+    } else if (pack.special || pack.theme_pokedex_ids?.length) {
+        // Special / themed packs: moderate scarcity
+        if (r < 0.12) qty = 0
+        else if (r < 0.35) qty = 1
+        else if (r < 0.60) qty = 2
+        else if (r < 0.80) qty = 3
+        else if (r < 0.93) qty = 4
+        else qty = 5
+    } else {
+        // Standard packs: dramatic variance, up to 8
+        if (r < 0.05) qty = 1
+        else if (r < 0.15) qty = 2
+        else if (r < 0.35) qty = 3
+        else if (r < 0.55) qty = 4
+        else if (r < 0.72) qty = 5
+        else if (r < 0.85) qty = 6
+        else if (r < 0.94) qty = 7
+        else qty = 8
     }
 
-    // Base sets: rare (ids containing 'base')
-    if (packId.includes('base')) {
-        if (r < 0.25) return 0
-        if (r < 0.55) return 1
-        if (r < 0.80) return 2
-        if (r < 0.95) return 3
-        return 4
+    if (surgeMult > 1 && qty > 0) {
+        qty = Math.min(Math.round(qty * surgeMult), 50)
     }
-
-    // Special / themed packs: moderate scarcity
-    if (pack.special || pack.theme_pokedex_ids?.length) {
-        if (r < 0.12) return 0
-        if (r < 0.35) return 1
-        if (r < 0.60) return 2
-        if (r < 0.80) return 3
-        if (r < 0.93) return 4
-        return 5
-    }
-
-    // Standard packs: dramatic variance, up to 8
-    if (r < 0.05) return 1
-    if (r < 0.15) return 2
-    if (r < 0.35) return 3
-    if (r < 0.55) return 4
-    if (r < 0.72) return 5
-    if (r < 0.85) return 6
-    if (r < 0.94) return 7
-    return 8
+    return qty
 }
 
 export type StockResult = {
     stock: Record<string, number>
+    discounts: Record<string, number>
     nextRefreshAt: { standard: string; special: string; box: string }
+}
+
+/**
+ * Deterministically compute a per-pack discount for the current refresh cycle.
+ * Uses a hash of (packId + refreshedAt) so the same pack/refresh always returns
+ * the same value — consistent across server and client without a DB column.
+ * Returns 0 (no discount) ~65% of the time, otherwise 5/10/15/20%.
+ */
+export function computePackDiscount(packId: string, refreshedAt: string): number {
+    let h = 0x811c9dc5
+    const s = packId + '|' + refreshedAt
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i)
+        h = (h * 0x01000193) & 0xffffffff
+    }
+    const roll = Math.abs(h) % 100
+    if (roll < 5)  return 0.20   // 5% chance of 20% off
+    if (roll < 12) return 0.15   // 7% chance of 15% off
+    if (roll < 22) return 0.10   // 10% chance of 10% off
+    if (roll < 35) return 0.05   // 13% chance of 5% off
+    return 0                     // 65% no discount
 }
 
 /**
@@ -114,6 +139,7 @@ export async function getOrRefreshStock(
     const newRefreshedAt = new Date().toISOString()
 
     const stock: Record<string, number> = {}
+    const packRefreshedAt: Record<string, string> = {}
     const upsertRows: { user_id: string; pack_id: string; quantity: number; refreshed_at: string }[] = []
 
     // Track the oldest refreshed_at per group (to determine next refresh time)
@@ -131,16 +157,22 @@ export async function getOrRefreshStock(
         groupExpired[g] = now - groupRefreshed[g] >= REFRESH_MS[g]
     }
 
+    // Check for active stock surge event (only when regenerating)
+    const anyExpired = Object.values(groupExpired).some(Boolean)
+    const surgeMult = anyExpired ? await getEventMagnitude('stock_surge') : 1
+
     // Build stock: use existing for fresh groups, regenerate for expired groups
     for (const pack of unlockedPacks) {
         const group = getGroup(pack)
         if (groupExpired[group]) {
-            const qty = rollStock(pack.id)
+            const qty = rollStock(pack.id, surgeMult)
             stock[pack.id] = qty
+            packRefreshedAt[pack.id] = newRefreshedAt
             upsertRows.push({ user_id: userId, pack_id: pack.id, quantity: qty, refreshed_at: newRefreshedAt })
         } else {
             const row = rowMap.get(pack.id)
             stock[pack.id] = row ? Number(row.quantity) : 0
+            packRefreshedAt[pack.id] = row?.refreshed_at ?? newRefreshedAt
         }
     }
 
@@ -162,5 +194,12 @@ export async function getOrRefreshStock(
         box:      new Date((groupExpired.box      ? now : groupRefreshed.box)      + REFRESH_MS.box).toISOString(),
     }
 
-    return { stock, nextRefreshAt }
+    // Compute per-pack discounts from the deterministic hash
+    const discounts: Record<string, number> = {}
+    for (const pack of unlockedPacks) {
+        const ra = packRefreshedAt[pack.id]
+        if (ra) discounts[pack.id] = computePackDiscount(pack.id, ra)
+    }
+
+    return { stock, discounts, nextRefreshAt }
 }

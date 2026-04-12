@@ -7,6 +7,8 @@ export type EventEffect =
     | 'cheap_packs'
     | 'extra_card'
     | 'attr_boost'
+    | 'free_pack'
+    | 'stock_surge'
 
 export type EventRarity = 'common' | 'rare' | 'legendary' | '???'
 
