@@ -147,9 +147,9 @@ export function calculateGrade(
     return Math.max(1, Math.min(10, Math.round(base + luck + daily)))
 }
 
-// Grading cost: $100 × 2^grade_count (1st=$100, 2nd=$200, 3rd=$400, ...)
+// Grading cost: $50 × 2^grade_count (1st=$50, 2nd=$100, 3rd=$200, ...)
 export function gradeCost(gradeCount: number): number {
-    return 100 * Math.pow(2, gradeCount)
+    return 50 * Math.pow(2, gradeCount)
 }
 
 export function conditionFilter(

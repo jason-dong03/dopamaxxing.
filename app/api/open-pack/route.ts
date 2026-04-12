@@ -91,11 +91,13 @@ export async function POST(request: NextRequest) {
         const luckyFree = !free && freePackChance > 0 && Math.random() < freePackChance
         const effectiveFree = free || luckyFree
 
+        const isCrate = packDef?.aspect === 'box'
+
         // fetch profile + all set cards + bag count in parallel
         const [{ data: profile }, allCards, bagCountRes] = await Promise.all([
             supabase
                 .from('profiles')
-                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened')
+                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened, study_keys')
                 .eq('id', user.id)
                 .single(),
             packDef?.theme_pokedex_ids
@@ -144,6 +146,14 @@ export async function POST(request: NextRequest) {
                 .update({ quantity: available - 1 })
                 .eq('user_id', user.id)
                 .eq('pack_id', setId)
+        }
+
+        // ── crate key check ───────────────────────────────────────────────────
+        if (!free && isCrate) {
+            const keys = profile?.study_keys ?? 0
+            if (keys < 1) {
+                return NextResponse.json({ error: 'no_key', study_keys: keys }, { status: 402 })
+            }
         }
 
         if (allCards.length === 0) {
@@ -317,6 +327,7 @@ export async function POST(request: NextRequest) {
                         ? 1
                         : (profile?.daily_packs_today ?? 0) + 1,
                     daily_reset_date: today,
+                    ...(!free && isCrate && { study_keys: Math.max(0, (profile?.study_keys ?? 0) - 1) }),
                 })
                 .eq('id', user.id),
             supabase

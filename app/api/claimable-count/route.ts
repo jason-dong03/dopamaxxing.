@@ -53,7 +53,7 @@ export async function GET() {
             nqpRes,
         ] = await Promise.all([
             safeQuery(supabase.from('quests').select('*').eq('is_active', true)),
-            safeQuery(supabase.from('profiles').select('packs_opened, cards_fed, cards_sold, discord_id, discord_linked, tutorial_completed, level').eq('id', user.id).single()),
+            safeQuery(supabase.from('profiles').select('packs_opened, cards_fed, cards_sold, discord_id, discord_linked, tutorial_completed, level, daily_packs_today, daily_cards_fed_today, daily_reset_date').eq('id', user.id).single()),
             safeQuery(supabase.from('user_cards').select('*', { count: 'exact', head: true }).eq('user_id', user.id) as any),
             safeQuery(supabase.from('user_cards').select('cards!inner(rarity, name, set_id)').eq('user_id', user.id)),
             safeQuery(supabase.from('user_cards').select('grade').eq('user_id', user.id).in('grade', [1, 10])),
@@ -99,11 +99,15 @@ export async function GET() {
         ].filter(Boolean).length
         const grades = new Set(((gradeRes.data ?? []) as any[]).map((r) => r.grade))
 
+        const today = new Date().toISOString().slice(0, 10)
+        const isDailyFresh = (profile.daily_reset_date as string | null) === today
         const metrics: Partial<AllMetrics> = {
             packs_opened: Number(profile.packs_opened ?? 0),
             cards_owned: cardsOwned,
             cards_fed: Number(profile.cards_fed ?? 0),
             cards_sold: Number(profile.cards_sold ?? 0),
+            daily_packs_today: isDailyFresh ? Number(profile.daily_packs_today ?? 0) : 0,
+            daily_cards_fed_today: isDailyFresh ? Number(profile.daily_cards_fed_today ?? 0) : 0,
             friends_count: friendsRes.count,
             discord_packs_claimed: 0,
             added_owner_friend: ownerFriendRes.count > 0 ? 1 : 0,

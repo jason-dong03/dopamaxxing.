@@ -13,6 +13,8 @@ export type Pack = {
     idle_aura?: string
     special?: boolean
     card_count?: number
+    /** Minimum player level required to open this pack */
+    level_required?: number
     /** Dev-only: skip all DB calls and use mock cards */
     test?: boolean
 }
@@ -43,7 +45,7 @@ export const PACKS: Pack[] = [
         image: '/packs/paldea-evolved.png',
         description: 'S & V — Paldea Evolved',
         aspect: 'pack',
-        cost: 20.45,
+        cost: 11.69,
     },
     {
         id: 'sv03',
@@ -51,7 +53,7 @@ export const PACKS: Pack[] = [
         image: '/packs/obsidian-flames.png',
         description: 'S & V — Obsidian Flames',
         aspect: 'pack',
-        cost: 14.72,
+        cost: 12.0,
     },
     {
         id: 'sv03.5',
@@ -59,7 +61,7 @@ export const PACKS: Pack[] = [
         image: '/packs/151.jpg',
         description: 'S & V — 151',
         aspect: 'pack',
-        cost: 25.1,
+        cost: 24.5,
     },
     {
         id: 'sv04.5',
@@ -67,7 +69,7 @@ export const PACKS: Pack[] = [
         image: '/packs/paldean-pack.png',
         description: 'S & V - Paldean Fates',
         aspect: 'pack',
-        cost: 16.32,
+        cost: 19.75,
     },
     {
         id: 'sv08',
@@ -75,7 +77,7 @@ export const PACKS: Pack[] = [
         image: '/packs/surging-sparks.png',
         description: 'S & V — Surging Sparks',
         aspect: 'pack',
-        cost: 11.57,
+        cost: 9.53,
     },
     {
         id: 'sv08.5',
@@ -83,7 +85,7 @@ export const PACKS: Pack[] = [
         image: '/packs/prismatic-pack.png',
         description: 'S & V — Prismatic Evolutions',
         aspect: 'pack',
-        cost: 6.58,
+        cost: 17.5,
     },
     {
         id: 'sv10',
@@ -91,7 +93,7 @@ export const PACKS: Pack[] = [
         image: '/packs/destined-rivals.png',
         description: 'S & V - Destined Rivals',
         aspect: 'pack',
-        cost: 17.3,
+        cost: 9.15,
     },
     {
         id: 'sv10.5b',
@@ -115,7 +117,7 @@ export const PACKS: Pack[] = [
         image: '/packs/sword-shield.png',
         description: 'Sword & Shield — Crown Zenith',
         aspect: 'pack',
-        cost: 11.69,
+        cost: 9.19,
     },
     {
         id: 'swsh11',
@@ -123,7 +125,7 @@ export const PACKS: Pack[] = [
         image: '/packs/lost-origins.png',
         description: 'Sword & Shield — Lost Origin',
         aspect: 'pack',
-        cost: 12.52,
+        cost: 14.92,
     },
     {
         id: 'swsh12.5',
@@ -131,7 +133,7 @@ export const PACKS: Pack[] = [
         image: '/packs/zenith-pack.png',
         description: 'Sword & Shield — Crown Zenith',
         aspect: 'pack',
-        cost: 18.73,
+        cost: 22.0,
     },
     {
         id: 'me02',
@@ -139,7 +141,7 @@ export const PACKS: Pack[] = [
         image: '/packs/phantasmal-flames.png',
         description: 'Mega Evolutions — Phantasmal Flames',
         aspect: 'pack',
-        cost: 19.5,
+        cost: 15.75,
     },
     {
         id: 'me02.5',
@@ -147,7 +149,7 @@ export const PACKS: Pack[] = [
         image: '/packs/ascended-pack.png',
         description: 'Mega Evolutions — Ascended Heroes',
         aspect: 'pack',
-        cost: 21.43,
+        cost: 14.94,
     },
     {
         id: 'base1',
@@ -155,7 +157,7 @@ export const PACKS: Pack[] = [
         image: '/packs/base-set.jpg',
         description: 'Classic — Base Set',
         aspect: 'pack',
-        cost: 565.64,
+        cost: 386.83,
         card_count: 11,
     },
     {
@@ -164,7 +166,7 @@ export const PACKS: Pack[] = [
         image: '/packs/team-rocket.jpg',
         description: 'Team Rocket Base Set',
         aspect: 'pack',
-        cost: 350,
+        cost: 320,
         card_count: 11,
     },
     {
@@ -182,7 +184,7 @@ export const PACKS: Pack[] = [
         image: '/packs/team-rocket-returns.jpg',
         description: 'EX Team Rocket Returns',
         aspect: 'pack',
-        cost: 1411.97,
+        cost: 1805.77,
         card_count: 11,
     },
     {
@@ -230,7 +232,7 @@ export const PACKS: Pack[] = [
         image: '/packs/first-edition-base-set-pack.jpg',
         description: 'Base Set · First Edition',
         aspect: 'pack',
-        cost: 1190.5,
+        cost: 800,
         theme_label: '1st Edition',
         theme_label_color: '#d4a017',
         idle_aura: 'pack-aura-celestial',

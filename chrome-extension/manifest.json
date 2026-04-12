@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Dopamaxxing",
+  "version": "1.0.0",
+  "description": "Study to earn crate keys. Track your collection, BR, and coins.",
+  "permissions": ["tabs", "storage", "alarms", "idle", "identity"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Dopamaxxing"
+  },
+  "host_permissions": [
+    "https://mvdszsvnkvychhzpkvww.supabase.co/*",
+    "https://dopamaxxing.vercel.app/*"
+  ]
+}

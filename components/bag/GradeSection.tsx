@@ -21,7 +21,7 @@ export function GradeSection({
         coins: number
     } | null>(null)
     const count = uc.grade_count ?? 0
-    const cost = 20 * Math.pow(2, count)
+    const cost = 50 * Math.pow(2, count)
 
     useEffect(() => {
         createClient()

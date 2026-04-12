@@ -124,6 +124,7 @@ export default function PackOpening({
 
     // XP / level-up
     const [userLevel, setUserLevel] = useState<number>(1)
+    const isLevelGated = !free && !!pack.level_required && userLevel < pack.level_required
     const [xpGainPerPack, setXpGainPerPack] = useState<number | null>(null)
     const [levelUpInfo, setLevelUpInfo] = useState<{
         oldLevel: number
@@ -262,6 +263,7 @@ export default function PackOpening({
     async function handleClick(batchCount?: number) {
         if (shaking || opening) return
         if (!free && stock <= 0) return
+        if (isLevelGated) return
         setCoinError(null)
         if (batchCount && batchCount > 1) {
             setOpenCount(batchCount)
@@ -1098,14 +1100,14 @@ export default function PackOpening({
                             )}
                         <div
                             ref={packImgRef}
-                            className={`${!free && stock <= 0 ? 'cursor-not-allowed' : 'cursor-pointer animate-subtle-pulse hover:scale-105'} ${shaking ? 'animate-shake' : ''} ${opening ? 'animate-fade-out' : ''}${!shaking && !tearing && !opening && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
+                            className={`${isLevelGated || (!free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer animate-subtle-pulse hover:scale-105'} ${shaking ? 'animate-shake' : ''} ${opening ? 'animate-fade-out' : ''}${!shaking && !tearing && !opening && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
                             style={{
                                 ...(!pack.idle_aura ||
                                 shaking ||
                                 tearing ||
                                 opening
                                     ? {
-                                          filter: !free && stock <= 0
+                                          filter: isLevelGated || (!free && stock <= 0)
                                               ? 'grayscale(1) opacity(0.4)'
                                               : 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
                                       }
@@ -1124,9 +1126,10 @@ export default function PackOpening({
                                 alt={pack.name}
                                 onClick={() => {
                                     if (!free && stock <= 0) return
+                                    if (isLevelGated) return
                                     batchMode ? handleClick(stock) : handleClick()
                                 }}
-                                className={!free && stock <= 0 ? 'cursor-not-allowed' : 'cursor-pointer'}
+                                className={isLevelGated || (!free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer'}
                                 style={{
                                     ...idleDims,
                                     objectFit: 'contain',
@@ -1144,12 +1147,17 @@ export default function PackOpening({
                                 )}
                         </div>
                         <div className="flex flex-col items-center gap-2 mt-8">
-                            {!free && stock <= 0 && (
+                            {isLevelGated && (
+                                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#a78bfa' }}>
+                                    Level {pack.level_required} required
+                                </div>
+                            )}
+                            {!isLevelGated && !free && stock <= 0 && (
                                 <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ef4444' }}>
                                     Out of Stock
                                 </div>
                             )}
-                            {!free && stock > 0 && (
+                            {!isLevelGated && !free && stock > 0 && (
                                 <div
                                     style={{
                                         display: 'flex',

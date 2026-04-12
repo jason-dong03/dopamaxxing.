@@ -74,11 +74,12 @@ export async function POST(request: NextRequest) {
         const packDef = mergedPacks.find((p) => p.id === setId)
         const baseCost = packDef?.cost ?? 0
         const costDiscount = await getEventMagnitude('cheap_packs')
+        const isCrate = packDef?.aspect === 'box'
 
         const [{ data: profile }, allCards, bagCountRes, luckBoost, todayEvents] = await Promise.all([
             supabase
                 .from('profiles')
-                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened')
+                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened, study_keys')
                 .eq('id', user.id)
                 .single(),
             packDef?.theme_pokedex_ids
@@ -93,6 +94,14 @@ export async function POST(request: NextRequest) {
         const bagCount = bagCountRes.count ?? 0
         if (bagCount >= bagCapacity) {
             return NextResponse.json({ error: 'bag_full', bagCount, bagCapacity }, { status: 409 })
+        }
+
+        // ── crate key check ───────────────────────────────────────────────────
+        if (!free && isCrate) {
+            const keys = profile?.study_keys ?? 0
+            if (keys < 1) {
+                return NextResponse.json({ error: 'no_key', study_keys: keys }, { status: 402 })
+            }
         }
 
         // Stock check — regenerates if expired, caps count to available stock, derives pack discount
@@ -218,6 +227,7 @@ export async function POST(request: NextRequest) {
                 packs_opened: (profile?.packs_opened ?? 0) + count,
                 daily_packs_today: needsReset ? count : (profile?.daily_packs_today ?? 0) + count,
                 daily_reset_date: today,
+                ...(!free && isCrate && { study_keys: Math.max(0, (profile?.study_keys ?? 0) - 1) }),
             }).eq('id', user.id),
             supabase.from('user_cards').select('card_id').eq('user_id', user.id).in('card_id', allCardIds),
         ])
