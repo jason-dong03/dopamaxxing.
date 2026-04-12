@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
         const costDiscount = await getEventMagnitude('cheap_packs')
         const isCrate = packDef?.aspect === 'box'
 
-        const [{ data: profile }, allCards, bagCountRes, luckBoost, todayEvents] = await Promise.all([
+        const [{ data: profile }, allCards, bagCountRes, luckBoost, todayEvents, crateKeyRes] = await Promise.all([
             supabase
                 .from('profiles')
-                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened, study_keys')
+                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened')
                 .eq('id', user.id)
                 .single(),
             packDef?.theme_pokedex_ids
@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
             supabase.from('user_cards').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
             getEventMagnitude('luck_boost'),
             getTodayEvents(),
+            isCrate
+                ? supabase.from('crate_keys').select('quantity').eq('user_id', user.id).eq('pack_id', setId).single()
+                : Promise.resolve({ data: null }),
         ])
 
         const bagCapacity = profile?.bag_capacity ?? 50
@@ -97,11 +100,9 @@ export async function POST(request: NextRequest) {
         }
 
         // ── crate key check ───────────────────────────────────────────────────
-        if (!free && isCrate) {
-            const keys = profile?.study_keys ?? 0
-            if (keys < 1) {
-                return NextResponse.json({ error: 'no_key', study_keys: keys }, { status: 402 })
-            }
+        const crateKeyCount = (crateKeyRes as { data: { quantity: number } | null })?.data?.quantity ?? 0
+        if (!free && isCrate && crateKeyCount < 1) {
+            return NextResponse.json({ error: 'no_key', crate_keys: 0 }, { status: 402 })
         }
 
         // Stock check — regenerates if expired, caps count to available stock, derives pack discount
@@ -218,7 +219,7 @@ export async function POST(request: NextRequest) {
         const needsReset = profile?.daily_reset_date !== today
         const allCardIds = allPicked.map(c => c.id as string)
 
-        const [, { data: owned }] = await Promise.all([
+        const [, { data: owned }] = (await Promise.all([
             supabase.from('profiles').update({
                 pity_counter: newPityCounter,
                 coins: (profile?.coins ?? 0) - totalCost,
@@ -227,10 +228,12 @@ export async function POST(request: NextRequest) {
                 packs_opened: (profile?.packs_opened ?? 0) + count,
                 daily_packs_today: needsReset ? count : (profile?.daily_packs_today ?? 0) + count,
                 daily_reset_date: today,
-                ...(!free && isCrate && { study_keys: Math.max(0, (profile?.study_keys ?? 0) - 1) }),
             }).eq('id', user.id),
             supabase.from('user_cards').select('card_id').eq('user_id', user.id).in('card_id', allCardIds),
-        ])
+            !free && isCrate
+                ? supabase.from('crate_keys').update({ quantity: Math.max(0, crateKeyCount - 1) }).eq('user_id', user.id).eq('pack_id', setId)
+                : Promise.resolve(null),
+        ]) as [unknown, { data: unknown }, unknown])
 
         const newPacksOpened = (profile?.packs_opened ?? 0) + count
         const earned = await getEarnedAchievements(user.id)

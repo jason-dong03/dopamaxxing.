@@ -90,9 +90,12 @@ async function sendHeartbeat(url) {
   } catch { /* ignore */ }
 }
 
+// How long with no in-tab activity before we consider the tab idle (2 min)
+const TAB_IDLE_MS = 2 * 60 * 1000
+
 // ─── Alarm tick ───────────────────────────────────────────────────────────────
 async function onAlarmTick() {
-  // Check if user is active (not idle for > 60s)
+  // Check if user is active at the system level (not idle for > 60s)
   const idleState = await new Promise((resolve) =>
     chrome.idle.queryState(60, resolve)
   )
@@ -109,6 +112,21 @@ async function onAlarmTick() {
     chrome.runtime.sendMessage({ type: 'study-update', is_studying: false }).catch(() => {})
     return
   }
+
+  // Check tab-level activity (reported by content script).
+  // If we have a recent ping for this tab, use it. If the content script reported
+  // idle (or we have no ping at all), don't count the minute.
+  const { tabActivity } = await chrome.storage.local.get('tabActivity')
+  if (tabActivity) {
+    const tabIdle = Date.now() - (tabActivity.lastActivity ?? 0)
+    if (!tabActivity.isActive || tabIdle > TAB_IDLE_MS) {
+      await chrome.storage.local.set({ is_studying: false, current_study_url: tab.url })
+      chrome.runtime.sendMessage({ type: 'study-update', is_studying: false }).catch(() => {})
+      return
+    }
+  }
+  // No tabActivity means the content script hasn't loaded yet (e.g. a PDF viewer
+  // where the content script can't inject). Fall through and trust system-idle only.
 
   await chrome.storage.local.set({ is_studying: true, current_study_url: tab.url })
   await sendHeartbeat(tab.url)
@@ -129,9 +147,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 async function updateStudyStatus() {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
   const studying = !!(tab?.url && isStudyUrl(tab.url))
+  // Clear stale tab-level activity data whenever the active tab changes so the
+  // previous tab's idle state doesn't bleed into the new tab.
   await chrome.storage.local.set({
     is_studying: studying,
     current_study_url: studying ? tab.url : null,
+    tabActivity: null,
   })
   chrome.runtime.sendMessage({ type: 'tab-changed', is_studying: studying, url: tab?.url ?? null }).catch(() => {})
 }
@@ -142,10 +163,23 @@ chrome.tabs.onUpdated.addListener((_, changeInfo) => {
 })
 chrome.windows.onFocusChanged.addListener(() => updateStudyStatus())
 
-// ─── Message handler (popup → background) ────────────────────────────────────
+// ─── Message handler (popup / content scripts → background) ──────────────────
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'get-study-status') {
     chrome.storage.local.get(['is_studying', 'current_study_url', 'study_minutes_today', 'study_keys'], sendResponse)
     return true // async
+  }
+
+  if (msg.type === 'activity-ping') {
+    // Persist the latest tab-level activity report from the content script.
+    chrome.storage.local.set({
+      tabActivity: {
+        lastActivity: msg.lastActivity,
+        isActive: msg.isActive,
+        url: msg.url,
+        receivedAt: Date.now(),
+      },
+    })
+    // No response needed
   }
 })

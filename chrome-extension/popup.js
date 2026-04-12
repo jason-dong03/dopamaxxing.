@@ -2,13 +2,12 @@
 const SUPABASE_URL = 'https://mvdszsvnkvychhzpkvww.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12ZHN6c3Zua3Z5Y2hoenBrdnd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4MDk1NzAsImV4cCI6MjA4NzM4NTU3MH0.aHaponDz3fkxdCuYaJetPDgN4scBVzaFqGPsiZfrCkQ'
 const APP_URL      = 'https://dopamaxxing.vercel.app'
-const MINUTES_PER_KEY = 30
 
-// Box/crate pack IDs
+// Box/crate pack IDs with per-crate drop chances
 const CRATE_PACKS = [
-  { id: 'theme-legendary', name: 'Legendary Box',       cost: '$200.00' },
-  { id: 'smp',             name: 'SM Black Star Promos', cost: '$500.00' },
-  { id: 'xy-p-poncho',     name: 'Poncho Pikachu',       cost: '$4,250.30' },
+  { id: 'theme-legendary', name: 'Legendary Box',       cost: '$200.00',   chance: '10%/min' },
+  { id: 'smp',             name: 'SM Black Star Promos', cost: '$500.00',   chance: '6%/min'  },
+  { id: 'xy-p-poncho',     name: 'Poncho Pikachu',       cost: '$4,250.30', chance: '2.5%/min' },
 ]
 
 // XP required per level — same formula as the server
@@ -130,14 +129,11 @@ function renderProfile(profile) {
   $('xp-bar').style.width = pct + '%'
   $('xp-val').textContent = fmt(profile.xp)
 
-  // Study keys
-  $('keys-count').textContent = profile.study_keys ?? 0
-
   // Study progress
   renderStudyProgress(profile.study_minutes_today ?? 0)
 
-  // Crates
-  renderCrates(profile.stock || {}, profile.study_keys ?? 0)
+  // Crates with per-crate keys
+  renderCrates(profile.stock || {}, profile.crate_keys || {})
 
   // Migration warning
   if (profile.needs_migration) {
@@ -148,14 +144,11 @@ function renderProfile(profile) {
 }
 
 function renderStudyProgress(minutesToday) {
-  const minutesInCycle = minutesToday % MINUTES_PER_KEY
-  const pct = (minutesInCycle / MINUTES_PER_KEY) * 100
+  // Progress bar just shows time studied today (caps at 60 min visually)
+  const pct = Math.min(100, (minutesToday / 60) * 100)
   $('study-progress-bar').style.width = pct + '%'
   $('study-min-label').textContent = `${minutesToday} min today`
-  const remaining = MINUTES_PER_KEY - minutesInCycle
-  $('study-next-key').textContent = remaining === MINUTES_PER_KEY
-    ? 'next key in 30 min'
-    : `next key in ${remaining} min`
+  $('study-next-key').textContent = 'keys drop randomly while studying'
 }
 
 function renderStudyStatus(isStudying, url) {
@@ -178,24 +171,21 @@ function renderStudyStatus(isStudying, url) {
   }
 }
 
-function renderCrates(stock, keys) {
+function renderCrates(stock, crateKeys) {
   const list = $('crates-list')
-  if (!CRATE_PACKS.length) {
-    list.innerHTML = '<div class="crate-loading">No crates available</div>'
-    return
-  }
   list.innerHTML = CRATE_PACKS.map((crate) => {
-    const qty = stock[crate.id] ?? 0
-    const hasKey = keys >= 1
-    const locked = !hasKey
+    const keyCount = crateKeys[crate.id] ?? 0
+    const hasKey = keyCount >= 1
     return `
       <div class="crate-row">
-        <span class="crate-key-icon">🗝️</span>
-        <span class="crate-name">${crate.name}</span>
-        <span class="crate-cost">${crate.cost}</span>
-        <span class="crate-stock${locked ? ' locked' : ''}">
-          ${locked ? 'no key' : `×${qty}`}
-        </span>
+        <span class="crate-key-icon">${hasKey ? '🗝️' : '🔒'}</span>
+        <div class="crate-info">
+          <span class="crate-name">${crate.name}</span>
+          <span class="crate-chance">${crate.chance} drop rate</span>
+        </div>
+        <div class="crate-right">
+          <span class="crate-keys-badge${hasKey ? ' has-key' : ''}">${keyCount} key${keyCount !== 1 ? 's' : ''}</span>
+        </div>
       </div>
     `
   }).join('')
@@ -314,12 +304,25 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'study-update') {
     renderStudyStatus(msg.is_studying, msg.current_study_url)
     if (msg.study_minutes_today != null) renderStudyProgress(msg.study_minutes_today)
-    if (msg.study_keys != null) $('keys-count').textContent = msg.study_keys
+    if (msg.crate_keys != null) renderCrates({}, msg.crate_keys)
+    // Flash a key-earned notification
+    if (msg.keys_earned && msg.keys_earned.length > 0) {
+      msg.keys_earned.forEach(k => showKeyNotification(k.name))
+    }
   }
   if (msg.type === 'tab-changed') {
     renderStudyStatus(msg.is_studying, msg.url)
   }
 })
+
+function showKeyNotification(keyName) {
+  const el = document.createElement('div')
+  el.className = 'key-toast'
+  el.textContent = `🗝️ ${keyName} dropped!`
+  document.body.appendChild(el)
+  setTimeout(() => el.classList.add('show'), 10)
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300) }, 3000)
+}
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 init()

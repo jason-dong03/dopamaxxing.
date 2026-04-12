@@ -51,6 +51,7 @@ export async function GET() {
             completionsRes,
             purchaseRes,
             nqpRes,
+            crateKeysRes,
         ] = await Promise.all([
             safeQuery(supabase.from('quests').select('*').eq('is_active', true)),
             safeQuery(supabase.from('profiles').select('packs_opened, cards_fed, cards_sold, discord_id, discord_linked, tutorial_completed, level, daily_packs_today, daily_cards_fed_today, daily_reset_date').eq('id', user.id).single()),
@@ -65,6 +66,7 @@ export async function GET() {
             safeQuery(supabase.from('user_quests').select('quest_id, updated_at').eq('user_id', user.id).eq('status', 'completed')),
             safeQuery(supabase.from('purchases').select('id', { count: 'exact', head: true }).eq('user_id', user.id)),
             safeQuery(supabase.from('n_quest_progress').select('found_liberator_phrase, found_n_farewell').eq('user_id', user.id).maybeSingle() as any),
+            safeQuery(supabase.from('crate_keys').select('quantity').eq('user_id', user.id) as any),
         ])
 
         type CompletionRow = { quest_id: string; updated_at: string }
@@ -108,6 +110,7 @@ export async function GET() {
             cards_sold: Number(profile.cards_sold ?? 0),
             daily_packs_today: isDailyFresh ? Number(profile.daily_packs_today ?? 0) : 0,
             daily_cards_fed_today: isDailyFresh ? Number(profile.daily_cards_fed_today ?? 0) : 0,
+            crate_keys_total: ((crateKeysRes.data ?? []) as { quantity: number }[]).reduce((s, r) => s + (r.quantity ?? 0), 0),
             friends_count: friendsRes.count,
             discord_packs_claimed: 0,
             added_owner_friend: ownerFriendRes.count > 0 ? 1 : 0,

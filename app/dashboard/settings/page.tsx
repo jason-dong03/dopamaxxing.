@@ -495,6 +495,58 @@ export default function SettingsPage() {
                 </FieldRow>
             </div>
 
+            {/* ── chrome extension ── */}
+            <SectionLabel>Chrome Extension</SectionLabel>
+            <div style={{
+                background: 'var(--app-surface-2)',
+                border: '1px solid var(--app-border)',
+                borderRadius: 12, padding: '0 16px',
+            }}>
+                <FieldRow
+                    label="Study Tracker"
+                    sub="Earn crate keys by studying — Google Docs, PDFs, Canvas, and more"
+                >
+                    <a
+                        href="https://github.com/jasondong03/dopamaxxing/tree/main/chrome-extension"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                            padding: '7px 14px', borderRadius: 8,
+                            fontSize: '0.75rem', fontWeight: 600,
+                            background: 'rgba(167,139,250,0.08)',
+                            border: '1px solid rgba(167,139,250,0.25)',
+                            color: '#a78bfa',
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block',
+                        }}
+                    >
+                        Download ↗
+                    </a>
+                </FieldRow>
+                <FieldRow
+                    label="How to install"
+                    sub="Load the extension folder in Chrome developer mode"
+                >
+                    <div style={{ fontSize: '0.72rem', color: 'var(--app-text-muted)', textAlign: 'right', lineHeight: 1.6 }}>
+                        <div>1. Go to <code style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 4 }}>chrome://extensions</code></div>
+                        <div>2. Enable <strong>Developer mode</strong></div>
+                        <div>3. Click <strong>Load unpacked</strong> → select <code style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 4 }}>chrome-extension/</code></div>
+                        <div>4. Sign in with Google or Discord</div>
+                    </div>
+                </FieldRow>
+                <FieldRow
+                    label="Crate key drop rates"
+                    sub="Random chance per minute of active studying"
+                >
+                    <div style={{ fontSize: '0.72rem', color: 'var(--app-text-muted)', textAlign: 'right', lineHeight: 1.7 }}>
+                        <div>🗝️ Legendary Box — <span style={{ color: '#fbbf24' }}>10%</span></div>
+                        <div>🗝️ SM Black Star — <span style={{ color: '#fbbf24' }}>6%</span></div>
+                        <div>🗝️ Poncho Pikachu — <span style={{ color: '#fbbf24' }}>2.5%</span></div>
+                    </div>
+                </FieldRow>
+            </div>
+
             {/* ── account ── */}
             <SectionLabel>Account</SectionLabel>
             <div style={{

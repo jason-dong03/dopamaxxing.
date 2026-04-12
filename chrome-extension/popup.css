@@ -313,31 +313,60 @@ body {
   border-radius: 7px;
   padding: 7px 10px;
 }
+.crate-key-icon { font-size: 14px; flex-shrink: 0; }
+.crate-info { flex: 1; min-width: 0; }
 .crate-name {
-  flex: 1;
   font-size: 12px;
   font-weight: 600;
   color: #e2e8f0;
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.crate-cost {
+.crate-chance {
   font-size: 10px;
-  color: #6b7280;
+  color: #4b5563;
+  display: block;
 }
-.crate-stock {
+.crate-right { flex-shrink: 0; }
+.crate-keys-badge {
   font-size: 10px;
   color: #6b7280;
   background: rgba(255,255,255,0.06);
   border-radius: 4px;
-  padding: 2px 5px;
+  padding: 2px 7px;
+  font-weight: 600;
 }
-.crate-stock.locked {
-  color: #f87171;
-  background: rgba(248,113,113,0.1);
+.crate-keys-badge.has-key {
+  color: #fbbf24;
+  background: rgba(251,191,36,0.12);
+  border: 1px solid rgba(251,191,36,0.25);
 }
-.crate-key-icon { font-size: 13px; }
+
+/* ─── Key drop toast ─────────────────────────────────────── */
+.key-toast {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(251,191,36,0.15);
+  border: 1px solid rgba(251,191,36,0.4);
+  border-radius: 20px;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 100;
+}
+.key-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 
 /* ─── Footer ────────────────────────────────────────────── */
 .footer {
