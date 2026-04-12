@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'bag_full', bagCount, bagCapacity }, { status: 409 })
         }
 
+        const isAdmin = !!(profile as any)?.is_admin
+
         // ── crate key check ───────────────────────────────────────────────────
         const crateKeyCount = (crateKeyRes as { data: { quantity: number } | null })?.data?.quantity ?? 0
         if (!free && !isAdmin && isCrate && crateKeyCount < 1) {
@@ -106,7 +108,6 @@ export async function POST(request: NextRequest) {
         }
 
         // Stock check — regenerates if expired, caps count to available stock, derives pack discount
-        const isAdmin = !!(profile as any)?.is_admin
         let count = requestedCount
         let costPerPack = free ? 0 : parseFloat((baseCost * costDiscount).toFixed(2))
         if (!free && !isAdmin) {
