@@ -59,6 +59,10 @@ export function useBattle(options?: { trainerId?: string; startPhase?: BattlePha
     // Ref-based acting guard — prevents concurrent doAttack/doSwitch calls
     // even if React hasn't re-rendered yet to flush the acting state.
     const actingRef = useRef(false)
+    // Switch prompt — resolves with true if user switched, false if declined
+    const switchPromptResolveRef = useRef<((switched: boolean) => void) | null>(null)
+    // Tracks the new user_active_index after a voluntary mid-battle switch
+    const voluntarySwitchIndexRef = useRef<number | null>(null)
 
     const wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
@@ -75,6 +79,26 @@ export function useBattle(options?: { trainerId?: string; startPhase?: BattlePha
             advanceResolveRef.current = null
             setWaitingForAdvance(false)
         }
+    }
+
+    // Opens the pokemon menu and waits for user to pick a pokemon (true) or back out (false)
+    function waitForSwitchPrompt(): Promise<boolean> {
+        return new Promise(resolve => {
+            switchPromptResolveRef.current = resolve
+            setBattleMenu('pokemon')
+        })
+    }
+
+    // Wraps setBattleMenu — detects when user backs out of the switch prompt
+    function handleSetBattleMenu(menu: BattleMenu) {
+        if (menu !== 'pokemon' && switchPromptResolveRef.current) {
+            const resolve = switchPromptResolveRef.current
+            switchPromptResolveRef.current = null
+            setBattleMenu(menu)
+            resolve(false)
+            return
+        }
+        setBattleMenu(menu)
     }
 
     // ── Card select ───────────────────────────────────────────────────────────
@@ -363,16 +387,35 @@ ${baseName(firstActiveCard.name).toUpperCase()} do?`)
                     setFaintedSide(isUser ? 'enemy' : 'player')
                     await wait(400)   // let faint animation play
 
-                    // Update EXP bar immediately as enemy pokemon faints
+                    // Calculate EXP for all alive party pokemon before showing "fainted!"
+                    // The XP bar starts animating immediately while dialogue plays.
+                    let expEntries: Array<{ id: string; name: string; amount: number }> = []
                     if (isUser) {
                         const gained = Math.max(12, Math.floor(prevNActive.level * 1.5))
-                        setSessionExp(prev => ({ ...prev, [activeCardId]: (prev[activeCardId] ?? 0) + gained }))
+                        const sharedGained = Math.max(6, Math.floor(gained * 0.5))
+                        expEntries = [{ id: activeCardId, name: prevUActive.name, amount: gained }]
+                        for (const card of updated.user_cards as BattleCard[]) {
+                            if (card.id !== activeCardId && card.hp > 0) {
+                                expEntries.push({ id: card.id, name: card.name, amount: sharedGained })
+                            }
+                        }
+                        setSessionExp(prev => {
+                            const next = { ...prev }
+                            for (const e of expEntries) next[e.id] = (next[e.id] ?? 0) + e.amount
+                            return next
+                        })
                     }
 
                     setBattleTextOverride(`${baseName(entry.fainted)}\nfainted!`)
                     await waitForAdvance()
 
                     if (isUser) {
+                        // Show EXP gained messages for each pokemon that gained EXP
+                        for (const e of expEntries) {
+                            setBattleTextOverride(`${baseName(e.name)}\ngained ${e.amount} Exp. Points!`)
+                            await waitForAdvance()
+                        }
+
                         // User KO'd N's pokemon — N sprite appears with recall speech
                         const nRecallLines = [
                             `...you were free.\nRest now, ${baseName(entry.fainted)}.`,
@@ -388,10 +431,25 @@ ${baseName(firstActiveCard.name).toUpperCase()} do?`)
                         if (updated.status === 'won') setFaintedSide(null)
 
                         if (updated.status !== 'won') {
-                            // Batch: clear faint + swap pokemon + start send-out in one render
-                            // Old sprite has a different key so it unmounts instantly — no flash
+                            // Batch: clear faint + swap N's pokemon in one render
                             setFaintedSide(null)
                             setBattle(prev => prev ? { ...prev, n_cards: updated.n_cards, n_active_index: updated.n_active_index } : prev)
+
+                            // Offer voluntary switch before N sends out their next pokemon
+                            const aliveBenched = (updated.user_cards as BattleCard[]).filter(
+                                (c: BattleCard, i: number) => i !== updated.user_active_index && c.hp > 0
+                            )
+                            if (aliveBenched.length > 0) {
+                                // Release acting lock so doSwitch can run
+                                actingRef.current = false
+                                setActing(false)
+                                setBattleTextOverride(`Will you\nswitch Pokémon?`)
+                                await waitForSwitchPrompt()
+                                // Re-acquire acting lock to continue with N's send-out
+                                actingRef.current = true
+                                setActing(true)
+                            }
+
                             setNSendingOut(true)
                             await wait(900)
                             setNSendingOut(false)
@@ -424,8 +482,10 @@ ${baseName(firstActiveCard.name).toUpperCase()} do?`)
                 }
             }
 
-            // Finalise
-            setBattle(updated)
+            // Finalise — if user voluntarily switched during this turn, preserve the new active index
+            const vsIdx = voluntarySwitchIndexRef.current
+            voluntarySwitchIndexRef.current = null
+            setBattle(vsIdx !== null ? { ...updated, user_active_index: vsIdx } : updated)
 
             if (updated.status === 'won') {
                 const trainerKey = (options?.trainerId ?? 'n') as keyof typeof TRAINER_INFO
@@ -455,9 +515,10 @@ ${baseName(firstActiveCard.name).toUpperCase()} do?`)
                 setPostDialogueType('loss')
                 setPhase('post-dialogue')
             } else {
-                const newActive = updated.user_cards[updated.user_active_index]
+                const activeIdx = vsIdx !== null ? vsIdx : updated.user_active_index
+                const newActive = updated.user_cards[activeIdx]
                 const hasLiving = updated.user_cards.some((c: BattleCard, i: number) =>
-                    i !== updated.user_active_index && c.hp > 0
+                    i !== activeIdx && c.hp > 0
                 )
                 if (newActive.hp <= 0 && hasLiving) {
                     setForcedSwitch(true)
@@ -512,7 +573,20 @@ ${baseName(firstActiveCard.name).toUpperCase()} do?`)
         setSwitchText('')
         setForcedSwitch(false)
 
-        // Show "What will X do?" with the newly switched-in pokemon's name
+        // If this is a voluntary switch from the mid-battle switch prompt,
+        // signal doAttack to continue; doAttack manages the acting lock.
+        if (switchPromptResolveRef.current) {
+            voluntarySwitchIndexRef.current = updatedBattle
+                ? updatedBattle.user_active_index
+                : toIndex
+            const resolve = switchPromptResolveRef.current
+            switchPromptResolveRef.current = null
+            setBattleTextOverride(null)
+            resolve(true)
+            return
+        }
+
+        // Normal switch: show "What will X do?" with the newly switched-in pokemon's name
         const newActive = updatedBattle
             ? updatedBattle.user_cards[updatedBattle.user_active_index]
             : battle.user_cards[toIndex]
@@ -608,7 +682,7 @@ ${baseName(firstActiveCard.name).toUpperCase()} do?`)
         phase, setPhase,
         battle, setBattle,
         acting,
-        battleMenu, setBattleMenu,
+        battleMenu, setBattleMenu: handleSetBattleMenu,
         cards, selected, loadingCards,
         sortBy, setSortBy,
         playerLunge, enemyLunge, enemyHit, playerHit, isCriticalHit, crownDropped, wonCoins,

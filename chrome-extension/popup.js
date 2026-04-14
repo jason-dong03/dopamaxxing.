@@ -232,6 +232,7 @@ function renderDashboardCrateKeys(crateKeys) {
 function renderCratesTab() {
     if (!profileData || !cratePacksData.length) return
     const list = $('crates-list')
+    if (!list) return
     const isAdmin = !!profileData.is_admin
     const crateKeys = profileData.crate_keys || {}
     const stock = profileData.stock || {}
@@ -330,6 +331,7 @@ async function startCrateOpen(packId, crate) {
 function showReelAnimation(cardPool, wonCard, crate) {
     // Show overlay, spin phase
     const overlay = $('crate-overlay')
+    if (!overlay) { showCrateResult(wonCard); return }
     overlay.classList.remove('hidden')
     show('overlay-spin')
     hide('overlay-result')
@@ -632,7 +634,7 @@ $('show-redirect-btn') && $('show-redirect-btn').addEventListener('click', () =>
     $('show-redirect-btn').classList.add('hidden')
 })
 
-$('redirect-url-text').addEventListener('click', () => {
+$('redirect-url-text') && $('redirect-url-text').addEventListener('click', () => {
     navigator.clipboard.writeText($('redirect-url-text').textContent).then(() => {
         $('redirect-copied').classList.remove('hidden')
         setTimeout(() => $('redirect-copied').classList.add('hidden'), 2000)
@@ -640,12 +642,12 @@ $('redirect-url-text').addEventListener('click', () => {
 })
 
 // ─── Footer buttons ───────────────────────────────────────────────────────────
-$('logout-btn').addEventListener('click', async () => {
+$('logout-btn') && $('logout-btn').addEventListener('click', async () => {
     await logout()
     await init()
 })
 
-$('refresh-btn').addEventListener('click', async () => {
+$('refresh-btn') && $('refresh-btn').addEventListener('click', async () => {
     $('refresh-btn').textContent = '↺ …'
     bagLoaded = false
     await Promise.all([loadPackData()])
@@ -657,7 +659,7 @@ $('refresh-btn').addEventListener('click', async () => {
     $('refresh-btn').textContent = '↺ Refresh'
 })
 
-$('open-app-btn').addEventListener('click', () => chrome.tabs.create({ url: APP_URL }))
+$('open-app-btn') && $('open-app-btn').addEventListener('click', () => chrome.tabs.create({ url: APP_URL }))
 
 // ─── Tab nav ──────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -665,15 +667,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 })
 
 // ─── Bag tab refresh ──────────────────────────────────────────────────────────
-$('bag-refresh-btn').addEventListener('click', () => {
+$('bag-refresh-btn') && $('bag-refresh-btn').addEventListener('click', () => {
     bagLoaded = false
     loadBag()
 })
 
 // ─── Crate overlay buttons ────────────────────────────────────────────────────
-$('result-bag-btn').addEventListener('click', addToBag)
-$('result-sell-btn').addEventListener('click', sellCard)
-$('result-back-btn').addEventListener('click', closeCrateOverlay)
+$('result-bag-btn') && $('result-bag-btn').addEventListener('click', addToBag)
+$('result-sell-btn') && $('result-sell-btn').addEventListener('click', sellCard)
+$('result-back-btn') && $('result-back-btn').addEventListener('click', closeCrateOverlay)
 
 // ─── Background messages ──────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg) => {

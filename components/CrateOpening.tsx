@@ -40,15 +40,19 @@ type WonCard = PoolCard & {
     attr_surface?: number
 }
 
-type Phase = 'idle' | 'loading' | 'spinning' | 'done'
+type Phase = 'idle' | 'spinning' | 'done'
+
+const BLANK_CARD: PoolCard = { id: '__blank__', image_url: '', name: '', rarity: 'Common' }
 
 // ─── component ────────────────────────────────────────────────────────────────
 export default function CrateOpening({
     pack,
     onBack,
+    isAdmin = false,
 }: {
     pack: Pack
     onBack: () => void
+    isAdmin?: boolean
 }) {
     const router = useRouter()
     const supabase = createClient()
@@ -56,6 +60,7 @@ export default function CrateOpening({
     const [phase, setPhase] = useState<Phase>('idle')
     const [strip, setStrip] = useState<PoolCard[]>([])
     const [wonCard, setWonCard] = useState<WonCard | null>(null)
+    const [batchCards, setBatchCards] = useState<WonCard[] | null>(null)
     const [poolSize, setPoolSize] = useState(0)
     const [targetX, setTargetX] = useState(0)
     const [spinning, setSpinning] = useState(false)
@@ -65,6 +70,7 @@ export default function CrateOpening({
     const [actionDone, setActionDone] = useState(false)
     const [bagCount, setBagCount] = useState<number | null>(null)
     const [bagCapacity, setBagCapacity] = useState<number>(50)
+    const [adminBatchCount, setAdminBatchCount] = useState<1 | 10 | 50>(1)
 
     const [condPanelTab, setCondPanelTab] = useState<'condition' | 'stats'>(
         'condition',
@@ -80,45 +86,83 @@ export default function CrateOpening({
 
     const containerRef = useRef<HTMLDivElement>(null)
     const startedRef = useRef(false)
+    // stores pending API error to surface after animation ends
+    const pendingErrorRef = useRef<{ cost: number; coins: number } | null>(null)
+    // signals animation ended before wonCard arrived (race condition safety)
+    const waitingForCardRef = useRef(false)
+
+    // ── when wonCard arrives after animation already ended ────────────────────
+    useEffect(() => {
+        if (wonCard && waitingForCardRef.current) {
+            waitingForCardRef.current = false
+            setRested(true)
+            setTimeout(() => setPhase('done'), 1600)
+        }
+    }, [wonCard])
 
     async function handleOpen() {
         if (phase !== 'idle') return
         setCoinError(null)
-        setPhase('loading')
+        pendingErrorRef.current = null
 
-        const res = await fetch('/api/open-pack', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ setId: pack.id }),
-        })
-
-        if (res.status === 402) {
+        if (isAdmin && adminBatchCount > 1) {
+            // ── admin batch ────────────────────────────────────────────────────
+            setPhase('spinning') // re-use spinner briefly
+            const res = await fetch('/api/open-pack-batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setId: pack.id, count: adminBatchCount }),
+            })
             const data = await res.json()
-            setPhase('idle')
-            setCoinError({ cost: data.cost, coins: data.coins })
+            router.refresh()
+            setBatchCards(Array.isArray(data.cards) ? data.cards : [])
+            setPhase('done')
             return
         }
 
-        const data = await res.json()
-
-        // refresh server data so coin count in header updates immediately
-        router.refresh()
-
-        const winner: WonCard = data.cards[0]
-        const pool: PoolCard[] = data.cardPool ?? [winner]
-
-        setPoolSize(pool.length)
-        setWonCard(winner)
-
-        // build strip: random pool cards with winner guaranteed at WINNER_IDX
-        const s: PoolCard[] = Array.from({ length: STRIP_SIZE }, (_, i) =>
-            i === WINNER_IDX
-                ? winner
-                : pool[Math.floor(Math.random() * pool.length)],
-        )
-        setStrip(s)
+        // ── single open: start animation immediately, API runs in parallel ───
+        // Build blank strip — real cards will fill in when API responds
+        setStrip(Array.from({ length: STRIP_SIZE }, () => BLANK_CARD))
         startedRef.current = false
         setPhase('spinning')
+
+        // Fire the real API call in the background
+        ;(async () => {
+            try {
+                const res = await fetch('/api/open-pack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ setId: pack.id }),
+                })
+
+                if (res.status === 402) {
+                    const data = await res.json()
+                    pendingErrorRef.current = { cost: data.cost, coins: data.coins }
+                    return
+                }
+
+                const data = await res.json()
+                router.refresh()
+
+                const winner: WonCard = data.cards[0]
+                const pool: PoolCard[] = data.cardPool ?? [winner]
+
+                setPoolSize(pool.length)
+                setWonCard(winner)
+
+                // Update strip with real cards — CSS transition continues unaffected
+                setStrip(
+                    Array.from({ length: STRIP_SIZE }, (_, i) =>
+                        i === WINNER_IDX
+                            ? winner
+                            : pool[Math.floor(Math.random() * pool.length)],
+                    ),
+                )
+            } catch {
+                // network error — surface after animation
+                pendingErrorRef.current = { cost: 0, coins: -999 }
+            }
+        })()
     }
 
     // kick off CSS transition after the strip has rendered
@@ -134,6 +178,7 @@ export default function CrateOpening({
             }),
         )
     }, [phase])
+
     useEffect(() => {
         if (phase !== 'done') return
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -158,6 +203,27 @@ export default function CrateOpening({
     function handleTransitionEnd() {
         if (!spinning) return
         setSpinning(false)
+
+        // Check for API error surfaced during animation
+        if (pendingErrorRef.current) {
+            const err = pendingErrorRef.current
+            pendingErrorRef.current = null
+            setPhase('idle')
+            setStrip([])
+            setTargetX(0)
+            startedRef.current = false
+            if (err.coins !== -999) {
+                setCoinError(err)
+            }
+            return
+        }
+
+        if (!wonCard) {
+            // API hasn't responded yet (very rare with 7s anim + <2s API)
+            waitingForCardRef.current = true
+            return
+        }
+
         setRested(true)
         setTimeout(() => setPhase('done'), 1600)
     }
@@ -219,8 +285,8 @@ export default function CrateOpening({
     const glowRgb = rarityGlowRgb(wonRarity)
     const wonIsRainbow = isRainbow(wonRarity)
 
-    // ── idle / loading ────────────────────────────────────────────────────────
-    if (phase === 'idle' || phase === 'loading') {
+    // ── idle ──────────────────────────────────────────────────────────────────
+    if (phase === 'idle') {
         return (
             <div className="flex flex-col items-center justify-center min-h-[100vh] gap-7">
                 {coinError && (
@@ -244,28 +310,46 @@ export default function CrateOpening({
                     </div>
                 )}
                 <div
-                    className={
-                        phase === 'loading'
-                            ? 'animate-pulse'
-                            : 'cursor-pointer hover:scale-105 transition-transform duration-300'
-                    }
-                    style={{
-                        filter: 'drop-shadow(0 0 24px rgba(234,179,8,0.5))',
-                    }}
-                    onClick={phase === 'idle' ? handleOpen : undefined}
+                    className="cursor-pointer hover:scale-105 transition-transform duration-300"
+                    style={{ filter: 'drop-shadow(0 0 24px rgba(234,179,8,0.5))' }}
+                    onClick={handleOpen}
                 >
                     <img
                         src={pack.image}
                         alt={pack.name}
-                        style={{
-                            height: 200,
-                            width: 'auto',
-                            objectFit: 'contain',
-                            opacity: phase === 'loading' ? 0.55 : 1,
-                            transition: 'opacity 0.3s',
-                        }}
+                        style={{ height: 200, width: 'auto', objectFit: 'contain' }}
                     />
                 </div>
+
+                {isAdmin && (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        {([10, 50] as const).map((n) => (
+                            <button
+                                key={n}
+                                onClick={() => setAdminBatchCount((v) => v === n ? 1 : n)}
+                                style={{
+                                    background: adminBatchCount === n
+                                        ? 'rgba(167,139,250,0.28)'
+                                        : 'rgba(167,139,250,0.08)',
+                                    border: adminBatchCount === n
+                                        ? '1px solid rgba(167,139,250,0.7)'
+                                        : '1px solid rgba(167,139,250,0.25)',
+                                    borderRadius: 20,
+                                    padding: '5px 14px',
+                                    color: adminBatchCount === n ? '#ddd6fe' : '#a78bfa',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    letterSpacing: '-0.01em',
+                                    boxShadow: adminBatchCount === n ? '0 0 12px rgba(167,139,250,0.3)' : 'none',
+                                    transition: 'all 0.15s ease',
+                                }}
+                            >
+                                x{n}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <button
                     onClick={onBack}
@@ -278,8 +362,8 @@ export default function CrateOpening({
         )
     }
 
-    // ── spinning ──────────────────────────────────────────────────────────────
-    if (phase === 'spinning') {
+    // ── spinning (single) ─────────────────────────────────────────────────────
+    if (phase === 'spinning' && !batchCards) {
         return (
             <div
                 className="flex flex-col items-center justify-center min-h-[80vh] gap-6 w-full px-4"
@@ -370,6 +454,7 @@ export default function CrateOpening({
                                         flexShrink: 0,
                                         borderRadius: 8,
                                         overflow: 'hidden',
+                                        background: card.image_url ? undefined : 'rgba(255,255,255,0.04)',
                                         border: isWinner
                                             ? `2px solid rgba(${cGlow}, 1)`
                                             : '1px solid rgba(255,255,255,0.07)',
@@ -386,15 +471,17 @@ export default function CrateOpening({
                                             'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.4s, border 0.4s',
                                     }}
                                 >
-                                    <img
-                                        src={card.image_url}
-                                        alt={card.name}
-                                        style={{
-                                            width: '100%',
-                                            height: '100%',
-                                            objectFit: 'cover',
-                                        }}
-                                    />
+                                    {card.image_url && (
+                                        <img
+                                            src={card.image_url}
+                                            alt={card.name}
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'cover',
+                                            }}
+                                        />
+                                    )}
                                 </div>
                             )
                         })}
@@ -423,87 +510,245 @@ export default function CrateOpening({
         )
     }
 
-    // ── done ──────────────────────────────────────────────────────────────────
-    if (phase === 'done' && wonCard) {
+    // ── done (batch) ──────────────────────────────────────────────────────────
+    if (phase === 'done' && batchCards) {
         return (
             <div
-                className="flex flex-col items-center justify-center min-h-[80vh] gap-4"
-                style={{ zoom: 1.2 }}
+                className="flex flex-col items-center min-h-[80vh] gap-6 px-4 py-8"
+                style={{ zoom: isMobile ? 0.9 : 1 }}
             >
+                <p
+                    className="uppercase tracking-widest"
+                    style={{ fontSize: '0.6rem', color: '#374151' }}
+                >
+                    {pack.name} — {adminBatchCount}x results
+                </p>
                 <div
                     style={{
                         display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 16,
+                        flexWrap: 'wrap',
+                        gap: 10,
+                        justifyContent: 'center',
+                        maxWidth: 700,
                     }}
                 >
-                    {/* card */}
+                    {batchCards.map((card, i) => {
+                        const rgb = rarityGlowRgb(card.rarity)
+                        const rainbow = isRainbow(card.rarity)
+                        return (
+                            <div
+                                key={i}
+                                style={{ position: 'relative', width: isMobile ? 80 : 100 }}
+                            >
+                                <img
+                                    src={card.image_url}
+                                    alt={card.name}
+                                    className={rainbow ? 'glow-rainbow rounded-lg' : 'rounded-lg'}
+                                    style={{
+                                        width: '100%',
+                                        height: 'auto',
+                                        boxShadow: rainbow ? undefined : `0 0 10px rgba(${rgb}, 0.5)`,
+                                    }}
+                                />
+                                {card.isNew && (
+                                    <span
+                                        className="bg-green-500/20 text-green-400 border border-green-500/40 rounded-full"
+                                        style={{
+                                            position: 'absolute',
+                                            top: 4,
+                                            right: 4,
+                                            fontSize: '0.45rem',
+                                            padding: '1px 5px',
+                                        }}
+                                    >
+                                        NEW
+                                    </span>
+                                )}
+                                <p
+                                    style={{
+                                        ...rarityTextStyle(card.rarity),
+                                        fontSize: '0.5rem',
+                                        textAlign: 'center',
+                                        marginTop: 3,
+                                        lineHeight: 1.2,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {card.name}
+                                </p>
+                            </div>
+                        )
+                    })}
+                </div>
+                <button
+                    onClick={() => {
+                        setBatchCards(null)
+                        setAdminBatchCount(1)
+                        setPhase('idle')
+                        router.refresh()
+                    }}
+                    className="px-6 py-2 rounded-xl text-sm font-medium border border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all duration-200 mt-2"
+                >
+                    Done
+                </button>
+            </div>
+        )
+    }
+
+    // ── done (single) ─────────────────────────────────────────────────────────
+    if (phase === 'done' && wonCard) {
+        return (
+            <div
+                className="flex items-center justify-center min-h-[80vh]"
+                style={{ zoom: isMobile ? 1 : 1.2 }}
+            >
+                {isMobile ? (
+                    // ── Mobile: card on top, stats below ────────────────────
+                    <div className="flex flex-col items-center gap-4 w-full px-4 py-6">
+                        {/* card */}
+                        <div
+                            className={`relative animate-slide-up${flyingDown ? ' animate-fly-down' : ''}`}
+                            onAnimationEnd={(e) => {
+                                if (flyingDown && e.animationName === 'flyDown') onBack()
+                            }}
+                        >
+                            <img
+                                src={wonCard.image_url}
+                                alt={wonCard.name}
+                                className={`rounded-xl${wonIsRainbow ? ' glow-rainbow' : ''}`}
+                                style={{
+                                    height: 'min(300px, 62vw)',
+                                    width: 'auto',
+                                    opacity: shattering ? 0 : 1,
+                                    boxShadow: wonIsRainbow
+                                        ? undefined
+                                        : `0 0 20px 4px rgba(${glowRgb}, 0.6)`,
+                                }}
+                            />
+                            {wonCard.isNew && (
+                                <span
+                                    className="bg-green-500/20 text-green-400 border border-green-500/40 rounded-full"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 8,
+                                        right: 8,
+                                        fontSize: '0.6rem',
+                                        padding: '2px 7px',
+                                        lineHeight: 1.4,
+                                        backdropFilter: 'blur(4px)',
+                                    }}
+                                >
+                                    NEW
+                                </span>
+                            )}
+                            {shattering && (
+                                <ShatterEffect
+                                    rarity={wonCard.rarity}
+                                    imageUrl={wonCard.image_url}
+                                />
+                            )}
+                        </div>
+
+                        {/* stats panel below card on mobile */}
+                        <div style={{ width: '100%', maxWidth: 340 }}>
+                            <CardStatsPanel
+                                currentCard={wonCard}
+                                isMobile={isMobile}
+                                condPanelTab={condPanelTab}
+                                setCondPanelTab={setCondPanelTab}
+                                bbTooltipPos={bbTooltipPos}
+                                setBbTooltipPos={setBbTooltipPos}
+                                bagCount={bagCount}
+                                bagCapacity={bagCapacity}
+                                currentCardIsNew={wonCard.isNew}
+                                animatingIndex={actionDone ? 0 : null}
+                                shattering={shattering}
+                                isFetchingCopies={false}
+                                handleAddToBag={handleAddToBag}
+                                handleAddToBagDuplicate={handleAddToBag}
+                                handleFeedCard={handleFeed}
+                                handleBuyback={handleSell}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    // ── Desktop: card + stats side by side ────────────────────
                     <div
-                        className={`relative animate-slide-up${flyingDown ? ' animate-fly-down' : ''}`}
-                        onAnimationEnd={(e) => {
-                            if (flyingDown && e.animationName === 'flyDown')
-                                onBack()
+                        style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 16,
                         }}
                     >
-                        <img
-                            src={wonCard.image_url}
-                            alt={wonCard.name}
-                            className={`rounded-xl${wonIsRainbow ? ' glow-rainbow' : ''}`}
-                            style={{
-                                height: 364,
-                                width: 'auto',
-                                opacity: shattering ? 0 : 1,
-                                boxShadow: wonIsRainbow
-                                    ? undefined
-                                    : `0 0 20px 4px rgba(${glowRgb}, 0.6)`,
+                        {/* card */}
+                        <div
+                            className={`relative animate-slide-up${flyingDown ? ' animate-fly-down' : ''}`}
+                            onAnimationEnd={(e) => {
+                                if (flyingDown && e.animationName === 'flyDown') onBack()
                             }}
-                        />
-                        {wonCard.isNew && (
-                            <span
-                                className="bg-green-500/20 text-green-400 border border-green-500/40 rounded-full"
+                        >
+                            <img
+                                src={wonCard.image_url}
+                                alt={wonCard.name}
+                                className={`rounded-xl${wonIsRainbow ? ' glow-rainbow' : ''}`}
                                 style={{
-                                    position: 'absolute',
-                                    top: 8,
-                                    right: 8,
-                                    fontSize: '0.6rem',
-                                    padding: '2px 7px',
-                                    lineHeight: 1.4,
-                                    backdropFilter: 'blur(4px)',
+                                    height: 364,
+                                    width: 'auto',
+                                    opacity: shattering ? 0 : 1,
+                                    boxShadow: wonIsRainbow
+                                        ? undefined
+                                        : `0 0 20px 4px rgba(${glowRgb}, 0.6)`,
                                 }}
-                            >
-                                NEW
-                            </span>
-                        )}
-                        {shattering && (
-                            <ShatterEffect
-                                rarity={wonCard.rarity}
-                                imageUrl={wonCard.image_url}
                             />
-                        )}
-                    </div>
+                            {wonCard.isNew && (
+                                <span
+                                    className="bg-green-500/20 text-green-400 border border-green-500/40 rounded-full"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 8,
+                                        right: 8,
+                                        fontSize: '0.6rem',
+                                        padding: '2px 7px',
+                                        lineHeight: 1.4,
+                                        backdropFilter: 'blur(4px)',
+                                    }}
+                                >
+                                    NEW
+                                </span>
+                            )}
+                            {shattering && (
+                                <ShatterEffect
+                                    rarity={wonCard.rarity}
+                                    imageUrl={wonCard.image_url}
+                                />
+                            )}
+                        </div>
 
-                    {/* use reusable stats panel */}
-                    <div style={{ width: 220, height: 364 }}>
-                        <CardStatsPanel
-                            currentCard={wonCard}
-                            isMobile={isMobile}
-                            condPanelTab={condPanelTab}
-                            setCondPanelTab={setCondPanelTab}
-                            bbTooltipPos={bbTooltipPos}
-                            setBbTooltipPos={setBbTooltipPos}
-                            bagCount={bagCount}
-                            bagCapacity={bagCapacity}
-                            currentCardIsNew={wonCard.isNew}
-                            animatingIndex={actionDone ? 0 : null}
-                            shattering={shattering}
-                            isFetchingCopies={false}
-                            handleAddToBag={handleAddToBag}
-                            handleAddToBagDuplicate={handleAddToBag}
-                            handleFeedCard={handleFeed}
-                            handleBuyback={handleSell}
-                        />
+                        {/* stats panel */}
+                        <div style={{ width: 220, height: 364 }}>
+                            <CardStatsPanel
+                                currentCard={wonCard}
+                                isMobile={isMobile}
+                                condPanelTab={condPanelTab}
+                                setCondPanelTab={setCondPanelTab}
+                                bbTooltipPos={bbTooltipPos}
+                                setBbTooltipPos={setBbTooltipPos}
+                                bagCount={bagCount}
+                                bagCapacity={bagCapacity}
+                                currentCardIsNew={wonCard.isNew}
+                                animatingIndex={actionDone ? 0 : null}
+                                shattering={shattering}
+                                isFetchingCopies={false}
+                                handleAddToBag={handleAddToBag}
+                                handleAddToBagDuplicate={handleAddToBag}
+                                handleFeedCard={handleFeed}
+                                handleBuyback={handleSell}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         )
     }

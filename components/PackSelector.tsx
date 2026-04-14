@@ -128,9 +128,11 @@ export default function PackSelector({ coins = 0 }: { coins?: number }) {
         ) : (
             <CrateOpening
                 pack={selectedPack}
+                isAdmin={isAdmin}
                 onBack={() => {
                     setSelectedPack(null)
                     setSelectedCount(1)
+                    if (!isAdmin) refreshStock()
                 }}
             />
         )

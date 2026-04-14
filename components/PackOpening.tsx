@@ -93,6 +93,7 @@ export default function PackOpening({
     )
     const [openCount, setOpenCount] = useState(count)
     const [batchMode, setBatchMode] = useState(false)
+    const [adminBatchCount, setAdminBatchCount] = useState<1 | 10 | 50>(1)
 
     const [addedCardIds, setAddedCardIds] = useState<Set<string>>(new Set())
     const [showRarity, setShowRarity] = useState(false)
@@ -1131,7 +1132,9 @@ export default function PackOpening({
                                 onClick={() => {
                                     if (!free && !isAdmin && stock <= 0) return
                                     if (isLevelGated) return
-                                    batchMode ? handleClick(stock) : handleClick()
+                                    if (isAdmin && adminBatchCount > 1) handleClick(adminBatchCount)
+                                    else if (batchMode && !isAdmin) handleClick(stock)
+                                    else handleClick()
                                 }}
                                 className={isLevelGated || (!isAdmin && !free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer'}
                                 style={{
@@ -1306,6 +1309,34 @@ export default function PackOpening({
                                         x{stock}
                                     </button>
                                 )}
+                                {isAdmin && ([10, 50] as const).map((n) => (
+                                    <button
+                                        key={n}
+                                        onClick={() => setAdminBatchCount((v) => v === n ? 1 : n)}
+                                        disabled={shaking || opening}
+                                        style={{
+                                            background: adminBatchCount === n
+                                                ? 'rgba(167,139,250,0.28)'
+                                                : 'rgba(167,139,250,0.08)',
+                                            border: adminBatchCount === n
+                                                ? '1px solid rgba(167,139,250,0.7)'
+                                                : '1px solid rgba(167,139,250,0.25)',
+                                            borderRadius: 20,
+                                            padding: '6px 14px',
+                                            color: adminBatchCount === n ? '#ddd6fe' : '#a78bfa',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            letterSpacing: '-0.01em',
+                                            transition: 'transform 0.15s ease, background 0.15s ease, border-color 0.15s ease',
+                                            boxShadow: adminBatchCount === n ? '0 0 14px rgba(167,139,250,0.3)' : 'none',
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08) translateY(-2px)' }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.transform = '' }}
+                                    >
+                                        x{n}
+                                    </button>
+                                ))}
                                 <button
                                     onClick={onBack}
                                     style={{

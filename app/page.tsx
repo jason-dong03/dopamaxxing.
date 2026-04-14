@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const FEATURES = [
@@ -78,7 +79,21 @@ const FEATURES = [
 
 export default function LandingPage() {
     const supabase = createClient()
+    const router = useRouter()
     const [loading, setLoading] = useState<'google' | 'discord' | null>(null)
+    const [checking, setChecking] = useState(true)
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                router.replace('/dashboard')
+            } else {
+                setChecking(false)
+            }
+        })
+    }, [])
+
+    if (checking) return null
 
     async function signInWithGoogle() {
         setLoading('google')
