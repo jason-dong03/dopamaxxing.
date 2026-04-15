@@ -129,7 +129,8 @@ export default function PackOpening({
 
     // XP / level-up
     const [userLevel, setUserLevel] = useState<number>(1)
-    const isLevelGated = !free && !!pack.level_required && userLevel < pack.level_required
+    const isLevelGated =
+        !free && !!pack.level_required && userLevel < pack.level_required
     const [xpGainPerPack, setXpGainPerPack] = useState<number | null>(null)
     const [levelUpInfo, setLevelUpInfo] = useState<{
         oldLevel: number
@@ -328,6 +329,7 @@ export default function PackOpening({
                 )
             }
             const actualOpened = data.openedCount ?? effectiveCount
+            setOpenCount(actualOpened)
             if (!free && effectiveCost > 0) {
                 setUserCoins(
                     (prev) => (prev ?? 0) - effectiveCost * actualOpened,
@@ -1112,9 +1114,11 @@ export default function PackOpening({
                                 tearing ||
                                 opening
                                     ? {
-                                          filter: isLevelGated || (!isAdmin && !free && stock <= 0)
-                                              ? 'grayscale(1) opacity(0.4)'
-                                              : 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
+                                          filter:
+                                              isLevelGated ||
+                                              (!isAdmin && !free && stock <= 0)
+                                                  ? 'grayscale(1) opacity(0.4)'
+                                                  : 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
                                       }
                                     : {}),
                                 transform: tearing
@@ -1132,11 +1136,18 @@ export default function PackOpening({
                                 onClick={() => {
                                     if (!free && !isAdmin && stock <= 0) return
                                     if (isLevelGated) return
-                                    if (isAdmin && adminBatchCount > 1) handleClick(adminBatchCount)
-                                    else if (batchMode && !isAdmin) handleClick(stock)
+                                    if (isAdmin && adminBatchCount > 1)
+                                        handleClick(adminBatchCount)
+                                    else if (batchMode && !isAdmin)
+                                        handleClick(stock)
                                     else handleClick()
                                 }}
-                                className={isLevelGated || (!isAdmin && !free && stock <= 0) ? 'cursor-not-allowed' : 'cursor-pointer'}
+                                className={
+                                    isLevelGated ||
+                                    (!isAdmin && !free && stock <= 0)
+                                        ? 'cursor-not-allowed'
+                                        : 'cursor-pointer'
+                                }
                                 style={{
                                     ...idleDims,
                                     objectFit: 'contain',
@@ -1155,100 +1166,121 @@ export default function PackOpening({
                         </div>
                         <div className="flex flex-col items-center gap-2 mt-8">
                             {isLevelGated && (
-                                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#a78bfa' }}>
+                                <div
+                                    style={{
+                                        fontSize: '0.82rem',
+                                        fontWeight: 700,
+                                        color: '#a78bfa',
+                                    }}
+                                >
                                     Level {pack.level_required} required
                                 </div>
                             )}
-                            {!isAdmin && !isLevelGated && !free && stock <= 0 && (
-                                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ef4444' }}>
-                                    Out of Stock
-                                </div>
-                            )}
-                            {!isLevelGated && !free && (isAdmin || stock > 0) && (
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                    }}
-                                >
-                                    {discount > 0 && (
-                                        <span
-                                            style={{
-                                                fontSize: '0.55rem',
-                                                fontWeight: 800,
-                                                background: '#22c55e',
-                                                color: '#000',
-                                                borderRadius: 4,
-                                                padding: '1px 5px',
-                                                letterSpacing: '0.04em',
-                                            }}
-                                        >
-                                            -{Math.round(discount * 100)}% OFF
-                                        </span>
-                                    )}
-                                    <span
+                            {!isAdmin &&
+                                !isLevelGated &&
+                                !free &&
+                                stock <= 0 && (
+                                    <div
                                         style={{
                                             fontSize: '0.82rem',
-                                            fontWeight: 600,
-                                            color:
-                                                userCoins !== null
-                                                    ? userCoins >=
-                                                      (batchMode
-                                                          ? effectiveCost *
-                                                            stock
-                                                          : effectiveCost)
-                                                        ? '#4ade80'
-                                                        : '#f87171'
-                                                    : '#6b7280',
-                                            letterSpacing: '-0.01em',
-                                            transition: 'color 0.15s',
+                                            fontWeight: 700,
+                                            color: '#ef4444',
                                         }}
                                     >
-                                        {batchMode && !isAdmin
-                                            ? `$ ${(effectiveCost * stock).toFixed(2)}`
-                                            : `$ ${effectiveCost.toFixed(2)}`}
-                                    </span>
-                                    {discount > 0 && (
+                                        Out of Stock
+                                    </div>
+                                )}
+                            {!isLevelGated &&
+                                !free &&
+                                (isAdmin || stock > 0) && (
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                        }}
+                                    >
+                                        {discount > 0 && (
+                                            <span
+                                                style={{
+                                                    fontSize: '0.55rem',
+                                                    fontWeight: 800,
+                                                    background: '#22c55e',
+                                                    color: '#000',
+                                                    borderRadius: 4,
+                                                    padding: '1px 5px',
+                                                    letterSpacing: '0.04em',
+                                                }}
+                                            >
+                                                -{Math.round(discount * 100)}%
+                                                OFF
+                                            </span>
+                                        )}
                                         <span
                                             style={{
-                                                fontSize: '0.62rem',
-                                                color: '#475569',
-                                                textDecoration: 'line-through',
+                                                fontSize: '0.82rem',
+                                                fontWeight: 600,
+                                                color:
+                                                    userCoins !== null
+                                                        ? userCoins >=
+                                                          (batchMode
+                                                              ? effectiveCost *
+                                                                stock
+                                                              : effectiveCost)
+                                                            ? '#4ade80'
+                                                            : '#f87171'
+                                                        : '#6b7280',
                                                 letterSpacing: '-0.01em',
+                                                transition: 'color 0.15s',
                                             }}
                                         >
-                                            ${pack.cost.toFixed(2)}
+                                            {batchMode && !isAdmin
+                                                ? `$ ${(effectiveCost * stock).toFixed(2)}`
+                                                : `$ ${effectiveCost.toFixed(2)}`}
                                         </span>
-                                    )}
-                                    {batchMode && !isAdmin && (
-                                        <span
-                                            style={{
-                                                fontSize: '0.62rem',
-                                                color: '#475569',
-                                                letterSpacing: '-0.01em',
-                                            }}
-                                        >
-                                            ({stock} × $
-                                            {effectiveCost.toFixed(2)})
-                                        </span>
-                                    )}
-                                    {xpGainPerPack !== null && (
-                                        <span
-                                            style={{
-                                                fontSize: '0.65rem',
-                                                color: '#6b7280',
-                                                letterSpacing: '0.04em',
-                                            }}
-                                        >
-                                            +
-                                            {xpGainPerPack *
-                                                (batchMode && !isAdmin ? stock : 1)}{' '}
-                                            XP
-                                        </span>
-                                    )}
-                                </div>
-                            )}
+                                        {discount > 0 && (
+                                            <span
+                                                style={{
+                                                    fontSize: '0.62rem',
+                                                    color: '#475569',
+                                                    textDecoration:
+                                                        'line-through',
+                                                    letterSpacing: '-0.01em',
+                                                }}
+                                            >
+                                                ${pack.cost.toFixed(2)}
+                                            </span>
+                                        )}
+                                        {batchMode && !isAdmin && (
+                                            <span
+                                                style={{
+                                                    fontSize: '0.62rem',
+                                                    color: '#475569',
+                                                    letterSpacing: '-0.01em',
+                                                }}
+                                            >
+                                                ({stock} × $
+                                                {effectiveCost.toFixed(2)})
+                                            </span>
+                                        )}
+                                        {xpGainPerPack !== null && (
+                                            <span
+                                                style={{
+                                                    fontSize: '0.65rem',
+                                                    color: '#6b7280',
+                                                    letterSpacing: '0.04em',
+                                                }}
+                                            >
+                                                +
+                                                {xpGainPerPack *
+                                                    (batchMode && !isAdmin
+                                                        ? stock
+                                                        : 1)}{' '}
+                                                XP
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             {free && xpGainPerPack !== null && (
                                 <div
                                     style={{
@@ -1309,34 +1341,54 @@ export default function PackOpening({
                                         x{stock}
                                     </button>
                                 )}
-                                {isAdmin && ([10, 50] as const).map((n) => (
-                                    <button
-                                        key={n}
-                                        onClick={() => setAdminBatchCount((v) => v === n ? 1 : n)}
-                                        disabled={shaking || opening}
-                                        style={{
-                                            background: adminBatchCount === n
-                                                ? 'rgba(167,139,250,0.28)'
-                                                : 'rgba(167,139,250,0.08)',
-                                            border: adminBatchCount === n
-                                                ? '1px solid rgba(167,139,250,0.7)'
-                                                : '1px solid rgba(167,139,250,0.25)',
-                                            borderRadius: 20,
-                                            padding: '6px 14px',
-                                            color: adminBatchCount === n ? '#ddd6fe' : '#a78bfa',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            letterSpacing: '-0.01em',
-                                            transition: 'transform 0.15s ease, background 0.15s ease, border-color 0.15s ease',
-                                            boxShadow: adminBatchCount === n ? '0 0 14px rgba(167,139,250,0.3)' : 'none',
-                                        }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08) translateY(-2px)' }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.transform = '' }}
-                                    >
-                                        x{n}
-                                    </button>
-                                ))}
+                                {isAdmin &&
+                                    ([10, 50] as const).map((n) => (
+                                        <button
+                                            key={n}
+                                            onClick={() =>
+                                                setAdminBatchCount((v) =>
+                                                    v === n ? 1 : n,
+                                                )
+                                            }
+                                            disabled={shaking || opening}
+                                            style={{
+                                                background:
+                                                    adminBatchCount === n
+                                                        ? 'rgba(167,139,250,0.28)'
+                                                        : 'rgba(167,139,250,0.08)',
+                                                border:
+                                                    adminBatchCount === n
+                                                        ? '1px solid rgba(167,139,250,0.7)'
+                                                        : '1px solid rgba(167,139,250,0.25)',
+                                                borderRadius: 20,
+                                                padding: '6px 14px',
+                                                color:
+                                                    adminBatchCount === n
+                                                        ? '#ddd6fe'
+                                                        : '#a78bfa',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                                letterSpacing: '-0.01em',
+                                                transition:
+                                                    'transform 0.15s ease, background 0.15s ease, border-color 0.15s ease',
+                                                boxShadow:
+                                                    adminBatchCount === n
+                                                        ? '0 0 14px rgba(167,139,250,0.3)'
+                                                        : 'none',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform =
+                                                    'scale(1.08) translateY(-2px)'
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform =
+                                                    ''
+                                            }}
+                                        >
+                                            x{n}
+                                        </button>
+                                    ))}
                                 <button
                                     onClick={onBack}
                                     style={{
@@ -1733,34 +1785,49 @@ export default function PackOpening({
                                         ) : (
                                             /* Desktop: 1 row ≤5 cards, 2 rows >5 cards */
                                             (() => {
-                                                const twoRows = packCards.length > 5
-                                                const cols = twoRows ? Math.ceil(packCards.length / 2) : packCards.length
-                                                const cardH = twoRows ? 155 : 220
+                                                const twoRows =
+                                                    packCards.length > 5
+                                                const cols = twoRows
+                                                    ? Math.ceil(
+                                                          packCards.length / 2,
+                                                      )
+                                                    : packCards.length
+                                                const cardH = twoRows
+                                                    ? 155
+                                                    : 220
                                                 return (
                                                     <div
                                                         style={{
                                                             display: 'grid',
                                                             gridTemplateColumns: `repeat(${cols}, auto)`,
-                                                            justifyContent: 'center',
+                                                            justifyContent:
+                                                                'center',
                                                             gap: 10,
                                                             maxWidth: '98vw',
                                                             padding: '4px 8px',
-                                                            animation: 'fadeIn 250ms ease-out',
+                                                            animation:
+                                                                'fadeIn 250ms ease-out',
                                                         }}
                                                     >
-                                                        {packCards.map((card, i) => (
-                                                            <img
-                                                                key={`${card.id}-${packStart + i}-face`}
-                                                                src={card.image_url}
-                                                                alt={card.name}
-                                                                className="rounded-lg"
-                                                                style={{
-                                                                    height: `${cardH}px`,
-                                                                    width: 'auto',
-                                                                    boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
-                                                                }}
-                                                            />
-                                                        ))}
+                                                        {packCards.map(
+                                                            (card, i) => (
+                                                                <img
+                                                                    key={`${card.id}-${packStart + i}-face`}
+                                                                    src={
+                                                                        card.image_url
+                                                                    }
+                                                                    alt={
+                                                                        card.name
+                                                                    }
+                                                                    className="rounded-lg"
+                                                                    style={{
+                                                                        height: `${cardH}px`,
+                                                                        width: 'auto',
+                                                                        boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
+                                                                    }}
+                                                                />
+                                                            ),
+                                                        )}
                                                     </div>
                                                 )
                                             })()
@@ -1957,7 +2024,9 @@ export default function PackOpening({
                             >
                                 <img
                                     src={
-                                        currentOverallCond !== null && currentOverallCond > 8 && currentCard.image_url_hi
+                                        currentOverallCond !== null &&
+                                        currentOverallCond > 8 &&
+                                        currentCard.image_url_hi
                                             ? currentCard.image_url_hi
                                             : currentCard.image_url
                                     }
@@ -1988,7 +2057,9 @@ export default function PackOpening({
                                     }}
                                 >
                                     <span
-                                        className={rarityTextClass(currentCard.rarity)}
+                                        className={rarityTextClass(
+                                            currentCard.rarity,
+                                        )}
                                         style={{
                                             fontSize: '0.55rem',
                                             fontWeight: 700,
@@ -1999,7 +2070,9 @@ export default function PackOpening({
                                             border: '1px solid rgba(255,255,255,0.1)',
                                             letterSpacing: '0.03em',
                                             textTransform: 'uppercase',
-                                            ...rarityTextStyle(currentCard.rarity),
+                                            ...rarityTextStyle(
+                                                currentCard.rarity,
+                                            ),
                                         }}
                                     >
                                         {currentCard.rarity}
@@ -2021,7 +2094,9 @@ export default function PackOpening({
                                     <ShatterEffect
                                         rarity={currentCard.rarity}
                                         imageUrl={
-                                            currentOverallCond !== null && currentOverallCond > 8 && currentCard.image_url_hi
+                                            currentOverallCond !== null &&
+                                            currentOverallCond > 8 &&
+                                            currentCard.image_url_hi
                                                 ? currentCard.image_url_hi
                                                 : currentCard.image_url
                                         }

@@ -9,17 +9,15 @@ export default function MobileExpand({
     activeTitle,
     discordLinked,
     adminPanel,
-    battleRating,
 }: {
     loginStreak: number
     activeTitle?: string | null
     discordLinked: boolean
     adminPanel: boolean
-    battleRating?: number
 }) {
     const [open, setOpen] = useState(false)
 
-    const hasContent = loginStreak > 1 || activeTitle || (battleRating ?? 0) > 0
+    const hasContent = loginStreak > 1 || activeTitle
 
     if (!hasContent) return null
 
@@ -89,21 +87,7 @@ export default function MobileExpand({
                             {activeTitle}
                         </span>
                     )}
-                    {(battleRating ?? 0) > 0 && (
-                        <span
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                color: 'rgba(255,255,255,0.92)',
-                                textShadow: '0 0 8px rgba(255,255,255,0.5), 0 0 16px rgba(255,255,255,0.25)',
-                            }}
-                        >
-                            {formatBR(battleRating!)} BR
-                        </span>
-                    )}
+
                     {discordLinked && (
                         <span>
                             <LinkDiscord discordLinked={discordLinked} />

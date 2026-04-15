@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -77,21 +77,219 @@ const FEATURES = [
     },
 ]
 
+const MOBILE_LOAD_TOTAL = 24
+
 export default function LandingPage() {
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
     const router = useRouter()
+
     const [loading, setLoading] = useState<'google' | 'discord' | null>(null)
     const [checking, setChecking] = useState(true)
+    const [showAuthLoader, setShowAuthLoader] = useState(false)
+    const [loaderDone, setLoaderDone] = useState(false)
+    const [progressValue, setProgressValue] = useState(0)
+
+    const hasNavigatedRef = useRef(false)
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                router.replace('/dashboard')
-            } else {
-                setChecking(false)
+        let cancelled = false
+
+        async function checkSession() {
+            setShowAuthLoader(true)
+
+            const progressInterval = window.setInterval(() => {
+                setProgressValue((prev) => {
+                    if (prev >= MOBILE_LOAD_TOTAL - 2) return prev
+                    const step = prev < 8 ? 2 : 1
+                    return Math.min(prev + step, MOBILE_LOAD_TOTAL - 2)
+                })
+            }, 70)
+
+            try {
+                const {
+                    data: { session },
+                } = await supabase.auth.getSession()
+
+                if (cancelled) return
+
+                if (session) {
+                    setProgressValue(MOBILE_LOAD_TOTAL)
+                    setLoaderDone(true)
+                    window.setTimeout(() => {
+                        if (!hasNavigatedRef.current) {
+                            hasNavigatedRef.current = true
+                            router.replace('/dashboard')
+                        }
+                    }, 320)
+                } else {
+                    window.clearInterval(progressInterval)
+                    setShowAuthLoader(false)
+                    setChecking(false)
+                }
+            } finally {
+                window.clearInterval(progressInterval)
             }
-        })
-    }, [])
+        }
+
+        checkSession()
+
+        return () => {
+            cancelled = true
+        }
+    }, [router, supabase])
+
+    if (showAuthLoader) {
+        const percent = Math.round((progressValue / MOBILE_LOAD_TOTAL) * 100)
+
+        return (
+            <div
+                style={{
+                    minHeight: '100vh',
+                    background:
+                        'linear-gradient(160deg, #08080f 0%, #0c0b14 40%, #070709 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
+                    opacity: loaderDone ? 0 : 1,
+                    transition: 'opacity 320ms ease',
+                }}
+            >
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        pointerEvents: 'none',
+                    }}
+                >
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '-10%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: 700,
+                            height: 500,
+                            background:
+                                'radial-gradient(ellipse, rgba(109,40,217,0.10) 0%, transparent 65%)',
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: '5%',
+                            left: '30%',
+                            width: 400,
+                            height: 300,
+                            background:
+                                'radial-gradient(ellipse, rgba(99,102,241,0.07) 0%, transparent 70%)',
+                        }}
+                    />
+                </div>
+
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        pointerEvents: 'none',
+                        backgroundImage: `
+                            linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)
+                        `,
+                        backgroundSize: '64px 64px',
+                    }}
+                />
+
+                <div
+                    style={{
+                        position: 'relative',
+                        zIndex: 1,
+                        width: '100%',
+                        maxWidth: 340,
+                        padding: '0 24px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                    }}
+                >
+                    <h1
+                        style={{
+                            fontSize: 'clamp(2rem, 8vw, 2.8rem)',
+                            fontWeight: 800,
+                            letterSpacing: '-0.04em',
+                            color: '#fff',
+                            margin: '0 0 10px',
+                            lineHeight: 1,
+                        }}
+                    >
+                        Dopamaxxing
+                    </h1>
+
+                    <p
+                        style={{
+                            fontSize: '0.78rem',
+                            color: '#6b7280',
+                            margin: '0 0 28px',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                        }}
+                    >
+                        Loading your dashboard
+                    </p>
+
+                    <div
+                        style={{
+                            width: '100%',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 999,
+                            height: 12,
+                            overflow: 'hidden',
+                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: `${percent}%`,
+                                height: '100%',
+                                borderRadius: 999,
+                                background:
+                                    'linear-gradient(90deg, rgba(99,102,241,0.9) 0%, rgba(168,85,247,0.9) 100%)',
+                                boxShadow:
+                                    '0 0 18px rgba(99,102,241,0.28), 0 0 24px rgba(168,85,247,0.18)',
+                                transition: 'width 160ms ease',
+                            }}
+                        />
+                    </div>
+
+                    <div
+                        style={{
+                            marginTop: 10,
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            color: '#e5e7eb',
+                            letterSpacing: '-0.01em',
+                        }}
+                    >
+                        {progressValue}/{MOBILE_LOAD_TOTAL}
+                    </div>
+
+                    <div
+                        style={{
+                            marginTop: 6,
+                            fontSize: '0.68rem',
+                            color: '#6b7280',
+                        }}
+                    >
+                        {percent}%
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     if (checking) return null
 
@@ -131,7 +329,6 @@ export default function LandingPage() {
                 fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
             }}
         >
-            {/* ambient glows */}
             <div
                 style={{
                     position: 'absolute',
@@ -164,7 +361,6 @@ export default function LandingPage() {
                 />
             </div>
 
-            {/* subtle grid */}
             <div
                 style={{
                     position: 'absolute',
@@ -216,7 +412,6 @@ export default function LandingPage() {
                     Collect Pokémon cards. Chase the dopamine.
                 </p>
 
-                {/* feature row */}
                 <div
                     style={{
                         display: 'flex',
@@ -266,7 +461,6 @@ export default function LandingPage() {
                     ))}
                 </div>
 
-                {/* sign in buttons */}
                 <div
                     style={{
                         display: 'flex',

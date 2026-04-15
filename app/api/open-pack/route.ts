@@ -1,11 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { calculateBuyback, randomCardLevel, WEIGHTS_BULK, WEIGHTS_SLOT5, WEIGHTS_UNCOMMON_PLUS, WEIGHTS_RARE_PLUS, BONUS_CARD_CHANCE, pickRarityFromWeights } from '@/lib/rarityConfig'
+import {
+    calculateBuyback,
+    randomCardLevel,
+    WEIGHTS_BULK,
+    WEIGHTS_SLOT5,
+    WEIGHTS_UNCOMMON_PLUS,
+    WEIGHTS_RARE_PLUS,
+    BONUS_CARD_CHANCE,
+    pickRarityFromWeights,
+} from '@/lib/rarityConfig'
 import { getMergedPacks } from '@/lib/packMeta'
 import { applyProfileXP, packXpGain, xpForLevel } from '@/lib/rarityConfig'
 import { generateAttributes } from '@/lib/cardAttributes'
 import { getEventMagnitude, getTodayEvents } from '@/lib/dailyEvents'
-import { awardAchievements, getEarnedAchievements } from '@/lib/awardAchievement'
+import {
+    awardAchievements,
+    getEarnedAchievements,
+} from '@/lib/awardAchievement'
 import { awardLevelUpRewards } from '@/lib/awardLevelUp'
 import { rollStats, rollNature } from '@/lib/pokemon-stats'
 import { fetchPokemonData } from '@/lib/pokemon-moves'
@@ -13,9 +25,21 @@ import { recalcBattleRating } from '@/lib/battlePower'
 import { getOrRefreshStock } from '@/lib/packStock'
 
 const pityRarities = ['Legendary', 'Divine', 'Celestial', '???']
-const GOD_PACK_CHANCE = 0.003   // 0.3% — roughly 1 in 333
-const GOD_PACK_RARITIES = ['Mythical', 'Legendary', 'Divine', 'Celestial', '???']
-const WEIGHTS_GOD_PACK: Record<string, number> = { Mythical: 55, Legendary: 25, Divine: 12, Celestial: 5, '???': 3 }
+const GOD_PACK_CHANCE = 0.003 // 0.3% — roughly 1 in 333
+const GOD_PACK_RARITIES = [
+    'Mythical',
+    'Legendary',
+    'Divine',
+    'Celestial',
+    '???',
+]
+const WEIGHTS_GOD_PACK: Record<string, number> = {
+    Mythical: 55,
+    Legendary: 25,
+    Divine: 12,
+    Celestial: 5,
+    '???': 3,
+}
 
 // ─── module-level set card cache (per worker, 1hr TTL) ────────────────────────
 type CardRow = Record<string, unknown>
@@ -38,8 +62,15 @@ async function getCardsForSet(
 }
 
 const RARITY_RANK: Record<string, number> = {
-    '???': 8, Celestial: 7, Divine: 6, Legendary: 5,
-    Mythical: 4, Epic: 3, Rare: 2, Uncommon: 1, Common: 0,
+    '???': 8,
+    Celestial: 7,
+    Divine: 6,
+    Legendary: 5,
+    Mythical: 4,
+    Epic: 3,
+    Rare: 2,
+    Uncommon: 1,
+    Common: 0,
 }
 
 async function getCardsForPokedexIds(
@@ -61,7 +92,11 @@ async function getCardsForPokedexIds(
     for (const card of (data ?? []) as CardRow[]) {
         const name = card.name as string
         const existing = seen.get(name)
-        if (!existing || (RARITY_RANK[card.rarity as string] ?? 0) > (RARITY_RANK[existing.rarity as string] ?? 0)) {
+        if (
+            !existing ||
+            (RARITY_RANK[card.rarity as string] ?? 0) >
+                (RARITY_RANK[existing.rarity as string] ?? 0)
+        ) {
             seen.set(name, card)
         }
     }
@@ -88,29 +123,42 @@ export async function POST(request: NextRequest) {
         const baseCost = packDef?.cost ?? 0
         const costDiscount = await getEventMagnitude('cheap_packs') // e.g. 0.75 = 25% off
         const freePackChance = free ? 0 : await getEventMagnitude('free_pack') // e.g. 0.15 = 15% chance
-        const luckyFree = !free && freePackChance > 0 && Math.random() < freePackChance
+        const luckyFree =
+            !free && freePackChance > 0 && Math.random() < freePackChance
         const effectiveFree = free || luckyFree
 
         const isCrate = packDef?.aspect === 'box'
 
         // fetch profile + all set cards + bag count in parallel
-        const [{ data: profile }, allCards, bagCountRes, crateKeyRes] = await Promise.all([
-            supabase
-                .from('profiles')
-                .select('pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened, is_admin')
-                .eq('id', user.id)
-                .single(),
-            packDef?.theme_pokedex_ids
-                ? getCardsForPokedexIds(supabase, setId, packDef.theme_pokedex_ids)
-                : getCardsForSet(supabase, setId),
-            supabase
-                .from('user_cards')
-                .select('id', { count: 'exact', head: true })
-                .eq('user_id', user.id),
-            isCrate
-                ? supabase.from('crate_keys').select('quantity').eq('user_id', user.id).eq('pack_id', setId).single()
-                : Promise.resolve({ data: null }),
-        ])
+        const [{ data: profile }, allCards, bagCountRes, crateKeyRes] =
+            await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select(
+                        'pity_counter, pity_threshold, coins, xp, level, bag_capacity, daily_packs_today, daily_reset_date, packs_opened, is_admin',
+                    )
+                    .eq('id', user.id)
+                    .single(),
+                packDef?.theme_pokedex_ids
+                    ? getCardsForPokedexIds(
+                          supabase,
+                          setId,
+                          packDef.theme_pokedex_ids,
+                      )
+                    : getCardsForSet(supabase, setId),
+                supabase
+                    .from('user_cards')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', user.id),
+                isCrate
+                    ? supabase
+                          .from('crate_keys')
+                          .select('quantity')
+                          .eq('user_id', user.id)
+                          .eq('pack_id', setId)
+                          .single()
+                    : Promise.resolve({ data: null }),
+            ])
 
         // ── bag full check ────────────────────────────────────────────────────
         const bagCapacity = profile?.bag_capacity ?? 50
@@ -127,7 +175,10 @@ export async function POST(request: NextRequest) {
         let cost = 0
         if (!effectiveFree) {
             if (!isAdmin) {
-                const { stock, discounts } = await getOrRefreshStock(supabase, user.id)
+                const { stock, discounts } = await getOrRefreshStock(
+                    supabase,
+                    user.id,
+                )
                 const available = stock[setId] ?? 0
                 if (available <= 0) {
                     return NextResponse.json(
@@ -136,11 +187,17 @@ export async function POST(request: NextRequest) {
                     )
                 }
                 const packDiscount = discounts[setId] ?? 0
-                cost = parseFloat((baseCost * costDiscount * (1 - packDiscount)).toFixed(2))
+                cost = parseFloat(
+                    (baseCost * costDiscount * (1 - packDiscount)).toFixed(2),
+                )
 
                 if (cost > 0 && (profile?.coins ?? 0) < cost) {
                     return NextResponse.json(
-                        { error: 'insufficient_coins', cost, coins: profile?.coins ?? 0 },
+                        {
+                            error: 'insufficient_coins',
+                            cost,
+                            coins: profile?.coins ?? 0,
+                        },
                         { status: 402 },
                     )
                 }
@@ -154,10 +211,15 @@ export async function POST(request: NextRequest) {
         }
 
         // ── crate key check ───────────────────────────────────────────────────
-        const crateKeyCount = (crateKeyRes as { data: { quantity: number } | null })?.data?.quantity ?? 0
+        const crateKeyCount =
+            (crateKeyRes as { data: { quantity: number } | null })?.data
+                ?.quantity ?? 0
         if (!free && !isAdmin && isCrate) {
             if (crateKeyCount < 1) {
-                return NextResponse.json({ error: 'no_key', crate_keys: 0 }, { status: 402 })
+                return NextResponse.json(
+                    { error: 'no_key', crate_keys: 0 },
+                    { status: 402 },
+                )
             }
         }
 
@@ -194,9 +256,19 @@ export async function POST(request: NextRequest) {
         const extraCard = todayEvents.some((e) => e.effect === 'extra_card')
 
         // Apply luckBoost to a weight table (boosts Rare+ entries)
-        function applyBoost(base: Record<string, number>): Record<string, number> {
+        function applyBoost(
+            base: Record<string, number>,
+        ): Record<string, number> {
             if (luckBoost <= 1) return base
-            const highRarities = new Set(['Rare', 'Epic', 'Mythical', 'Legendary', 'Divine', 'Celestial', '???'])
+            const highRarities = new Set([
+                'Rare',
+                'Epic',
+                'Mythical',
+                'Legendary',
+                'Divine',
+                'Celestial',
+                '???',
+            ])
             const out: Record<string, number> = {}
             for (const [r, w] of Object.entries(base)) {
                 out[r] = highRarities.has(r) ? w * luckBoost : w
@@ -265,7 +337,11 @@ export async function POST(request: NextRequest) {
                     const j = Math.floor(Math.random() * (i + 1))
                     ;[godPool[i], godPool[j]] = [godPool[j], godPool[i]]
                 }
-                pickedCards.splice(0, pickedCards.length, ...godPool.slice(0, pickedCards.length))
+                pickedCards.splice(
+                    0,
+                    pickedCards.length,
+                    ...godPool.slice(0, pickedCards.length),
+                )
             }
         }
 
@@ -280,7 +356,9 @@ export async function POST(request: NextRequest) {
                 '???': 0.2,
             }
             const hasEpicPlus = pickedCards.some(
-                (c) => (RARITY_RANK[c.rarity as string] ?? 0) >= RARITY_RANK['Epic'],
+                (c) =>
+                    (RARITY_RANK[c.rarity as string] ?? 0) >=
+                    RARITY_RANK['Epic'],
             )
             if (!hasEpicPlus) {
                 const epicCard = pickCard(WEIGHTS_EPIC_PLUS)
@@ -288,7 +366,13 @@ export async function POST(request: NextRequest) {
                     // replace the lowest-rarity card
                     let lowestIdx = 0
                     for (let i = 1; i < pickedCards.length; i++) {
-                        if ((RARITY_RANK[pickedCards[i].rarity as string] ?? 0) < (RARITY_RANK[pickedCards[lowestIdx].rarity as string] ?? 0)) {
+                        if (
+                            (RARITY_RANK[pickedCards[i].rarity as string] ??
+                                0) <
+                            (RARITY_RANK[
+                                pickedCards[lowestIdx].rarity as string
+                            ] ?? 0)
+                        ) {
                             lowestIdx = i
                         }
                     }
@@ -336,7 +420,11 @@ export async function POST(request: NextRequest) {
                 .eq('id', user.id),
             // Deduct crate key when opening a box
             !free && isCrate
-                ? supabase.from('crate_keys').update({ quantity: Math.max(0, crateKeyCount - 1) }).eq('user_id', user.id).eq('pack_id', setId)
+                ? supabase
+                      .from('crate_keys')
+                      .update({ quantity: Math.max(0, crateKeyCount - 1) })
+                      .eq('user_id', user.id)
+                      .eq('pack_id', setId)
                 : Promise.resolve(null),
             supabase
                 .from('user_cards')
@@ -350,14 +438,36 @@ export async function POST(request: NextRequest) {
         // Award pack-related achievements
         const earned = await getEarnedAchievements(user.id)
         const toAward: string[] = []
-        if (!earned.has('pack_addict') && newPacksOpened >= 10) toAward.push('pack_addict')
-        if (!earned.has('rising_star') && newLevel >= 5) toAward.push('rising_star')
-        const pulledRarities = new Set(pickedCards.map(c => c.rarity as string))
-        if (!earned.has('legend_puller') && pulledRarities.has('Legendary')) toAward.push('legend_puller')
-        if (!earned.has('divine_puller') && pulledRarities.has('Divine')) toAward.push('divine_puller')
-        if (!earned.has('celestial_puller') && pulledRarities.has('Celestial')) toAward.push('celestial_puller')
-        if (!earned.has('mystery_puller') && pulledRarities.has('???')) toAward.push('mystery_puller')
-        if (!earned.has('rare_finder') && pickedCards.some(c => ['Rare','Epic','Mythical','Legendary','Divine','Celestial','???'].includes(c.rarity as string))) toAward.push('rare_finder')
+        if (!earned.has('pack_addict') && newPacksOpened >= 10)
+            toAward.push('pack_addict')
+        if (!earned.has('rising_star') && newLevel >= 5)
+            toAward.push('rising_star')
+        const pulledRarities = new Set(
+            pickedCards.map((c) => c.rarity as string),
+        )
+        if (!earned.has('legend_puller') && pulledRarities.has('Legendary'))
+            toAward.push('legend_puller')
+        if (!earned.has('divine_puller') && pulledRarities.has('Divine'))
+            toAward.push('divine_puller')
+        if (!earned.has('celestial_puller') && pulledRarities.has('Celestial'))
+            toAward.push('celestial_puller')
+        if (!earned.has('mystery_puller') && pulledRarities.has('???'))
+            toAward.push('mystery_puller')
+        if (
+            !earned.has('rare_finder') &&
+            pickedCards.some((c) =>
+                [
+                    'Rare',
+                    'Epic',
+                    'Mythical',
+                    'Legendary',
+                    'Divine',
+                    'Celestial',
+                    '???',
+                ].includes(c.rarity as string),
+            )
+        )
+            toAward.push('rare_finder')
         if (!earned.has('first_pull')) toAward.push('first_pull')
         if (toAward.length) await awardAchievements(user.id, toAward)
 
@@ -365,22 +475,32 @@ export async function POST(request: NextRequest) {
 
         // Fetch PokeAPI base stats concurrently for all picked cards
         const pokeDataResults = await Promise.allSettled(
-            pickedCards.map(card =>
+            pickedCards.map((card) =>
                 (card.national_pokedex_number as number | null)
                     ? fetchPokemonData(card.national_pokedex_number as number)
-                    : Promise.resolve(null)
-            )
+                    : Promise.resolve(null),
+            ),
         )
 
         const cardsWithMeta = pickedCards.map((card, i) => {
             const rarity = card.rarity as string
             const previewAttrs = generateAttributes(rarity)
-            const pokeData = pokeDataResults[i].status === 'fulfilled' ? pokeDataResults[i].value : null
+            const pokeData =
+                pokeDataResults[i].status === 'fulfilled'
+                    ? pokeDataResults[i].value
+                    : null
             // Use real base stats if available, else fall back to rarity-only ranges
-            const previewStats = rollStats(rarity, pokeData?.baseStats ?? undefined)
+            const previewStats = rollStats(
+                rarity,
+                pokeData?.baseStats ?? undefined,
+            )
             const previewNature = rollNature(rarity)
             const cardLevel = randomCardLevel(rarity)
-            const { storedWorth, ...buybackResult } = calculateBuyback(rarity, Number(card.market_price_usd) || 0, (card.set_id as string)?.endsWith('-1ed') ?? false)
+            const { storedWorth, ...buybackResult } = calculateBuyback(
+                rarity,
+                Number(card.market_price_usd) || 0,
+                (card.set_id as string)?.endsWith('-1ed') ?? false,
+            )
             return {
                 ...card,
                 isNew: !ownedIds.has(card.id as string),
@@ -398,9 +518,17 @@ export async function POST(request: NextRequest) {
 
         // Track N's quest progress for White Flare / Black Bolt packs (fire-and-forget)
         if (setId === 'sv10.5w' || setId === 'sv10.5b') {
-            const field = setId === 'sv10.5w' ? 'opened_white_flare' : 'opened_black_bolt'
+            const field =
+                setId === 'sv10.5w' ? 'opened_white_flare' : 'opened_black_bolt'
             void (async () => {
-                try { await supabase.from('n_quest_progress').upsert({ user_id: user.id, [field]: true }, { onConflict: 'user_id' }) } catch {}
+                try {
+                    await supabase
+                        .from('n_quest_progress')
+                        .upsert(
+                            { user_id: user.id, [field]: true },
+                            { onConflict: 'user_id' },
+                        )
+                } catch {}
             })()
         }
 

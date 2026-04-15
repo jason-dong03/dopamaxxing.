@@ -52,320 +52,333 @@ export default async function Dashboard() {
                 {/* main row */}
                 <div
                     style={{
-                        maxWidth: 1100,
-                        margin: '0 auto',
+                        width: '100%',
                         padding: '0 16px',
                         height: 50,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
+                        justifyContent: 'space-between',
+                        gap: 12,
                     }}
                 >
-                    {/* brand — hidden on mobile */}
-                    <div
-                        className="hidden sm:flex"
-                        style={{
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                            flexShrink: 0,
-                            marginRight: 4,
-                        }}
-                    >
-                        <LiberatorEasterEgg>
-                            <span
-                                style={{
-                                    fontSize: '0.7rem',
-                                    fontWeight: 800,
-                                    color: 'var(--app-text)',
-                                    letterSpacing: '-0.02em',
-                                }}
-                            >
-                                dopamaxxing.
-                            </span>
-                        </LiberatorEasterEgg>
-                        {/* subtle hint — barely visible, only noticeable if you're looking */}
-                        <span
-                            style={{
-                                fontSize: '0.38rem',
-                                color: 'var(--app-text)',
-                                opacity: 0.18,
-                                letterSpacing: '0.15em',
-                                fontFamily: 'monospace',
-                                lineHeight: 1,
-                                marginTop: 1,
-                                userSelect: 'none',
-                            }}
-                        >
-                            vii
-                        </span>
-                    </div>
-
-                    <div
-                        className="hidden sm:block"
-                        style={{
-                            width: 1,
-                            height: 20,
-                            background: 'var(--app-border)',
-                            flexShrink: 0,
-                        }}
-                    />
-
-                    {profile?.profile_url && (
-                        <Image
-                            src={profile.profile_url}
-                            alt="avatar"
-                            width={26}
-                            height={26}
-                            style={{
-                                borderRadius: '50%',
-                                flexShrink: 0,
-                                opacity: 0.9,
-                            }}
-                        />
-                    )}
-
-                    <div
-                        style={{
-                            lineHeight: 1.2,
-                            minWidth: 0,
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                flexWrap: 'nowrap',
-                            }}
-                        >
-                            <p
-                                style={{
-                                    fontSize: '0.78rem',
-                                    fontWeight: 600,
-                                    color: 'var(--app-text-dim)',
-                                    margin: 0,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    maxWidth: 'clamp(80px, 35vw, 200px)',
-                                }}
-                            >
-                                {profile?.username ?? 'Trainer'}
-                            </p>
-                            {profile?.active_title && (
-                                <span
-                                    className="hidden sm:inline"
-                                    style={{
-                                        fontSize: '0.6rem',
-                                        fontWeight: 600,
-                                        color: getTitleColor(
-                                            profile.active_title,
-                                        ),
-                                        whiteSpace: 'nowrap',
-                                        flexShrink: 0,
-                                    }}
-                                >
-                                    {profile.active_title}
-                                </span>
-                            )}
-                            {(profile?.login_streak ?? 0) > 1 && (
-                                <span
-                                    className="hidden sm:inline-flex"
-                                    style={{
-                                        alignItems: 'center',
-                                        gap: 2,
-                                        fontSize: '0.62rem',
-                                        fontWeight: 700,
-                                        color: '#fb923c',
-                                        background: 'rgba(251,146,60,0.1)',
-                                        border: '1px solid rgba(251,146,60,0.25)',
-                                        borderRadius: 20,
-                                        padding: '1px 7px',
-                                        whiteSpace: 'nowrap',
-                                        flexShrink: 0,
-                                    }}
-                                >
-                                    🔥 {profile?.login_streak}
-                                </span>
-                            )}
-                        </div>
-                        {(profile?.first_name || profile?.last_name) && (
-                            <p
-                                className="hidden sm:block"
-                                style={{
-                                    fontSize: '0.58rem',
-                                    color: 'var(--app-text-faint)',
-                                    margin: 0,
-                                    letterSpacing: '1px',
-                                }}
-                            >
-                                @
-                                {[profile.first_name, profile.last_name]
-                                    .filter(Boolean)
-                                    .join(' ')}
-                            </p>
-                        )}
-                    </div>
-                    <MobileExpand
-                        loginStreak={profile?.login_streak ?? 0}
-                        activeTitle={profile?.active_title}
-                        discordLinked={!!profile?.discord_id}
-                        adminPanel={profile?.is_admin}
-                        battleRating={profile?.battle_power ?? 0}
-                    />
-
-                    <div
-                        className="hidden sm:flex"
-                        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-                    >
-                        <BRDisplay initialBP={profile?.battle_power ?? 0} />
-                    </div>
-                    <div className="sm:hidden" style={{ flex: 1 }} />
-
-                    {profile?.is_admin && (
-                        <a
-                            href="/admin"
-                            className="hidden sm:contents admin-pill"
-                            style={{
-                                fontSize: '0.68rem',
-                                fontWeight: 700,
-                                color: '#94a3b8',
-                                background: 'var(--app-surface-2)',
-                                border: '1px solid var(--app-border)',
-                                borderRadius: 20,
-                                padding: '3px 10px',
-                                textDecoration: 'none',
-                                letterSpacing: '0.05em',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
-                            }}
-                        >
-                            ADMIN
-                        </a>
-                    )}
-
-                    <span className="hidden sm:contents">
-                        <LinkDiscord discordLinked={!!profile?.discord_id} />
-                    </span>
-
-                    {/* stash */}
-                    <StashButton />
-
-                    {/* coins */}
-                    <CoinDisplay initialCoins={Number(profile?.coins ?? 0)} />
-
-                    {/* level + xp bar — hidden on mobile */}
                     <div
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 8,
-                            flexShrink: 0,
+                            gap: 10,
+                            minWidth: 0,
+                            flex: 1,
                         }}
                     >
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'baseline',
-                                gap: 2,
-                                background: 'var(--app-surface-2)',
-                                border: '1px solid var(--app-border)',
-                                borderRadius: 20,
-                                padding: '3px 14px 3px 10px',
-                            }}
-                        >
-                            <span
-                                style={{
-                                    fontSize: '0.6rem',
-                                    fontWeight: 500,
-                                    color: 'var(--app-text-muted)',
-                                }}
-                            >
-                                Lv
-                            </span>
-                            <span
-                                style={{
-                                    fontSize: '0.72rem',
-                                    fontWeight: 700,
-                                    color: 'var(--lv-green)',
-                                }}
-                            >
-                                {level}
-                            </span>
-                        </div>
+                        {/* brand — hidden on mobile */}
                         <div
                             className="hidden sm:flex"
                             style={{
                                 flexDirection: 'column',
-                                alignItems: 'flex-end',
-                                gap: 3,
-                                position: 'relative',
-                                top: 5,
+                                alignItems: 'flex-start',
+                                flexShrink: 0,
+                                marginRight: 4,
+                            }}
+                        >
+                            <LiberatorEasterEgg>
+                                <span
+                                    style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        color: 'var(--app-text)',
+                                        letterSpacing: '-0.02em',
+                                    }}
+                                >
+                                    dopamaxxing.
+                                </span>
+                            </LiberatorEasterEgg>
+                            {/* subtle hint — barely visible, only noticeable if you're looking */}
+                            <span
+                                style={{
+                                    fontSize: '0.38rem',
+                                    color: 'var(--app-text)',
+                                    opacity: 0.18,
+                                    letterSpacing: '0.15em',
+                                    fontFamily: 'monospace',
+                                    lineHeight: 1,
+                                    marginTop: 1,
+                                    userSelect: 'none',
+                                }}
+                            >
+                                vii
+                            </span>
+                        </div>
+
+                        <div
+                            className="hidden sm:block"
+                            style={{
+                                width: 1,
+                                height: 20,
+                                background: 'var(--app-border)',
+                                flexShrink: 0,
+                            }}
+                        />
+
+                        {profile?.profile_url && (
+                            <Image
+                                src={profile.profile_url}
+                                alt="avatar"
+                                width={26}
+                                height={26}
+                                style={{
+                                    borderRadius: '50%',
+                                    flexShrink: 0,
+                                    opacity: 0.9,
+                                }}
+                            />
+                        )}
+
+                        <div
+                            style={{
+                                lineHeight: 1.2,
+                                minWidth: 0,
+                                overflow: 'hidden',
                             }}
                         >
                             <div
                                 style={{
-                                    width: 100,
-                                    height: 5,
-                                    borderRadius: 3,
-                                    background: 'var(--app-border)',
-                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    flexWrap: 'nowrap',
+                                }}
+                            >
+                                <p
+                                    style={{
+                                        fontSize: '0.78rem',
+                                        fontWeight: 600,
+                                        color: 'var(--app-text-dim)',
+                                        margin: 0,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        maxWidth: 'clamp(80px, 35vw, 200px)',
+                                    }}
+                                >
+                                    {profile?.username ?? 'Trainer'}
+                                </p>
+                                {profile?.active_title && (
+                                    <span
+                                        className="hidden sm:inline"
+                                        style={{
+                                            fontSize: '0.6rem',
+                                            fontWeight: 600,
+                                            color: getTitleColor(
+                                                profile.active_title,
+                                            ),
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        {profile.active_title}
+                                    </span>
+                                )}
+                                {(profile?.login_streak ?? 0) > 1 && (
+                                    <span
+                                        className="hidden sm:inline-flex"
+                                        style={{
+                                            alignItems: 'center',
+                                            gap: 2,
+                                            fontSize: '0.62rem',
+                                            fontWeight: 700,
+                                            color: '#fb923c',
+                                            background: 'rgba(251,146,60,0.1)',
+                                            border: '1px solid rgba(251,146,60,0.25)',
+                                            borderRadius: 20,
+                                            padding: '1px 7px',
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        🔥 {profile?.login_streak}
+                                    </span>
+                                )}
+                            </div>
+                            {(profile?.first_name || profile?.last_name) && (
+                                <p
+                                    className="hidden sm:block"
+                                    style={{
+                                        fontSize: '0.58rem',
+                                        color: 'var(--app-text-faint)',
+                                        margin: 0,
+                                        letterSpacing: '1px',
+                                    }}
+                                >
+                                    @
+                                    {[profile.first_name, profile.last_name]
+                                        .filter(Boolean)
+                                        .join(' ')}
+                                </p>
+                            )}
+                        </div>
+                        <MobileExpand
+                            loginStreak={profile?.login_streak ?? 0}
+                            activeTitle={profile?.active_title}
+                            discordLinked={!!profile?.discord_id}
+                            adminPanel={profile?.is_admin}
+                        />
+                        <div className="sm:hidden" style={{ flex: 1 }} />
+                    </div>
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            flexShrink: 0,
+                            justifyContent: 'flex-end',
+                        }}
+                    >
+                        {profile?.is_admin && (
+                            <a
+                                href="/admin"
+                                className="hidden sm:contents admin-pill"
+                                style={{
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    color: '#94a3b8',
+                                    background: 'var(--app-surface-2)',
+                                    border: '1px solid var(--app-border)',
+                                    borderRadius: 20,
+                                    padding: '3px 10px',
+                                    textDecoration: 'none',
+                                    letterSpacing: '0.05em',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                ADMIN
+                            </a>
+                        )}
+                        <BRDisplay initialBP={profile?.battle_power ?? 0} />
+                        <span className="hidden sm:contents">
+                            <LinkDiscord
+                                discordLinked={!!profile?.discord_id}
+                            />
+                            <StashButton />
+                        </span>
+
+                        {/* coins */}
+                        <CoinDisplay
+                            initialCoins={Number(profile?.coins ?? 0)}
+                        />
+
+                        {/* level + xp bar — hidden on mobile */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                flexShrink: 0,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'baseline',
+                                    gap: 2,
+                                    background: 'var(--app-surface-2)',
+                                    border: '1px solid var(--app-border)',
+                                    borderRadius: 20,
+                                    padding: '3px 14px 3px 10px',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: '0.6rem',
+                                        fontWeight: 500,
+                                        color: 'var(--app-text-muted)',
+                                    }}
+                                >
+                                    Lv
+                                </span>
+                                <span
+                                    style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        color: 'var(--lv-green)',
+                                    }}
+                                >
+                                    {level}
+                                </span>
+                            </div>
+                            <div
+                                className="hidden sm:flex"
+                                style={{
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-end',
+                                    gap: 3,
+                                    position: 'relative',
+                                    top: 5,
                                 }}
                             >
                                 <div
                                     style={{
-                                        height: '100%',
-                                        width: `${xpPct}%`,
-                                        background: 'var(--lv-green)',
+                                        width: 100,
+                                        height: 5,
                                         borderRadius: 3,
-                                        transition: 'width 600ms ease',
+                                        background: 'var(--app-border)',
+                                        overflow: 'hidden',
                                     }}
-                                />
+                                >
+                                    <div
+                                        style={{
+                                            height: '100%',
+                                            width: `${xpPct}%`,
+                                            background: 'var(--lv-green)',
+                                            borderRadius: 3,
+                                            transition: 'width 600ms ease',
+                                        }}
+                                    />
+                                </div>
+                                <span
+                                    className="hidden sm:flex"
+                                    style={{
+                                        fontSize: '0.5rem',
+                                        color: 'var(--app-text-muted)',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {xp} / {xpNeeded} XP
+                                </span>
                             </div>
-                            <span
-                                className="hidden sm:flex"
-                                style={{
-                                    fontSize: '0.5rem',
-                                    color: 'var(--app-text-muted)',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                {xp} / {xpNeeded} XP
-                            </span>
                         </div>
-                    </div>
 
-                    {/* settings */}
-                    <Link
-                        href="/dashboard/settings"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 28,
-                            height: 28,
-                            borderRadius: '50%',
-                            flexShrink: 0,
-                            background: 'var(--app-surface-2)',
-                            border: '1px solid var(--app-border)',
-                            color: '#475569',
-                        }}
-                        title="Settings"
-                    >
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
+                        {/* settings */}
+                        <Link
+                            href="/dashboard/settings"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 28,
+                                height: 28,
+                                borderRadius: '50%',
+                                flexShrink: 0,
+                                background: 'var(--app-surface-2)',
+                                border: '1px solid var(--app-border)',
+                                color: '#475569',
+                            }}
+                            title="Settings"
                         >
-                            <path d="M6 4v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2m6-16v2m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v10m6-16v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2" />
-                        </svg>
-                    </Link>
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                            >
+                                <path d="M6 4v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2m6-16v2m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v10m6-16v10m0 0a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m0 0v2" />
+                            </svg>
+                        </Link>
+                    </div>
                 </div>
             </div>
 

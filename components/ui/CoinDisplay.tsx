@@ -10,6 +10,16 @@ export default function CoinDisplay({
 }) {
     const [coins, setCoins] = useState(initialCoins)
     const [flashes, setFlashes] = useState<Flash[]>([])
+    const [isMobile, setIsMobile] = useState(false)
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 640)
+
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
     const flashId = useRef(0)
 
     useEffect(() => {
@@ -29,9 +39,35 @@ export default function CoinDisplay({
         window.addEventListener('coin-change', onCoinChange)
         return () => window.removeEventListener('coin-change', onCoinChange)
     }, [])
+    function formatCoins(value: number) {
+        if (!isMobile) {
+            return value.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            })
+        }
 
+        const abs = Math.abs(value)
+
+        if (abs >= 1_000_000_000) {
+            return `${(value / 1_000_000_000).toFixed(1)}B`
+        }
+
+        if (abs >= 1_000_000) {
+            return `${(value / 1_000_000).toFixed(1)}M`
+        }
+
+        if (abs >= 1_000) {
+            return `${(value / 1_000).toFixed(1)}K`
+        }
+
+        return value.toFixed(1)
+    }
     return (
-        <div data-tutorial="coins" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div
+            data-tutorial="coins"
+            style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+        >
             <div style={{ position: 'relative' }}>
                 <div
                     style={{
@@ -52,10 +88,7 @@ export default function CoinDisplay({
                             color: '#eab308',
                         }}
                     >
-                        {coins.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                        })}
+                        {formatCoins(coins)}
                     </span>
                 </div>
 
