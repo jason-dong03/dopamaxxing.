@@ -6,6 +6,7 @@ import { xpForLevel } from '@/lib/rarityConfig'
 import { getActiveEvents } from '@/lib/dailyEvents'
 import EventBanner from '@/components/ui/EventBanner'
 import PassiveCoins from '@/components/ui/PassiveCoins'
+import LockScroll from '@/components/ui/LockScroll'
 import LinkDiscord from '@/components/LinkDiscord'
 import CoinDisplay from '@/components/ui/CoinDisplay'
 import StashButton from '@/components/ui/StashButton'
@@ -35,6 +36,7 @@ export default async function Dashboard() {
 
     return (
         <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <LockScroll />
             <PassiveCoins />
             <LeaderboardSidebar />
             {/* ── profile island ── */}
@@ -43,10 +45,7 @@ export default async function Dashboard() {
                     width: '100%',
                     background: 'var(--app-bg)',
                     borderBottom: '1px solid var(--app-border)',
-                    position: 'sticky',
-                    top: 0,
                     zIndex: 40,
-                    overflow: 'visible',
                     flexShrink: 0,
                 }}
             >

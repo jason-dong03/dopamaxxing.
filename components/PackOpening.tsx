@@ -38,6 +38,7 @@ import { RarityBackgroundEffects } from './pack/RarityBackgroundEffects'
 import { CardStatsPanel } from './pack/CardStatsPanel'
 import { CardActionButtons } from './pack/CardActionButtons'
 import { FeedPickerModal } from './pack/FeedPickerModal'
+import { useInvalidate } from '@/lib/userStore'
 
 type Props = {
     pack: Pack
@@ -67,6 +68,7 @@ export default function PackOpening({
     const router = useRouter()
     const isMobile = useIsMobile()
     const supabase = createClient()
+    const { invalidate } = useInvalidate()
     const effectiveCost = parseFloat((pack.cost * (1 - discount)).toFixed(2))
     const [userCoins, setUserCoins] = useState<number | null>(null)
     const [spinning, setSpinning] = useState(false)
@@ -99,7 +101,7 @@ export default function PackOpening({
     )
     const [openCount, setOpenCount] = useState(count)
     const [batchMode, setBatchMode] = useState(false)
-    const [adminBatchCount, setAdminBatchCount] = useState<1 | 10 | 50>(1)
+    const [adminBatchCount, setAdminBatchCount] = useState<1 | 10>(1)
 
     const [addedCardIds, setAddedCardIds] = useState<Set<string>>(new Set())
     const [showRarity, setShowRarity] = useState(false)
@@ -518,7 +520,7 @@ export default function PackOpening({
         setMultiPackIndex(0)
         setPackRevealedCount(0)
         setPackTransitioning(false)
-        router.refresh()
+        router.refresh(); invalidate('profile')
 
         function doExit() {
             setExiting(true)
@@ -613,7 +615,7 @@ export default function PackOpening({
             isAutocompleting.current = false
             setAutoRunning(false)
             if (autoBack || wasBatchOpen.current) {
-                router.refresh()
+                router.refresh(); invalidate('profile')
                 ;(onComplete ?? onBack)()
                 return
             }
@@ -633,7 +635,7 @@ export default function PackOpening({
                 addedCardIds: [...addedCardIds],
             })
         }
-        router.refresh()
+        router.refresh(); invalidate('profile')
     }
 
     function handleBuyback() {
@@ -691,7 +693,7 @@ export default function PackOpening({
         isAutocompleting.current = false
         setAutoRunning(false)
         if (autoBack || wasBatchOpen.current) {
-            router.refresh()
+            router.refresh(); invalidate('profile')
             ;(onComplete ?? onBack)()
             return
         }
@@ -702,7 +704,7 @@ export default function PackOpening({
         setAddedIndices(new Set())
         setDoneIndex(0)
         setExiting(false)
-        router.refresh()
+        router.refresh(); invalidate('profile')
     }
 
     async function handleFeedCard() {
@@ -883,7 +885,7 @@ export default function PackOpening({
             autocompleteActionMap.current = {}
             setAutoRunning(false)
             if (autoBack || wasBatchOpen.current) {
-                router.refresh()
+                router.refresh(); invalidate('profile')
                 ;(onComplete ?? onBack)()
                 return
             }
@@ -908,7 +910,7 @@ export default function PackOpening({
                 }, 50)
             }
         }
-        router.refresh()
+        router.refresh(); invalidate('profile')
     }
     function handleFlipAll() {
         const remaining = cards.length - revealedCount
@@ -1364,7 +1366,7 @@ export default function PackOpening({
                                     </button>
                                 )}
                                 {isAdmin &&
-                                    ([10, 50] as const).map((n) => (
+                                    ([10] as const).map((n) => (
                                         <button
                                             key={n}
                                             onClick={() =>

@@ -11,6 +11,7 @@ import {
 } from '@/lib/rarityConfig'
 import { ShatterEffect } from './card/ShatterEffect'
 import type { Pack } from '@/lib/packs'
+import { useInvalidate } from '@/lib/userStore'
 import { CardStatsPanel } from '../components/pack/CardStatsPanel'
 import { createClient } from '@/lib/supabase/client'
 import { useIsMobile } from '@/lib/useIsMobile'
@@ -56,6 +57,7 @@ export default function CrateOpening({
 }) {
     const router = useRouter()
     const supabase = createClient()
+    const { invalidate } = useInvalidate()
     const isMobile = useIsMobile()
     const [phase, setPhase] = useState<Phase>('idle')
     const [strip, setStrip] = useState<PoolCard[]>([])
@@ -70,7 +72,7 @@ export default function CrateOpening({
     const [actionDone, setActionDone] = useState(false)
     const [bagCount, setBagCount] = useState<number | null>(null)
     const [bagCapacity, setBagCapacity] = useState<number>(50)
-    const [adminBatchCount, setAdminBatchCount] = useState<1 | 10 | 50>(1)
+    const [adminBatchCount, setAdminBatchCount] = useState<1 | 10>(1)
 
     const [condPanelTab, setCondPanelTab] = useState<'condition' | 'stats'>(
         'condition',
@@ -142,7 +144,7 @@ export default function CrateOpening({
                 }
 
                 const data = await res.json()
-                router.refresh()
+                router.refresh(); invalidate('profile')
 
                 const winner: WonCard = data.cards[0]
                 const pool: PoolCard[] = data.cardPool ?? [winner]
@@ -323,7 +325,7 @@ export default function CrateOpening({
 
                 {isAdmin && (
                     <div style={{ display: 'flex', gap: 6 }}>
-                        {([10, 50] as const).map((n) => (
+                        {([10] as const).map((n) => (
                             <button
                                 key={n}
                                 onClick={() => setAdminBatchCount((v) => v === n ? 1 : n)}
@@ -587,7 +589,7 @@ export default function CrateOpening({
                         setBatchCards(null)
                         setAdminBatchCount(1)
                         setPhase('idle')
-                        router.refresh()
+                        router.refresh(); invalidate('profile')
                     }}
                     className="px-6 py-2 rounded-xl text-sm font-medium border border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all duration-200 mt-2"
                 >

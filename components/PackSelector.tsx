@@ -205,13 +205,13 @@ export default function PackSelector({ coins: initialCoins = 0 }: { coins?: numb
             p.aspect === 'pack' &&
             !p.theme_pokedex_ids &&
             !p.special &&
-            (showTest || !p.test),
+            !p.test,
     )
     const specialPacks = allPacks.filter(
         (p) =>
             p.aspect === 'pack' &&
             (!!p.theme_pokedex_ids || !!p.special) &&
-            (showTest || !p.test),
+            !p.test,
     )
     const boxes = allPacks.filter(
         (p) => p.aspect === 'box' && (showTest || !p.test),

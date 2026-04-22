@@ -5,6 +5,7 @@ import OnboardingModal from '@/components/OnboardingModal'
 import { createClient } from '@/lib/supabase/server'
 import { PendingRequestsProvider } from '@/components/PendingRequestsProvider'
 import VersionBadge from '@/components/ui/VersionBadge'
+import { UserDataProvider } from '@/lib/userStore'
 
 export default async function DashboardLayout({
     children,
@@ -23,16 +24,18 @@ export default async function DashboardLayout({
         .single()
 
     return (
-        <PendingRequestsProvider>
-            <Navbar />
-            <QuestToast />
-            <OnboardingModal />
-            <AgeGateModal
-                ageVerified={profile?.age_verified ?? false}
-                tosAcceptedAt={profile?.tos_accepted_at ?? null}
-            />
-            <main className="pb-16">{children}</main>
-            <VersionBadge />
-        </PendingRequestsProvider>
+        <UserDataProvider>
+            <PendingRequestsProvider>
+                <Navbar />
+                <QuestToast />
+                <OnboardingModal />
+                <AgeGateModal
+                    ageVerified={profile?.age_verified ?? false}
+                    tosAcceptedAt={profile?.tos_accepted_at ?? null}
+                />
+                <main className="pb-16">{children}</main>
+                <VersionBadge />
+            </PendingRequestsProvider>
+        </UserDataProvider>
     )
 }

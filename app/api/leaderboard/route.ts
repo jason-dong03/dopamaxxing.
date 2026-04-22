@@ -34,6 +34,7 @@ export async function GET(req: Request) {
         .select(`id, username, profile_url, ${col}`)
         .not(col, 'is', null)
         .gte(col, min)
+        .eq('is_admin', false)
         .order(col, { ascending: false })
         .limit(10)
 
