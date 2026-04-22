@@ -257,9 +257,9 @@ export default function PackSelector({ coins: initialCoins = 0 }: { coins?: numb
                     onChange={setActiveTab}
                     isAdmin={isAdmin}
                     counts={{
-                        classic: packs.filter(p => !p.level_required || userLevel >= p.level_required).length,
-                        special: specialPacks.filter(p => !p.level_required || userLevel >= p.level_required).length,
-                        crates: boxes.filter(p => !p.level_required || userLevel >= p.level_required).length,
+                        classic: packs.filter(p => isAdmin || !p.level_required || userLevel >= p.level_required).length,
+                        special: specialPacks.filter(p => isAdmin || !p.level_required || userLevel >= p.level_required).length,
+                        crates: boxes.filter(p => isAdmin || !p.level_required || userLevel >= p.level_required).length,
                     }}
                 />
             </div>
@@ -701,7 +701,7 @@ function ShopPackRow({
     const discountedCost = parseFloat((pack.cost * (1 - discount)).toFixed(2))
     const canAfford = isAdmin || coins >= discountedCost
     const hasStock = isAdmin || stock > 0
-    const isLevelGated = !!pack.level_required && userLevel < pack.level_required
+    const isLevelGated = !isAdmin && !!pack.level_required && userLevel < pack.level_required
     const disabled = bagFull || !canAfford || !hasStock || isLevelGated
     const borderColor = gold ? 'rgba(234,179,8,0.22)' : 'rgba(255,255,255,0.08)'
     const hoverBorderColor = gold

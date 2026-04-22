@@ -1268,6 +1268,163 @@ function PendingRequestsModal({
     )
 }
 
+// ─── social list modal ───────────────────────────────────────────────────────
+function SocialListModal({
+    title,
+    users,
+    onClose,
+}: {
+    title: string
+    users: Friend[]
+    onClose: () => void
+}) {
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+            onClick={onClose}
+        >
+            <div
+                className="rounded-2xl flex flex-col"
+                style={{
+                    background: 'var(--app-surface-2)',
+                    border: '1px solid var(--app-border)',
+                    padding: '20px 18px',
+                    width: 300,
+                    maxWidth: '90vw',
+                    gap: 12,
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <p className="font-semibold" style={{ fontSize: '0.9rem' }}>
+                    {title}
+                </p>
+                {users.length === 0 ? (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--app-text-muted)' }}>
+                        nobody here yet
+                    </p>
+                ) : (
+                    <div className="flex flex-col gap-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                        {users.map((u) => (
+                            <div key={u.id} className="flex items-center gap-2.5" style={{ padding: '4px 0' }}>
+                                <Avatar src={u.profile_url} size={30} />
+                                <span style={{ fontSize: '0.82rem' }}>
+                                    @{u.username ?? 'unknown'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <button
+                    onClick={onClose}
+                    style={{ fontSize: '0.7rem', color: 'var(--app-text-muted)', cursor: 'pointer', alignSelf: 'center' }}
+                >
+                    close
+                </button>
+            </div>
+        </div>
+    )
+}
+
+// ─── social stats row ─────────────────────────────────────────────────────────
+function SocialStatsRow({
+    friends,
+    isOwnProfile,
+    pendingRequests,
+    onShowRequests,
+    onShowAddFriend,
+}: {
+    friends: Friend[]
+    currentUserId?: string
+    isOwnProfile: boolean
+    pendingRequests: { id: string; requester: { id: string; username: string | null; profile_url: string | null } }[]
+    onShowRequests: () => void
+    onShowAddFriend: () => void
+}) {
+    const [openList, setOpenList] = useState<'following' | 'followers' | 'friends' | null>(null)
+
+    const count = friends.length
+
+    const stats: { key: 'following' | 'followers' | 'friends'; label: string; value: number }[] = [
+        { key: 'followers', label: 'followers', value: count },
+        { key: 'following', label: 'following', value: count },
+        { key: 'friends',   label: 'friends',   value: count },
+    ]
+
+    return (
+        <>
+            {openList && (
+                <SocialListModal
+                    title={openList.charAt(0).toUpperCase() + openList.slice(1)}
+                    users={friends}
+                    onClose={() => setOpenList(null)}
+                />
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 0, flex: 1 }}>
+                    {stats.map(({ key, label, value }, i) => (
+                        <button
+                            key={key}
+                            onClick={() => setOpenList(key)}
+                            style={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 1,
+                                padding: '6px 4px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                borderRight: i < stats.length - 1 ? '1px solid var(--app-border)' : 'none',
+                            }}
+                        >
+                            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--app-text)', lineHeight: 1.1 }}>
+                                {value}
+                            </span>
+                            <span style={{ fontSize: '0.58rem', color: 'var(--app-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                {label}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+                {isOwnProfile && (
+                    <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                        {pendingRequests.length > 0 && (
+                            <RequestsButton count={pendingRequests.length} onClick={onShowRequests} />
+                        )}
+                        <button
+                            onClick={onShowAddFriend}
+                            style={{
+                                fontSize: '0.58rem',
+                                fontWeight: 600,
+                                padding: '3px 8px',
+                                borderRadius: 6,
+                                background: 'rgba(96,165,250,0.08)',
+                                border: '1px solid rgba(96,165,250,0.25)',
+                                color: '#60a5fa',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                flexShrink: 0,
+                            }}
+                            onMouseEnter={(e) => {
+                                ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(96,165,250,0.18)'
+                                ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px) scale(1.05)'
+                            }}
+                            onMouseLeave={(e) => {
+                                ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(96,165,250,0.08)'
+                                ;(e.currentTarget as HTMLButtonElement).style.transform = 'none'
+                            }}
+                        >
+                            + add
+                        </button>
+                    </div>
+                )}
+            </div>
+        </>
+    )
+}
+
 // ─── main ─────────────────────────────────────────────────────────────────────
 export default function ProfileView({
     profile,
@@ -2029,6 +2186,16 @@ export default function ProfileView({
                         )}
                     </div>
 
+                    {/* Following / Followers / Friends stats row */}
+                    <SocialStatsRow
+                        friends={friends}
+                        currentUserId={currentUserId}
+                        isOwnProfile={isOwnProfile}
+                        pendingRequests={pendingRequests}
+                        onShowRequests={() => setShowRequests(true)}
+                        onShowAddFriend={() => setShowAddFriend(true)}
+                    />
+
                     {/* Level + XP + Coins */}
                     <div
                         className="rounded-xl px-4 py-3.5 flex flex-col gap-3"
@@ -2037,39 +2204,24 @@ export default function ProfileView({
                             border: '1px solid var(--app-border)',
                         }}
                     >
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <span
-                                    className="font-bold"
-                                    style={{
-                                        fontSize: '0.75rem',
-                                        color: 'var(--app-text)',
-                                    }}
-                                >
-                                    Level {level}
-                                </span>
-                                <span
-                                    className="font-mono"
-                                    style={{
-                                        fontSize: '0.6rem',
-                                        color: 'var(--lv-green)',
-                                    }}
-                                >
-                                    {xp} / {xpNeeded} xp
-                                </span>
-                            </div>
+                        <div className="flex items-center gap-4">
                             <span
-                                className="text-yellow-300 font-mono font-semibold"
-                                style={{ fontSize: '0.9rem' }}
+                                className="font-bold"
+                                style={{
+                                    fontSize: '0.75rem',
+                                    color: 'var(--app-text)',
+                                }}
                             >
-                                $
-                                {(profile?.coins ?? 0).toLocaleString(
-                                    undefined,
-                                    {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                    },
-                                )}
+                                Level {level}
+                            </span>
+                            <span
+                                className="font-mono"
+                                style={{
+                                    fontSize: '0.6rem',
+                                    color: 'var(--lv-green)',
+                                }}
+                            >
+                                {xp} / {xpNeeded} xp
                             </span>
                         </div>
                         <div
@@ -2084,111 +2236,9 @@ export default function ProfileView({
                                 style={{
                                     width: `${xpPct}%`,
                                     background:
-                                        'linear-gradient(90deg, #60a5fa, #a78bfa)',
+                                        'linear-gradient(90deg, #4ade80, #22c55e)',
                                 }}
                             />
-                        </div>
-                    </div>
-
-                    {/* Friends */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2.5">
-                            <span
-                                className="font-semibold uppercase tracking-widest"
-                                style={{
-                                    fontSize: '0.6rem',
-                                    color: 'var(--app-text-muted)',
-                                }}
-                            >
-                                Friends
-                            </span>
-                            <div
-                                className="flex-1 h-px"
-                                style={{ background: 'var(--app-border)' }}
-                            />
-                            {isOwnProfile && pendingRequests.length > 0 && (
-                                <RequestsButton
-                                    count={pendingRequests.length}
-                                    onClick={() => setShowRequests(true)}
-                                />
-                            )}
-                            {isOwnProfile && (
-                                <a
-                                    href="/dashboard/trades"
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 4,
-                                        padding: '2px 8px', borderRadius: 6,
-                                        background: 'rgba(96,165,250,0.07)',
-                                        border: '1px solid rgba(96,165,250,0.2)',
-                                        color: '#60a5fa', fontSize: '0.58rem', fontWeight: 600,
-                                        textDecoration: 'none', whiteSpace: 'nowrap',
-                                    }}
-                                >
-                                    <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/>
-                                    </svg>
-                                    trades
-                                </a>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                            {friends.map((friend) => (
-                                <Link
-                                    key={friend.id}
-                                    href={
-                                        friend.id === currentUserId
-                                            ? '/dashboard/profile'
-                                            : `/dashboard/profile/${friend.username ?? friend.id}`
-                                    }
-                                    className="flex flex-col items-center gap-1.5 opacity-70 hover:opacity-100 transition-opacity"
-                                >
-                                    <div
-                                        className="rounded-full overflow-hidden flex items-center justify-center"
-                                        style={{
-                                            width: 44,
-                                            height: 44,
-                                            background: 'var(--app-surface-3)',
-                                            border: '1.5px solid var(--app-border)',
-                                        }}
-                                    >
-                                        <Avatar
-                                            src={friend.profile_url}
-                                            size={44}
-                                        />
-                                    </div>
-                                    <span
-                                        className="text-gray-400"
-                                        style={{ fontSize: '0.6rem' }}
-                                    >
-                                        {friend.username ?? 'user'}
-                                    </span>
-                                </Link>
-                            ))}
-                            {isOwnProfile && (
-                                <button
-                                    onClick={() => setShowAddFriend(true)}
-                                    className="flex flex-col items-center gap-1.5 opacity-40 hover:opacity-80 transition-opacity cursor-pointer"
-                                >
-                                    <div
-                                        className="rounded-full flex items-center justify-center"
-                                        style={{
-                                            width: 44,
-                                            height: 44,
-                                            border: '1.5px dashed rgba(255,255,255,0.15)',
-                                            color: '#6b7280',
-                                            fontSize: '1.1rem',
-                                        }}
-                                    >
-                                        +
-                                    </div>
-                                    <span
-                                        className="text-gray-500"
-                                        style={{ fontSize: '0.6rem' }}
-                                    >
-                                        add
-                                    </span>
-                                </button>
-                            )}
                         </div>
                     </div>
 
@@ -2249,17 +2299,13 @@ export default function ProfileView({
                                                     '0 2px 10px rgba(0,0,0,0.45)',
                                             }}
                                         >
-                                            {/* cover image as full background */}
-                                            <Image
-                                                src="/binders/charizard-cover.png"
-                                                alt={b.name}
-                                                fill
+                                            {/* gradient background */}
+                                            <div
                                                 style={{
-                                                    objectFit: 'cover',
-                                                    objectPosition:
-                                                        'center center',
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    background: `linear-gradient(135deg, ${b.color}55 0%, ${b.color}22 40%, rgba(0,0,0,0.4) 100%)`,
                                                 }}
-                                                sizes="296px"
                                             />
                                             {/* spine color strip on left */}
                                             <div

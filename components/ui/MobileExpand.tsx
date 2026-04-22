@@ -1,18 +1,15 @@
 'use client'
 import { useState } from 'react'
 import { getTitleColor } from '@/lib/titleConfig'
-import LinkDiscord from '../LinkDiscord'
 import { formatBR } from '@/lib/battlePower'
 
 export default function MobileExpand({
     loginStreak,
     activeTitle,
-    discordLinked,
     adminPanel,
 }: {
     loginStreak: number
     activeTitle?: string | null
-    discordLinked: boolean
     adminPanel: boolean
 }) {
     const [open, setOpen] = useState(false)
@@ -88,11 +85,6 @@ export default function MobileExpand({
                         </span>
                     )}
 
-                    {discordLinked && (
-                        <span>
-                            <LinkDiscord discordLinked={discordLinked} />
-                        </span>
-                    )}
                     {adminPanel && (
                         <a
                             href="/admin"

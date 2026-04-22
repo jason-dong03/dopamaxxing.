@@ -12,14 +12,13 @@ const STEPS: { ms: number; pct: number; label: string }[] = [
 ]
 
 const S = {
-    bg: 'rgba(255,255,255,0.06)',
-    bgFaint: 'rgba(255,255,255,0.04)',
+    bg:     'rgba(255,255,255,0.06)',
+    bgFaint:'rgba(255,255,255,0.04)',
     border: '1px solid rgba(255,255,255,0.07)',
-    borderRadiusPill: 999,
 }
 
 export default function DashboardLoading() {
-    const [pct, setPct] = useState(STEPS[0].pct)
+    const [pct, setPct]     = useState(STEPS[0].pct)
     const [label, setLabel] = useState(STEPS[0].label)
 
     useEffect(() => {
@@ -30,14 +29,17 @@ export default function DashboardLoading() {
     }, [])
 
     return (
-        <div className="min-h-screen" style={{ background: '#08080d' }}>
-            {/* sticky header bar */}
+        <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#08080d' }}>
+
+            {/* ── header ── */}
             <div
-                className="animate-pulse sticky top-0 z-40"
+                className="animate-pulse"
                 style={{
                     width: '100%',
                     background: '#08080d',
                     borderBottom: '1px solid rgba(255,255,255,0.07)',
+                    flexShrink: 0,
+                    zIndex: 40,
                 }}
             >
                 <div
@@ -51,42 +53,96 @@ export default function DashboardLoading() {
                         gap: 12,
                     }}
                 >
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: S.bg, flexShrink: 0 }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                        <div style={{ height: 11, width: 80, borderRadius: 4, background: S.bg }} />
-                        <div className="hidden sm:block" style={{ height: 8, width: 60, borderRadius: 4, background: S.bgFaint }} />
+                    {/* left: brand + avatar + username */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                        {/* brand — desktop only */}
+                        <div className="hidden sm:flex" style={{ flexDirection: 'column', gap: 3, flexShrink: 0, marginRight: 4 }}>
+                            <div style={{ height: 11, width: 88, borderRadius: 3, background: S.bg }} />
+                        </div>
+
+                        {/* divider — desktop only */}
+                        <div className="hidden sm:block" style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
+
+                        {/* avatar */}
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: S.bg, flexShrink: 0 }} />
+
+                        {/* username + name */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                            <div style={{ height: 11, width: 80, borderRadius: 4, background: S.bg }} />
+                            <div className="hidden sm:block" style={{ height: 8, width: 56, borderRadius: 4, background: S.bgFaint }} />
+                        </div>
                     </div>
-                    <div style={{ flex: 1 }} />
-                    <div style={{ height: 26, width: 84, borderRadius: S.borderRadiusPill, background: S.bg, flexShrink: 0 }} />
-                    <div style={{ height: 26, width: 54, borderRadius: S.borderRadiusPill, background: S.bg, flexShrink: 0 }} />
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: S.bg, flexShrink: 0 }} />
+
+                    {/* right: BR + stash + coins + level */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                        {/* BR pill */}
+                        <div style={{ height: 26, width: 72, borderRadius: 999, background: S.bg }} />
+                        {/* stash — desktop only */}
+                        <div className="hidden sm:block" style={{ height: 26, width: 44, borderRadius: 999, background: S.bg }} />
+                        {/* coins */}
+                        <div style={{ height: 26, width: 84, borderRadius: 999, background: S.bg }} />
+                        {/* level + xp bar — desktop only */}
+                        <div className="hidden sm:flex" style={{ alignItems: 'center', gap: 8 }}>
+                            <div style={{ height: 26, width: 46, borderRadius: 999, background: S.bg }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                                <div style={{ width: 100, height: 5, borderRadius: 3, background: S.bgFaint }} />
+                                <div style={{ width: 60, height: 7, borderRadius: 3, background: S.bgFaint }} />
+                            </div>
+                        </div>
+                        {/* settings gear */}
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: S.bg, flexShrink: 0 }} />
+                    </div>
                 </div>
             </div>
 
-            {/* pack cards skeleton */}
+            {/* ── event banner slot ── */}
+            <div style={{ flexShrink: 0, height: 0 }} />
+
+            {/* ── pack area skeleton ── */}
             <div
                 className="animate-pulse"
-                style={{ maxWidth: 700, margin: '0 auto', padding: '28px 16px' }}
+                style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '16px 16px 0' }}
             >
-                <div style={{ height: 14, width: 100, borderRadius: 4, background: S.bg, marginBottom: 20 }} />
-                <div style={{ display: 'flex', gap: 12, overflowX: 'hidden' }}>
-                    {Array.from({ length: 4 }).map((_, i) => (
+                {/* tab row */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                    {['Classic', 'Special', 'Crates', 'Test'].map((tab) => (
                         <div
-                            key={i}
+                            key={tab}
                             style={{
-                                flexShrink: 0,
-                                width: 'clamp(100px, 20vw, 140px)',
-                                aspectRatio: '3/4',
-                                borderRadius: 12,
-                                background: S.bgFaint,
-                                border: S.border,
+                                height: 28,
+                                width: 58,
+                                borderRadius: 8,
+                                background: tab === 'Classic' ? S.bg : S.bgFaint,
                             }}
                         />
                     ))}
                 </div>
+
+                {/* pack card grid */}
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'hidden' }}>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                            gap: 12,
+                        }}
+                    >
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <div
+                                key={i}
+                                style={{
+                                    aspectRatio: '3/4',
+                                    borderRadius: 12,
+                                    background: S.bgFaint,
+                                    border: S.border,
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
             </div>
 
-            {/* progress bar — fixed bottom */}
+            {/* ── progress bar — fixed bottom ── */}
             <div style={{
                 position: 'fixed',
                 bottom: 0,
@@ -105,7 +161,6 @@ export default function DashboardLoading() {
                     color: 'rgba(255,255,255,0.28)',
                     letterSpacing: '0.06em',
                     fontFamily: 'monospace',
-                    transition: 'opacity 300ms',
                 }}>
                     {label}
                 </span>

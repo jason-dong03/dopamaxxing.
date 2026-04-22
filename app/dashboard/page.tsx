@@ -219,7 +219,6 @@ export default async function Dashboard() {
                         <MobileExpand
                             loginStreak={profile?.login_streak ?? 0}
                             activeTitle={profile?.active_title}
-                            discordLinked={!!profile?.discord_id}
                             adminPanel={profile?.is_admin}
                         />
                         <div className="sm:hidden" style={{ flex: 1 }} />
@@ -256,9 +255,6 @@ export default async function Dashboard() {
                         )}
                         <BRDisplay initialBP={profile?.battle_power ?? 0} />
                         <span className="hidden sm:contents">
-                            <LinkDiscord
-                                discordLinked={!!profile?.discord_id}
-                            />
                             <StashButton />
                         </span>
 

@@ -978,6 +978,29 @@ export default function PackOpening({
         }, 350)
     }
 
+    // keyboard: space / enter / arrow-right advance the reveal
+    useEffect(() => {
+        if (phase !== 'revealing' && phase !== 'multi-revealing') return
+        function onKey(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+            if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
+                e.preventDefault()
+                if (phase === 'revealing') {
+                    handleReveal()
+                } else {
+                    const allFlipped = packRevealedCount >= cardsPerPack
+                    if (allFlipped) {
+                        if (!packTransitioning) handleNextPack()
+                    } else {
+                        handlePackReveal()
+                    }
+                }
+            }
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [phase, revealedCount, packRevealedCount, cardsPerPack, packTransitioning])
+
     const currentCard = remainingCards[doneIndex]
     const packBgTier: 'celestial' | 'divine' | 'legendary' | 'mystery' | null =
         (() => {
