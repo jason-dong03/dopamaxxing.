@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { markIntroShown } from '@/lib/introState'
 
 const STEPS = [
     { ms: 0,    pct: 5,  label: 'Connecting…' },
@@ -12,7 +13,6 @@ const STEPS = [
     { ms: 2300, pct: 96, label: 'Almost there…' },
 ]
 
-// Cloud blobs — positioned to cover the whole screen naturally
 const CLOUDS = [
     { w: 520, h: 260, top:  '0%', left: '-8%',  blur: 80, delay: 0,   dur: 13 },
     { w: 380, h: 200, top:  '8%', left: '55%',  blur: 65, delay: 0.4, dur: 10 },
@@ -24,35 +24,81 @@ const CLOUDS = [
 ]
 
 export default function DashboardLoading() {
-    // phase: 'intro' → 'loading' → 'clouds'
+    // 'check' = waiting for useEffect to determine mode
+    // 'intro' = mobile first-open: dopamaxxing → loading bar → clouds
+    // 'simple' = normal progress bar only
+    const [mode, setMode] = useState<'check' | 'intro' | 'simple'>('check')
     const [phase, setPhase] = useState<'intro' | 'loading' | 'clouds'>('intro')
     const [introVisible, setIntroVisible] = useState(false)
     const [step, setStep] = useState(0)
     const [cloudsVisible, setCloudsVisible] = useState(false)
 
     useEffect(() => {
-        // Fade in title
-        const t0 = setTimeout(() => setIntroVisible(true), 80)
-        // Fade out title, begin transition to loading bar
-        const t1 = setTimeout(() => setIntroVisible(false), 1000)
-        const t2 = setTimeout(() => setPhase('loading'), 1400)
+        const isMobile = window.innerWidth < 640
+        const seen = sessionStorage.getItem('intro_done')
 
-        // Loading bar steps (offset by 1400ms intro)
-        const stepTimers = STEPS.slice(1).map(({ ms }, i) =>
-            setTimeout(() => setStep(i + 1), 1400 + ms)
-        )
+        if (isMobile && !seen) {
+            sessionStorage.setItem('intro_done', '1')
+            markIntroShown()
+            setMode('intro')
 
-        // Clouds build up near the end
-        const t3 = setTimeout(() => { setPhase('clouds'); setCloudsVisible(true) }, 1400 + 2400)
+            const t0 = setTimeout(() => setIntroVisible(true), 80)
+            const t1 = setTimeout(() => setIntroVisible(false), 1000)
+            const t2 = setTimeout(() => setPhase('loading'), 1400)
 
-        return () => {
-            clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3)
-            stepTimers.forEach(clearTimeout)
+            const stepTimers = STEPS.slice(1).map(({ ms }, i) =>
+                setTimeout(() => setStep(i + 1), 1400 + ms)
+            )
+
+            const t3 = setTimeout(() => { setPhase('clouds'); setCloudsVisible(true) }, 1400 + 2400)
+
+            return () => {
+                clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3)
+                stepTimers.forEach(clearTimeout)
+            }
+        } else {
+            setMode('simple')
+            setPhase('loading')
+            setStep(STEPS.length - 1)
         }
     }, [])
 
     const { pct, label } = STEPS[step]
 
+    if (mode === 'check') {
+        return <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9999 }} />
+    }
+
+    if (mode === 'simple') {
+        return (
+            <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9999, overflow: 'hidden' }}>
+                <div style={{
+                    position: 'fixed', bottom: 0, left: 0, right: 0,
+                    padding: '20px 24px 28px',
+                    background: 'linear-gradient(0deg, rgba(0,0,0,0.99) 0%, transparent 100%)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                    pointerEvents: 'none',
+                }}>
+                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.07em', fontFamily: 'monospace' }}>
+                        {label}
+                    </span>
+                    <div style={{ width: '100%', maxWidth: 280, height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                        <div style={{
+                            height: '100%', width: `${pct}%`, borderRadius: 3,
+                            background: 'linear-gradient(90deg, #16a34a, #4ade80)',
+                            transition: 'width 350ms ease-out',
+                            boxShadow: '0 0 10px rgba(74,222,128,0.5)',
+                        }} />
+                    </div>
+                    <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.12)', letterSpacing: '0.05em', fontFamily: 'monospace' }}>
+                        {pct}%
+                    </span>
+                </div>
+            </div>
+        )
+    }
+
+    // mode === 'intro'
     return (
         <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9999, overflow: 'hidden' }}>
 
@@ -144,7 +190,7 @@ export default function DashboardLoading() {
                 ))}
             </div>
 
-            {/* ── progress bar (always visible during loading / clouds) ── */}
+            {/* ── progress bar ── */}
             {phase !== 'intro' && (
                 <div style={{
                     position: 'fixed', bottom: 0, left: 0, right: 0,

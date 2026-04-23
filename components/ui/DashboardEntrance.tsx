@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { consumeIntro } from '@/lib/introState'
 
 const CLOUDS = [
     { w: 520, h: 260, top:  '0%', left: '-8%',  blur: 80, delay: 0,   dur: 13 },
@@ -12,15 +13,15 @@ const CLOUDS = [
 ]
 
 export default function DashboardEntrance() {
-    const [visible, setVisible] = useState(true)
+    const [visible, setVisible] = useState(false)
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        // Wait one frame so the browser has painted the dashboard behind the clouds
-        const t0 = requestAnimationFrame(() => setMounted(true))
-        // Then fade the clouds out
+        if (!consumeIntro()) return
+
+        setMounted(true)
+        const t0 = requestAnimationFrame(() => setVisible(true))
         const t1 = setTimeout(() => setVisible(false), 200)
-        // Remove from DOM once faded
         const t2 = setTimeout(() => setMounted(false), 1600)
         return () => { cancelAnimationFrame(t0); clearTimeout(t1); clearTimeout(t2) }
     }, [])
