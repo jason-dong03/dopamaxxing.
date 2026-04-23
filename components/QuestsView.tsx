@@ -32,6 +32,7 @@ type Props = {
     metrics: Metrics
     playerLevel?: number
     ownedCards?: OwnedCard[]
+    onRefresh?: () => void
 }
 
 const CATEGORIES: Array<{
@@ -55,8 +56,10 @@ export default function QuestsView({
     metrics,
     playerLevel = 1,
     ownedCards = [],
+    onRefresh,
 }: Props) {
     const router = useRouter()
+    const refresh = onRefresh ?? (() => router.refresh())
     const [now, setNow] = useState(0)
     const [activeTab, setActiveTab] = useState<ActiveTab>('all')
     const [claimingId, setClaimingId] = useState<string | null>(null)
@@ -90,7 +93,7 @@ export default function QuestsView({
 
     useEffect(() => {
         function onTutorialFinished() {
-            router.refresh()
+            refresh()
         }
         window.addEventListener('tutorial-finished', onTutorialFinished)
         return () =>
@@ -317,7 +320,7 @@ export default function QuestsView({
                 if (quest.category === 'story') {
                     setDialogueSlug(quest.slug)
                 } else {
-                    router.refresh()
+                    refresh()
                 }
             }
         } finally {
@@ -379,7 +382,7 @@ export default function QuestsView({
             dispatchCoinChange(reward.coins)
             window.dispatchEvent(new Event('quest-claimed'))
             if (quest.category === 'story') setDialogueSlug(quest.slug)
-            else router.refresh()
+            else refresh()
             return 'ok'
         } catch {
             return 'error'
@@ -419,7 +422,7 @@ export default function QuestsView({
                 if (quest.category === 'story') {
                     setDialogueSlug(quest.slug)
                 } else {
-                    router.refresh()
+                    refresh()
                 }
             }
         } finally {
@@ -473,7 +476,7 @@ export default function QuestsView({
                 }
             }
             window.dispatchEvent(new Event('quest-claimed'))
-            router.refresh()
+            refresh()
         } finally {
             setClaimingAll(false)
         }
@@ -618,7 +621,7 @@ export default function QuestsView({
                     onClose={() => {
                         setDialogueSlug(null)
                         setReturnedCard(null)
-                        router.refresh()
+                        refresh()
                     }}
                 />
             )}
@@ -627,7 +630,7 @@ export default function QuestsView({
                     onClose={() => setBattleOpen(false)}
                     onBattleWon={() => {
                         setBattleOpen(false)
-                        router.refresh()
+                        refresh()
                     }}
                 />
             )}

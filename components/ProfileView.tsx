@@ -1438,6 +1438,7 @@ export default function ProfileView({
     friendshipId: initialFriendshipId,
     friendshipRequesterId,
     unlockedTitles = [],
+    onRefresh,
 }: {
     profile: Profile | null
     showcaseCard: ShowcaseCard | null
@@ -1450,8 +1451,10 @@ export default function ProfileView({
     friendshipId?: string | null
     friendshipRequesterId?: string | null
     unlockedTitles?: string[]
+    onRefresh?: () => void
 }) {
     const router = useRouter()
+    const refresh = onRefresh ?? (() => router.refresh())
     const isOwnProfile = !viewingUserId || viewingUserId === currentUserId
     const [activeTitle, setActiveTitle] = useState(
         profile?.active_title ?? null,
@@ -1466,7 +1469,7 @@ export default function ProfileView({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title }),
         })
-        router.refresh()
+        refresh()
     }
 
     const [isMobile, setIsMobile] = useState(false)
@@ -1560,7 +1563,7 @@ export default function ProfileView({
         })
         setFriendshipStatus(null)
         setFriendshipId(null)
-        router.refresh()
+        refresh()
     }
 
     const rarity = showcaseCard?.cards.rarity ?? 'Common'

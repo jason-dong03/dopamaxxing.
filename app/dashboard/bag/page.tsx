@@ -1,52 +1,79 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
 import BagPage from '@/components/Bag'
-import DiscordDrops from '@/components/DiscordDrops'
-import type { ComponentProps } from 'react'
+import type { UserCard } from '@/lib/types'
+import { usePageCache } from '@/hooks/usePageCache'
 
-type UserCards = ComponentProps<typeof BagPage>['userCards']
+type BagData = {
+    userCards: UserCard[]
+    coins: number
+    bagCapacity: number
+    battleRating: number
+    profileLevel: number
+    userItems: Array<{ id: string; item_id: string; quantity: number }>
+}
 
-export default async function Bag() {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+export default function Bag() {
+    const { data, loading, refresh } = usePageCache<BagData>('/api/bag-data')
 
-    const [{ data: userCards }, { data: profile }, { data: userItemsData }] =
-        await Promise.all([
-            supabase
-                .from('user_cards')
-                .select(
-                    'id, card_id, card_level, card_xp, is_favorited, is_showcased, worth, is_hot, attr_centering, attr_corners, attr_edges, attr_surface, grade, grade_count, stat_atk, stat_def, stat_spatk, stat_spdef, stat_spd, stat_accuracy, stat_evasion, nature, nature_tier, moves, pending_moves, cards(id, name, image_url, image_url_hi, rarity, national_pokedex_number, hp, set_id, pokemon_type, market_price_usd, sets(name))',
-                )
-                .eq('user_id', user?.id)
-                .order('obtained_at', { ascending: false }),
-            supabase
-                .from('profiles')
-                .select('coins, bag_capacity, battle_power, level')
-                .eq('id', user?.id)
-                .single(),
-            supabase
-                .from('user_items')
-                .select('id, item_id, quantity')
-                .eq('user_id', user?.id),
-        ])
+    if (loading || !data) return <BagLoadingSkeleton />
 
     return (
-        <>
-            <BagPage
-                userCards={(userCards ?? []) as unknown as UserCards}
-                coins={profile?.coins ?? 0}
-                bagCapacity={profile?.bag_capacity ?? 50}
-                battleRating={profile?.battle_power ?? 0}
-                profileLevel={profile?.level ?? 1}
-                userItems={
-                    (userItemsData ?? []) as Array<{
-                        id: string
-                        item_id: string
-                        quantity: number
-                    }>
-                }
-            />
-        </>
+        <BagPage
+            userCards={data.userCards}
+            coins={data.coins}
+            bagCapacity={data.bagCapacity}
+            battleRating={data.battleRating}
+            profileLevel={data.profileLevel}
+            userItems={data.userItems}
+            onRefresh={refresh}
+        />
+    )
+}
+
+const S = {
+    bg: 'rgba(255,255,255,0.06)',
+    bgFaint: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 8,
+    borderRadiusPill: 999,
+}
+
+function BagLoadingSkeleton() {
+    return (
+        <div style={{ background: '#08080d', minHeight: '100vh', color: '#fff' }}>
+            <div className="animate-pulse sticky top-0 z-30 px-4 pt-4 pb-3" style={{ background: 'rgba(8,8,13,0.92)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="flex items-center justify-between mb-2">
+                    <div style={{ height: 20, width: 32, borderRadius: S.borderRadius, background: S.bg }} />
+                    <div className="flex items-center" style={{ gap: 8 }}>
+                        <div style={{ height: 22, width: 70, borderRadius: S.borderRadiusPill, background: S.bg }} />
+                        <div style={{ height: 18, width: 18, borderRadius: '50%', background: S.bg }} />
+                        <div style={{ height: 18, width: 40, borderRadius: S.borderRadius, background: S.bg }} />
+                        <div style={{ height: 22, width: 56, borderRadius: S.borderRadiusPill, background: S.bg }} />
+                    </div>
+                </div>
+                <div className="flex items-center mb-3" style={{ gap: 6 }}>
+                    <div style={{ height: 24, width: 52, borderRadius: S.borderRadiusPill, background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.25)' }} />
+                    <div style={{ height: 24, width: 44, borderRadius: S.borderRadiusPill, background: S.bg }} />
+                    <div style={{ flex: 1 }} />
+                    <div style={{ height: 24, width: 52, borderRadius: S.borderRadiusPill, background: S.bg }} />
+                </div>
+                <div style={{ height: 36, borderRadius: S.borderRadius, background: S.bg, marginBottom: 12 }} />
+                <div className="flex items-center" style={{ gap: 6, flexWrap: 'wrap' }}>
+                    <div style={{ height: 30, width: 30, borderRadius: S.borderRadius, background: S.bg }} />
+                    <div style={{ height: 30, width: 72, borderRadius: S.borderRadius, background: S.bg }} />
+                    <div style={{ height: 30, width: 88, borderRadius: S.borderRadius, background: S.bg }} />
+                    <div style={{ flex: 1 }} />
+                    <div style={{ height: 24, width: 48, borderRadius: S.borderRadiusPill, background: S.bg }} />
+                    <div style={{ height: 24, width: 44, borderRadius: S.borderRadiusPill, background: S.bg }} />
+                    <div style={{ height: 24, width: 40, borderRadius: S.borderRadiusPill, background: S.bg }} />
+                </div>
+            </div>
+            <div className="animate-pulse px-4 pt-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                {Array.from({ length: 16 }).map((_, i) => (
+                    <div key={i} style={{ borderRadius: 12, background: S.bgFaint, border: S.border, aspectRatio: '2/3' }} />
+                ))}
+            </div>
+        </div>
     )
 }

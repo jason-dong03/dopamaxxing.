@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { xpForLevel } from '@/lib/rarityConfig'
@@ -8,16 +9,18 @@ import { useProfile } from '@/lib/userStore'
 import CoinDisplay from './CoinDisplay'
 import BRDisplay from './BRDisplay'
 import StashButton from './StashButton'
-import MobileExpand from './MobileExpand'
 import LiberatorEasterEgg from '@/components/LiberatorEasterEgg'
 
 export default function DashboardHeader() {
     const { profile, loading } = useProfile()
+    const [mobileExpanded, setMobileExpanded] = useState(false)
 
     const level    = profile?.level ?? 1
     const xp       = profile?.xp ?? 0
     const xpNeeded = xpForLevel(level)
     const xpPct    = Math.min((xp / xpNeeded) * 100, 100)
+    const streak   = profile?.login_streak ?? 0
+    const title    = profile?.active_title ?? null
 
     return (
         <div
@@ -27,8 +30,10 @@ export default function DashboardHeader() {
                 borderBottom: '1px solid var(--app-border)',
                 zIndex: 40,
                 flexShrink: 0,
+                position: 'relative',
             }}
         >
+            {/* ── main row ── */}
             <div
                 style={{
                     width: '100%',
@@ -81,7 +86,9 @@ export default function DashboardHeader() {
                         />
                     ) : null}
 
+                    {/* username + title + streak */}
                     <div style={{ lineHeight: 1.2, minWidth: 0, overflow: 'hidden' }}>
+                        {/* row 1: username + desktop title/streak */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
                             <p
                                 style={{
@@ -97,61 +104,71 @@ export default function DashboardHeader() {
                             >
                                 {loading ? '' : (profile?.username ?? 'Trainer')}
                             </p>
-                            {profile?.active_title && (
+
+                            {/* desktop: title inline */}
+                            {title && (
                                 <span
                                     className="hidden sm:inline"
-                                    style={{
-                                        fontSize: '0.6rem',
-                                        fontWeight: 600,
-                                        color: getTitleColor(profile.active_title),
-                                        whiteSpace: 'nowrap',
-                                        flexShrink: 0,
-                                    }}
+                                    style={{ fontSize: '0.6rem', fontWeight: 600, color: getTitleColor(title), whiteSpace: 'nowrap', flexShrink: 0 }}
                                 >
-                                    {profile.active_title}
+                                    {title}
                                 </span>
                             )}
-                            {(profile?.login_streak ?? 0) > 1 && (
+
+                            {/* desktop: full streak pill */}
+                            {streak > 1 && (
                                 <span
                                     className="hidden sm:inline-flex"
                                     style={{
-                                        alignItems: 'center',
-                                        gap: 2,
-                                        fontSize: '0.62rem',
-                                        fontWeight: 700,
-                                        color: '#fb923c',
-                                        background: 'rgba(251,146,60,0.1)',
-                                        border: '1px solid rgba(251,146,60,0.25)',
-                                        borderRadius: 20,
-                                        padding: '1px 7px',
-                                        whiteSpace: 'nowrap',
-                                        flexShrink: 0,
+                                        alignItems: 'center', gap: 2,
+                                        fontSize: '0.62rem', fontWeight: 700, color: '#fb923c',
+                                        background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.25)',
+                                        borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0,
                                     }}
                                 >
-                                    🔥 {profile?.login_streak}
+                                    🔥 {streak}
+                                </span>
+                            )}
+
+                            {/* mobile: truncated streak (fire + number only) */}
+                            {streak > 1 && (
+                                <span
+                                    className="sm:hidden"
+                                    style={{ fontSize: '0.65rem', fontWeight: 700, color: '#fb923c', flexShrink: 0 }}
+                                >
+                                    🔥 {streak}
                                 </span>
                             )}
                         </div>
+
+                        {/* mobile row 2: title below username */}
+                        {title && (
+                            <p
+                                className="sm:hidden"
+                                style={{
+                                    fontSize: '0.55rem',
+                                    fontWeight: 600,
+                                    color: getTitleColor(title),
+                                    margin: 0,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                }}
+                            >
+                                {title}
+                            </p>
+                        )}
+
                         {(profile?.first_name || profile?.last_name) && (
                             <p
                                 className="hidden sm:block"
-                                style={{
-                                    fontSize: '0.58rem',
-                                    color: 'var(--app-text-faint)',
-                                    margin: 0,
-                                    letterSpacing: '1px',
-                                }}
+                                style={{ fontSize: '0.58rem', color: 'var(--app-text-faint)', margin: 0, letterSpacing: '1px' }}
                             >
                                 @{[profile?.first_name, profile?.last_name].filter(Boolean).join(' ')}
                             </p>
                         )}
                     </div>
 
-                    <MobileExpand
-                        loginStreak={profile?.login_streak ?? 0}
-                        activeTitle={profile?.active_title}
-                        adminPanel={profile?.is_admin ?? false}
-                    />
                     <div className="sm:hidden" style={{ flex: 1 }} />
                 </div>
 
@@ -162,17 +179,10 @@ export default function DashboardHeader() {
                             href="/admin"
                             className="hidden sm:contents admin-pill"
                             style={{
-                                fontSize: '0.68rem',
-                                fontWeight: 700,
-                                color: '#94a3b8',
-                                background: 'var(--app-surface-2)',
-                                border: '1px solid var(--app-border)',
-                                borderRadius: 20,
-                                padding: '3px 10px',
-                                textDecoration: 'none',
-                                letterSpacing: '0.05em',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
+                                fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8',
+                                background: 'var(--app-surface-2)', border: '1px solid var(--app-border)',
+                                borderRadius: 20, padding: '3px 10px', textDecoration: 'none',
+                                letterSpacing: '0.05em', whiteSpace: 'nowrap', flexShrink: 0,
                             }}
                         >
                             ADMIN
@@ -190,14 +200,9 @@ export default function DashboardHeader() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <div
                             style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'baseline',
-                                gap: 2,
-                                background: 'var(--app-surface-2)',
-                                border: '1px solid var(--app-border)',
-                                borderRadius: 20,
-                                padding: '3px 14px 3px 10px',
+                                display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 2,
+                                background: 'var(--app-surface-2)', border: '1px solid var(--app-border)',
+                                borderRadius: 20, padding: '3px 14px 3px 10px',
                             }}
                         >
                             <span style={{ fontSize: '0.6rem', fontWeight: 500, color: 'var(--app-text-muted)' }}>Lv</span>
@@ -210,15 +215,7 @@ export default function DashboardHeader() {
                             style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 3, position: 'relative', top: 5 }}
                         >
                             <div style={{ width: 100, height: 5, borderRadius: 3, background: 'var(--app-border)', overflow: 'hidden' }}>
-                                <div
-                                    style={{
-                                        height: '100%',
-                                        width: `${xpPct}%`,
-                                        background: 'var(--lv-green)',
-                                        borderRadius: 3,
-                                        transition: 'width 600ms ease',
-                                    }}
-                                />
+                                <div style={{ height: '100%', width: `${xpPct}%`, background: 'var(--lv-green)', borderRadius: 3, transition: 'width 600ms ease' }} />
                             </div>
                             <span
                                 className="hidden sm:flex"
@@ -232,15 +229,9 @@ export default function DashboardHeader() {
                     <Link
                         href="/dashboard/settings"
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 28,
-                            height: 28,
-                            borderRadius: '50%',
-                            flexShrink: 0,
-                            background: 'var(--app-surface-2)',
-                            border: '1px solid var(--app-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                            background: 'var(--app-surface-2)', border: '1px solid var(--app-border)',
                             color: '#475569',
                         }}
                         title="Settings"
@@ -251,6 +242,60 @@ export default function DashboardHeader() {
                     </Link>
                 </div>
             </div>
+
+            {/* ── mobile expand toggle — centered on bottom border ── */}
+            <button
+                className="sm:hidden"
+                onClick={() => setMobileExpanded(v => !v)}
+                style={{
+                    position: 'absolute',
+                    bottom: -11,
+                    left: '50%',
+                    transform: mobileExpanded ? 'translateX(-50%) rotate(180deg)' : 'translateX(-50%)',
+                    background: 'var(--app-bg)',
+                    border: '1px solid var(--app-border)',
+                    borderRadius: 20,
+                    cursor: 'pointer',
+                    color: 'var(--app-text-muted)',
+                    padding: '1px 10px',
+                    fontSize: '0.6rem',
+                    lineHeight: 1,
+                    zIndex: 1,
+                    transition: 'transform 200ms ease',
+                }}
+            >
+                ▾
+            </button>
+
+            {/* ── mobile expanded row ── */}
+            {mobileExpanded && (
+                <div
+                    className="sm:hidden"
+                    style={{
+                        borderTop: '1px solid var(--app-border)',
+                        padding: '8px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                    }}
+                >
+                    <StashButton />
+                    {profile?.is_admin && (
+                        <a
+                            href="/admin"
+                            className="admin-pill"
+                            style={{
+                                fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8',
+                                background: 'var(--app-surface-2)', border: '1px solid var(--app-border)',
+                                borderRadius: 20, padding: '3px 10px', textDecoration: 'none',
+                                letterSpacing: '0.05em', whiteSpace: 'nowrap',
+                            }}
+                        >
+                            ADMIN
+                        </a>
+                    )}
+                </div>
+            )}
         </div>
     )
 }

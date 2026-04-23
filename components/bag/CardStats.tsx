@@ -89,6 +89,7 @@ export function CardStats({
     onToggleFavorite,
     onGraded,
     mode,
+    isMobile = false,
 }: {
     uc: UserCard
     onClose: () => void
@@ -96,6 +97,7 @@ export function CardStats({
     onToggleFavorite: () => void
     onGraded: (grade: number) => void
     mode: 'sidebar' | 'overlay'
+    isMobile?: boolean
 }) {
     const [wearFading, setWearFading] = useState(false)
     const [cleanView, setCleanView] = useState(false)
@@ -105,7 +107,6 @@ export function CardStats({
     >('overview')
     const [learnSlot, setLearnSlot] = useState<{ moveIdx: number } | null>(null)
     const [learnLoading, setLearnLoading] = useState(false)
-    const [summaryOpen, setSummaryOpen] = useState(true)
     const [refreshLoading, setRefreshLoading] = useState(false)
     const [refreshResult, setRefreshResult] = useState<{
         poolSize: number
@@ -270,9 +271,6 @@ export function CardStats({
                         display: 'block',
                         borderRadius: 8,
                         objectFit: 'contain',
-                        boxShadow: rainbow
-                            ? undefined
-                            : rarityGlowShadow(rarity, 'sm'),
                         filter: condFilter,
                         transform: centerSkew,
                         transformOrigin: 'center center',
@@ -411,152 +409,6 @@ export function CardStats({
             setLearnSlot(null)
         }
     }
-    const summaryBlock = (
-        <div
-            style={{
-                marginBottom: 14,
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 10,
-                background: 'rgba(255,255,255,0.03)',
-                overflow: 'hidden',
-            }}
-        >
-            <button
-                onClick={() => setSummaryOpen((v) => !v)}
-                style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 10,
-                    padding: '10px 12px',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                }}
-            >
-                <div style={{ minWidth: 0, flex: 1 }}>
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            flexWrap: 'wrap',
-                            marginBottom: 3,
-                        }}
-                    >
-                        {uc.is_hot && (
-                            <span
-                                style={{
-                                    fontSize: '0.62rem',
-                                    color: '#fb923c',
-                                    lineHeight: 1,
-                                }}
-                            >
-                                🔥
-                            </span>
-                        )}
-
-                        <span
-                            style={{
-                                fontSize:
-                                    mode === 'overlay' ? '1rem' : '0.8rem',
-                                fontWeight: 700,
-                                color: '#fff',
-                                lineHeight: 1.2,
-                            }}
-                        >
-                            {baseName(uc.cards.name)}
-                        </span>
-
-                        <span
-                            className={`font-bold uppercase tracking-widest ${rarityClassName(rarity)}`}
-                            style={{
-                                fontSize: '0.48rem',
-                                ...rarityTextStyle(rarity),
-                            }}
-                        >
-                            {rarity}
-                        </span>
-                    </div>
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            flexWrap: 'wrap',
-                        }}
-                    >
-                        {uc.cards.pokemon_type && (
-                            <span
-                                style={{
-                                    fontSize: '0.48rem',
-                                    fontWeight: 700,
-                                    textTransform: 'capitalize',
-                                    color: '#fff',
-                                    background: TYPE_COLOR[uc.cards.pokemon_type] ?? '#6b7280',
-                                    borderRadius: 4,
-                                    padding: '1px 5px',
-                                    letterSpacing: '0.03em',
-                                }}
-                            >
-                                {uc.cards.pokemon_type}
-                            </span>
-                        )}
-                        {natureObj && (
-                            <span
-                                style={{
-                                    fontSize: '0.48rem',
-                                    fontWeight: 700,
-                                    color: natureTierColor,
-                                    background: `${natureTierColor}14`,
-                                    border: `1px solid ${natureTierColor}30`,
-                                    borderRadius: 4,
-                                    padding: '1px 5px',
-                                }}
-                            >
-                                {natureObj.name}
-                            </span>
-                        )}
-                        <span style={{ fontSize: '0.5rem', color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.04em' }}>raw</span>
-                        <span
-                            style={{
-                                fontSize: '0.56rem',
-                                color: '#4ade80',
-                                fontFamily: 'monospace',
-                                fontWeight: 700,
-                            }}
-                        >
-                            ${Number(uc.cards.market_price_usd ?? 0).toFixed(2)}
-                        </span>
-                        <span style={{ fontSize: '0.5rem', color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.04em' }}>worth</span>
-                        <span
-                            style={{
-                                fontSize: '0.56rem',
-                                color: worthDelta > 0 ? '#4ade80' : '#de4a4a',
-                                fontFamily: 'monospace',
-                                fontWeight: 700,
-                            }}
-                        >
-                            {worthDisplay}
-                        </span>
-                    </div>
-                </div>
-
-                <span
-                    style={{
-                        fontSize: '0.72rem',
-                        color: '#9ca3af',
-                        flexShrink: 0,
-                    }}
-                >
-                    {summaryOpen ? '▲' : '▼'}
-                </span>
-            </button>
-        </div>
-    )
 
     const infoBlock = (
         <div
@@ -584,7 +436,6 @@ export function CardStats({
                 </button>
                 <ShowcaseButton uc={uc} />
             </div>
-            {summaryBlock}
             {/* tab switcher */}
             <div
                 style={{
@@ -642,96 +493,81 @@ export function CardStats({
 
             {detailTab === 'overview' && (
                 <>
-                    {/* name + rarity — shown when summary is collapsed */}
-                    {!summaryOpen && (
-                        <div className="mb-4">
-                            <div>
-                            {uc.is_hot && (
+                    {/* name + rarity */}
+                    <div className="mb-4">
+                        {uc.is_hot && (
+                            <span
+                                className="block mb-1"
+                                style={{ fontSize: '0.6rem', color: '#fb923c' }}
+                            >
+                                🔥 hot market pull
+                            </span>
+                        )}
+                        <h3
+                            className="text-white font-bold leading-snug mb-1.5"
+                            style={{
+                                fontSize: mode === 'overlay' ? '1.3rem' : '0.95rem',
+                            }}
+                        >
+                            {baseName(uc.cards.name)}
+                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <span
+                                className={`font-bold uppercase tracking-widest ${rarityClassName(rarity)}`}
+                                style={{ fontSize: '0.58rem', ...rarityTextStyle(rarity) }}
+                            >
+                                {rarity}
+                            </span>
+                            {uc.cards.pokemon_type && (
                                 <span
-                                    className="block mb-1"
                                     style={{
-                                        fontSize: '0.6rem',
-                                        color: '#fb923c',
+                                        fontSize: '0.55rem',
+                                        fontWeight: 700,
+                                        textTransform: 'capitalize',
+                                        color: '#fff',
+                                        background: TYPE_COLOR[uc.cards.pokemon_type] ?? '#6b7280',
+                                        borderRadius: 4,
+                                        padding: '1px 6px',
+                                        letterSpacing: '0.04em',
                                     }}
                                 >
-                                    🔥 hot market pull
+                                    {uc.cards.pokemon_type}
                                 </span>
                             )}
-                            <h3
-                                className="text-white font-bold leading-snug mb-1.5"
-                                style={{
-                                    fontSize:
-                                        mode === 'overlay'
-                                            ? '1.3rem'
-                                            : '0.95rem',
-                                }}
-                            >
-                                {baseName(uc.cards.name)}
-                            </h3>
-                            <div className="flex items-center gap-2 flex-wrap">
+                            {natureObj && (
                                 <span
-                                    className={`font-bold uppercase tracking-widest ${rarityClassName(rarity)}`}
                                     style={{
-                                        fontSize: '0.58rem',
-                                        ...rarityTextStyle(rarity),
+                                        fontSize: '0.55rem',
+                                        fontWeight: 700,
+                                        color: natureTierColor,
+                                        background: `${natureTierColor}14`,
+                                        border: `1px solid ${natureTierColor}30`,
+                                        borderRadius: 4,
+                                        padding: '1px 6px',
                                     }}
                                 >
-                                    {rarity}
+                                    {natureObj.name}
                                 </span>
-                                {uc.cards.pokemon_type && (
-                                    <span
-                                        style={{
-                                            fontSize: '0.55rem',
-                                            fontWeight: 700,
-                                            textTransform: 'capitalize',
-                                            color: '#fff',
-                                            background:
-                                                TYPE_COLOR[
-                                                    uc.cards.pokemon_type
-                                                ] ?? '#6b7280',
-                                            borderRadius: 4,
-                                            padding: '1px 6px',
-                                            letterSpacing: '0.04em',
-                                        }}
-                                    >
-                                        {uc.cards.pokemon_type}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-2">
+                            )}
+                        </div>
+                        {/* raw left, worth flush right — no wrap */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.4rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>raw</span>
                                 <span
                                     style={{
-                                        fontSize: '0.4rem',
-                                        color: '#6b7280',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                    }}
-                                >
-                                    raw value
-                                </span>
-                                <span
-                                    style={{
-                                        fontSize:
-                                            mode === 'overlay'
-                                                ? '0.75rem'
-                                                : '0.58rem',
+                                        fontSize: mode === 'overlay' ? '0.75rem' : '0.58rem',
                                         fontWeight: 700,
                                         fontFamily: 'monospace',
-                                        color: '#dedc4a',
+                                        color: '#eab308',
+                                        whiteSpace: 'nowrap',
                                     }}
                                 >
                                     ${fmt(Number(uc.cards.market_price_usd))}
                                 </span>
-                                <span
-                                    style={{
-                                        fontSize: '0.4rem',
-                                        color: '#6b7280',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                    }}
-                                >
-                                    worth:
-                                </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.4rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>worth</span>
                                 <span
                                     style={{
                                         display: 'inline-flex',
@@ -748,42 +584,41 @@ export function CardStats({
                                         flexShrink: 0,
                                     }}
                                     onMouseEnter={(e) => {
-                                        const r = (
-                                            e.currentTarget as HTMLElement
-                                        ).getBoundingClientRect()
-                                        setWorthTooltipPos({
-                                            x: r.left,
-                                            y: r.bottom + 6,
-                                        })
+                                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                        setWorthTooltipPos({ x: r.left, y: r.bottom + 6 })
                                     }}
-                                    onMouseLeave={() =>
-                                        setWorthTooltipPos(null)
-                                    }
+                                    onMouseLeave={() => setWorthTooltipPos(null)}
                                 >
                                     ?
                                 </span>
                                 <span
                                     style={{
-                                        fontSize:
-                                            mode === 'overlay'
-                                                ? '0.75rem'
-                                                : '0.58rem',
+                                        fontSize: mode === 'overlay' ? '0.75rem' : '0.58rem',
                                         fontWeight: 700,
                                         fontFamily: 'monospace',
-                                        color:
-                                            worthDelta > 0
-                                                ? '#4ade80'
-                                                : '#de4a4a',
+                                        color: worthDelta > 0 ? '#4ade80' : '#de4a4a',
+                                        whiteSpace: 'nowrap',
                                     }}
                                 >
                                     {worthDisplay}
                                 </span>
                             </div>
-                            </div>
                         </div>
-                    )}
+                    </div>
                     {/* stat rows */}
                     <div style={{ borderTop: `1px solid ${borderColor}` }}>
+                        <div
+                            className="flex justify-between items-center"
+                            style={{ borderBottom: `1px solid ${borderColor}`, padding: '5px 0' }}
+                        >
+                            <span className="font-semibold uppercase tracking-widest text-gray-600" style={{ fontSize: '0.55rem' }}>xp</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: '0.62rem', color: '#4ade80', fontFamily: 'monospace', fontWeight: 700 }}>{uc.card_xp} / {xpNeeded}</span>
+                                <div style={{ width: 72, height: 3, borderRadius: 9999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                    <div style={{ width: `${xpPct}%`, height: '100%', background: '#4ade80', borderRadius: 9999 }} />
+                                </div>
+                            </div>
+                        </div>
                         {stats.map(({ label, value, color, isLevel }) => (
                             <div
                                 key={label}
@@ -902,47 +737,8 @@ export function CardStats({
                             </div>
                         ))}
 
-                        {/* xp bar */}
-                        <div style={{ padding: '6px 0' }}>
-                            <div
-                                className="flex justify-between"
-                                style={{ marginBottom: 4 }}
-                            >
-                                <span
-                                    className="font-semibold uppercase tracking-widest text-gray-600"
-                                    style={{ fontSize: '0.55rem' }}
-                                >
-                                    xp
-                                </span>
-                                <span
-                                    className="font-mono"
-                                    style={{
-                                        fontSize: '0.55rem',
-                                        color: '#4ade80',
-                                    }}
-                                >
-                                    {uc.card_xp} / {xpNeeded}
-                                </span>
-                            </div>
-                            <div
-                                className="w-full rounded-full overflow-hidden"
-                                style={{
-                                    height: 3,
-                                    background: 'rgba(255,255,255,0.05)',
-                                }}
-                            >
-                                <div
-                                    className="h-full rounded-full"
-                                    style={{
-                                        width: `${xpPct}%`,
-                                        background: barBg,
-                                    }}
-                                />
-                            </div>
-                        </div>
-
                         {/* grade + sell side by side */}
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                             <div style={{ flex: 1 }}>
                                 <GradeSection uc={uc} onGraded={onGraded} />
                             </div>
@@ -1871,48 +1667,22 @@ export function CardStats({
                         marginBottom: 12,
                     }}
                 >
-                    <div style={{ position: 'relative' }}>
-                        <button
-                            onClick={() => setCleanView((v) => !v)}
-                            onMouseEnter={() => setShowCleanTooltip(true)}
-                            onMouseLeave={() => setShowCleanTooltip(false)}
-                            className="transition-colors"
-                            style={{
-                                fontSize: '0.85rem',
-                                color: cleanView
-                                    ? 'rgba(255,255,255,0.9)'
-                                    : 'rgba(255,255,255,0.35)',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0,
-                            }}
-                        >
-                            {cleanView ? '◎' : '○'}
-                        </button>
-                        {showCleanTooltip && (
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    bottom: '130%',
-                                    right: 0,
-                                    background: '#000',
-                                    border: '1px solid #333',
-                                    borderRadius: 6,
-                                    padding: '5px 9px',
-                                    fontSize: '0.65rem',
-                                    color: 'rgba(255,255,255,0.8)',
-                                    whiteSpace: 'nowrap',
-                                    pointerEvents: 'none',
-                                    zIndex: 100,
-                                }}
-                            >
-                                {cleanView
-                                    ? 'Show card details'
-                                    : 'Hide UI — card only'}
-                            </div>
-                        )}
-                    </div>
+                    <button
+                        onClick={() => setCleanView((v) => !v)}
+                        className="transition-colors"
+                        style={{
+                            fontSize: '0.85rem',
+                            color: cleanView
+                                ? 'rgba(255,255,255,0.9)'
+                                : 'rgba(255,255,255,0.35)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 0,
+                        }}
+                    >
+                        {cleanView ? '◎' : '○'}
+                    </button>
                     <button
                         onClick={onClose}
                         className="text-gray-600 hover:text-white transition-colors"
@@ -1950,9 +1720,26 @@ export function CardStats({
                             style={{
                                 width: 'clamp(200px, 42%, 280px)',
                                 flexShrink: 0,
+                                position: 'relative',
                             }}
                         >
-                            {imageBlock}
+                            {!rainbow && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: -20,
+                                    right: -20,
+                                    bottom: -20,
+                                    left: -20,
+                                    borderRadius: 20,
+                                    background: `rgba(${glowRgb}, 0.2)`,
+                                    filter: 'blur(20px)',
+                                    zIndex: 0,
+                                    pointerEvents: 'none',
+                                }} />
+                            )}
+                            <div style={{ position: 'relative', zIndex: 1 }}>
+                                {imageBlock}
+                            </div>
                         </div>
                         {infoBlock}
                     </div>
@@ -2055,6 +1842,20 @@ export function CardStats({
                         position: 'relative',
                     }}
                 >
+                    {!rainbow && (
+                        <div style={{
+                            position: 'absolute',
+                            top: -14,
+                            right: -14,
+                            bottom: -14,
+                            left: -14,
+                            borderRadius: 16,
+                            background: `rgba(${glowRgb}, 0.18)`,
+                            filter: 'blur(14px)',
+                            zIndex: 0,
+                            pointerEvents: 'none',
+                        }} />
+                    )}
                     <button
                         onClick={() => {
                             if (!cleanView) setCleanView(true)
@@ -2089,28 +1890,9 @@ export function CardStats({
                             }}
                         />
                     </button>
-                    {uc.grade != null && (
-                        <span
-                            style={{
-                                position: 'absolute',
-                                bottom: 6,
-                                right: 6,
-                                fontSize: '0.52rem',
-                                fontWeight: 800,
-                                fontFamily: 'monospace',
-                                background: '#bf1e2e',
-                                color: '#fff',
-                                borderRadius: 3,
-                                padding: '1px 5px',
-                                lineHeight: 1,
-                            }}
-                        >
-                            PSA {uc.grade}
-                        </span>
-                    )}
                 </div>
                 {/* name + meta below image */}
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 28 }}>
                     <div
                         style={{
                             display: 'flex',
@@ -2118,6 +1900,7 @@ export function CardStats({
                             gap: 6,
                             flexWrap: 'wrap',
                             marginBottom: 3,
+                            width: '100%',
                         }}
                     >
                         {uc.is_hot && (
@@ -2152,6 +1935,37 @@ export function CardStats({
                         >
                             {rarity}
                         </span>
+                        {uc.cards.pokemon_type && (
+                            <span
+                                style={{
+                                    fontSize: '0.48rem',
+                                    fontWeight: 700,
+                                    textTransform: 'capitalize',
+                                    color: '#fff',
+                                    background: TYPE_COLOR[uc.cards.pokemon_type] ?? '#6b7280',
+                                    borderRadius: 4,
+                                    padding: '1px 5px',
+                                    letterSpacing: '0.03em',
+                                }}
+                            >
+                                {uc.cards.pokemon_type}
+                            </span>
+                        )}
+                        {natureObj && (
+                            <span
+                                style={{
+                                    fontSize: '0.48rem',
+                                    fontWeight: 700,
+                                    color: natureTierColor,
+                                    background: `${natureTierColor}14`,
+                                    border: `1px solid ${natureTierColor}30`,
+                                    borderRadius: 4,
+                                    padding: '1px 5px',
+                                }}
+                            >
+                                {natureObj.name}
+                            </span>
+                        )}
                     </div>
 
                     <div
@@ -2162,18 +1976,7 @@ export function CardStats({
                             justifyContent: 'space-between',
                         }}
                     >
-                        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-                            <span
-                                style={{
-                                    fontSize: '0.55rem',
-                                    color: '#facc15',
-                                    fontFamily: 'monospace',
-                                    fontWeight: 700,
-                                }}
-                                title={`Battle Rating: ${thisBP.toLocaleString()}`}
-                            >
-                                {formatBR(thisBP)} BR
-                            </span>
+                        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
                             <span
                                 style={{
                                     fontSize: '0.55rem',
@@ -2230,6 +2033,15 @@ export function CardStats({
                                     ?
                                 </span>
                             </span>
+                            {isMobile && (
+                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <span style={{ fontSize: '0.4rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>xp</span>
+                                    <span style={{ fontSize: '0.48rem', color: '#4ade80', fontFamily: 'monospace' }}>{uc.card_xp} / {xpNeeded}</span>
+                                    <div style={{ width: 72, height: 3, borderRadius: 9999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                        <div style={{ width: `${xpPct}%`, height: '100%', background: '#4ade80', borderRadius: 9999 }} />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -2301,12 +2113,28 @@ export function CardStats({
                     <div style={{ padding: '0 10px' }}>
                         {detailTab === 'overview' && (
                             <>
+                                {/* xp row — desktop sidebar only */}
+                                {!isMobile && (
+                                    <div
+                                        className="flex justify-between items-center"
+                                        style={{
+                                            borderTop: `1px solid ${borderColor}`,
+                                            borderBottom: `1px solid ${borderColor}`,
+                                            padding: '3px 0',
+                                        }}
+                                    >
+                                        <span className="font-semibold uppercase tracking-widest text-gray-600" style={{ fontSize: '0.48rem' }}>xp</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                            <span style={{ fontSize: '0.48rem', color: '#4ade80', fontFamily: 'monospace' }}>{uc.card_xp} / {xpNeeded}</span>
+                                            <div style={{ width: 52, height: 3, borderRadius: 9999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                                <div style={{ width: `${xpPct}%`, height: '100%', background: '#4ade80', borderRadius: 9999 }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* stat rows — exclude market/level since shown in header */}
-                                <div
-                                    style={{
-                                        borderTop: `1px solid ${borderColor}`,
-                                    }}
-                                >
+                                <div>
                                     {stats
                                         .filter(
                                             (s) =>
@@ -2456,46 +2284,10 @@ export function CardStats({
                                                 </div>
                                             ),
                                         )}
-                                    {/* xp bar */}
-                                    <div style={{ padding: '4px 0' }}>
-                                        <div className="flex justify-between mb-0.5">
-                                            <span
-                                                className="font-semibold uppercase tracking-widest text-gray-600"
-                                                style={{ fontSize: '0.48rem' }}
-                                            >
-                                                xp
-                                            </span>
-                                            <span
-                                                className="font-mono"
-                                                style={{
-                                                    fontSize: '0.55rem',
-                                                    color: '#4ade80',
-                                                }}
-                                            >
-                                                {uc.card_xp} / {xpNeeded}
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="w-full rounded-full overflow-hidden"
-                                            style={{
-                                                height: 3,
-                                                background:
-                                                    'rgba(255,255,255,0.05)',
-                                            }}
-                                        >
-                                            <div
-                                                className="h-full rounded-full"
-                                                style={{
-                                                    width: `${xpPct}%`,
-                                                    background: barBg,
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
                                 </div>
 
                                 {/* grade + sell side by side */}
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                                     <div style={{ flex: 1 }}>
                                         <GradeSection uc={uc} onGraded={onGraded} />
                                     </div>

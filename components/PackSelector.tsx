@@ -15,6 +15,31 @@ import {
     isRainbow,
 } from '@/lib/rarityConfig'
 
+// module-level cache — survives tab switches, cleared on page reload
+const _cache: {
+    stock: Record<string, number>
+    discounts: Record<string, number>
+    nextRefreshStandard: string | null
+    nextRefreshSpecial: string | null
+    nextRefreshBox: string | null
+    allPacks: Pack[]
+    bagCount: number | null
+    bagCapacity: number
+    userLevel: number
+    isAdmin: boolean
+} = {
+    stock: {},
+    discounts: {},
+    nextRefreshStandard: null,
+    nextRefreshSpecial: null,
+    nextRefreshBox: null,
+    allPacks: PACKS,
+    bagCount: null,
+    bagCapacity: 50,
+    userLevel: 1,
+    isAdmin: false,
+}
+
 export default function PackSelector({ coins: _unusedCoins }: { coins?: number }) {
     const { profile } = useProfile()
     // null = not yet initialized. Once profile loads we set it once and own it locally.
@@ -44,11 +69,11 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
     }, [selectedPack])
     const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [previewPack, setPreviewPack] = useState<Pack | null>(null)
-    const [bagCount, setBagCount] = useState<number | null>(null)
-    const [bagCapacity, setBagCapacity] = useState<number>(50)
-    const [isAdmin, setIsAdmin] = useState(false)
-    const [allPacks, setAllPacks] = useState<Pack[]>(PACKS)
-    const [userLevel, setUserLevel] = useState<number>(1)
+    const [bagCount, setBagCount] = useState<number | null>(() => _cache.bagCount)
+    const [bagCapacity, setBagCapacity] = useState<number>(() => _cache.bagCapacity)
+    const [isAdmin, setIsAdmin] = useState(() => _cache.isAdmin)
+    const [allPacks, setAllPacks] = useState<Pack[]>(() => _cache.allPacks)
+    const [userLevel, setUserLevel] = useState<number>(() => _cache.userLevel)
 
     // Hydrate from DB — replaces static fallback once loaded; re-append test packs
     useEffect(() => {
@@ -57,7 +82,9 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
             .then((json) => {
                 if (json?.packs?.length) {
                     const testPacks = PACKS.filter((p) => p.test)
-                    setAllPacks([...json.packs, ...testPacks])
+                    const merged = [...json.packs, ...testPacks]
+                    setAllPacks(merged)
+                    _cache.allPacks = merged
                 }
             })
             .catch(() => {})
@@ -65,15 +92,11 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
     const [activeTab, setActiveTab] = useState<
         'classic' | 'special' | 'crates' | 'test'
     >('classic')
-    const [stock, setStock] = useState<Record<string, number>>({})
-    const [discounts, setDiscounts] = useState<Record<string, number>>({})
-    const [nextRefreshStandard, setNextRefreshStandard] = useState<
-        string | null
-    >(null)
-    const [nextRefreshSpecial, setNextRefreshSpecial] = useState<string | null>(
-        null,
-    )
-    const [nextRefreshBox, setNextRefreshBox] = useState<string | null>(null)
+    const [stock, setStock] = useState<Record<string, number>>(() => _cache.stock)
+    const [discounts, setDiscounts] = useState<Record<string, number>>(() => _cache.discounts)
+    const [nextRefreshStandard, setNextRefreshStandard] = useState<string | null>(() => _cache.nextRefreshStandard)
+    const [nextRefreshSpecial, setNextRefreshSpecial] = useState<string | null>(() => _cache.nextRefreshSpecial)
+    const [nextRefreshBox, setNextRefreshBox] = useState<string | null>(() => _cache.nextRefreshBox)
 
     const refreshStock = useCallback(() => {
         fetch('/api/shop/stock')
@@ -81,13 +104,11 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
             .then((json) => {
                 if (!json?.stock) return
                 setStock(json.stock)
-                if (json.discounts) setDiscounts(json.discounts)
-                if (json.next_refresh_standard)
-                    setNextRefreshStandard(json.next_refresh_standard)
-                if (json.next_refresh_special)
-                    setNextRefreshSpecial(json.next_refresh_special)
-                if (json.next_refresh_box)
-                    setNextRefreshBox(json.next_refresh_box)
+                _cache.stock = json.stock
+                if (json.discounts) { setDiscounts(json.discounts); _cache.discounts = json.discounts }
+                if (json.next_refresh_standard) { setNextRefreshStandard(json.next_refresh_standard); _cache.nextRefreshStandard = json.next_refresh_standard }
+                if (json.next_refresh_special) { setNextRefreshSpecial(json.next_refresh_special); _cache.nextRefreshSpecial = json.next_refresh_special }
+                if (json.next_refresh_box) { setNextRefreshBox(json.next_refresh_box); _cache.nextRefreshBox = json.next_refresh_box }
             })
             .catch(() => {})
     }, [])
@@ -107,11 +128,18 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                     .eq('id', user.id)
                     .single(),
             ]).then(([countRes, profileRes]) => {
-                setBagCount(countRes.count ?? 0)
-                setBagCapacity(profileRes.data?.bag_capacity ?? 50)
-                setUserLevel(profileRes.data?.level ?? 1)
+                const count = countRes.count ?? 0
+                const capacity = profileRes.data?.bag_capacity ?? 50
+                const level = profileRes.data?.level ?? 1
                 const admin = !!(profileRes.data as any)?.is_admin
+                setBagCount(count)
+                setBagCapacity(capacity)
+                setUserLevel(level)
                 setIsAdmin(admin)
+                _cache.bagCount = count
+                _cache.bagCapacity = capacity
+                _cache.userLevel = level
+                _cache.isAdmin = admin
                 if (!admin) refreshStock()
             })
         })

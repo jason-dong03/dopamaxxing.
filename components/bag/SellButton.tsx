@@ -25,7 +25,7 @@ export function SellButton({
     }
 
     return (
-        <div className="relative mt-1">
+        <div className="relative mt-1.5">
             {uc.is_hot && !selling && (
                 <div
                     className="absolute inset-0 rounded-xl pointer-events-none"
@@ -61,7 +61,7 @@ export function SellButton({
                 disabled={selling}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                className="relative block w-full py-1 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                className="relative block w-full py-1.5 rounded-lg font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 style={{
                     fontSize: '0.62rem',
                     letterSpacing: '0.06em',

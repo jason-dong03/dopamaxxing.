@@ -32,6 +32,7 @@ export default function BagPage({
     battleRating = 0,
     profileLevel = 1,
     userItems,
+    onRefresh,
 }: {
     userCards: UserCard[]
     coins?: number
@@ -39,8 +40,10 @@ export default function BagPage({
     battleRating?: number
     profileLevel?: number
     userItems?: Array<{ id: string; item_id: string; quantity: number }>
+    onRefresh?: () => void
 }) {
     const router = useRouter()
+    const refresh = onRefresh ?? (() => router.refresh())
     const [userCards, setUserCards] = useState(initialCards)
     const [coins, setCoins] = useState(initialCoins)
     const [bagCapacity, setBagCapacity] = useState(initialCapacity)
@@ -206,7 +209,7 @@ export default function BagPage({
             setSelectedIds(new Set())
             setSelectMode(false)
             dispatchSelectMode(false)
-            router.refresh()
+            refresh()
         } finally {
             setBatchProcessing(false)
         }
@@ -251,7 +254,7 @@ export default function BagPage({
             setSelectedIds(new Set())
             setSelectMode(false)
             dispatchSelectMode(false)
-            router.refresh()
+            refresh()
         } finally {
             setBatchProcessing(false)
         }
@@ -1302,6 +1305,7 @@ export default function BagPage({
                                         onToggleFavorite={handleToggleFavorite}
                                         onGraded={handleGraded}
                                         mode="sidebar"
+                                        isMobile
                                     />
                                 </div>
                             </>
@@ -1330,13 +1334,7 @@ export default function BagPage({
                             background: 'rgba(10,10,16,0.99)',
                             border: isRainbow(selected.cards.rarity)
                                 ? '1px solid transparent'
-                                : `1px solid rgba(${rarityGlowRgb(selected.cards.rarity)}, 0.25)`,
-                            boxShadow: isRainbow(selected.cards.rarity)
-                                ? undefined
-                                : rarityGlowShadow(
-                                      selected.cards.rarity as Rarity,
-                                      'lg',
-                                  ),
+                                : '1px solid rgba(255,255,255,0.08)',
                             padding: '2rem',
                         }}
                         onClick={(e) => e.stopPropagation()}

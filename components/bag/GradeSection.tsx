@@ -82,7 +82,7 @@ export function GradeSection({
                   : '#f87171'
 
     return (
-        <div className="py-1.5">
+        <div className="pt-1.5">
             {uc.grade != null && (
                 <p
                     style={{

@@ -1,143 +1,63 @@
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { awardAchievements } from '@/lib/awardAchievement'
+'use client'
+
 import ProfileView from '@/components/ProfileView'
-import type { RawCard } from '@/lib/types'
+import type { Profile, Friend, AchievementItem, ShowcaseCard, BinderPreview } from '@/lib/types'
+import { usePageCache } from '@/hooks/usePageCache'
 
-export default async function ProfilePage() {
-    const supabase = await createClient()
-    const admin = createAdminClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+type ProfileData = {
+    profile: Profile | null
+    showcaseCard: ShowcaseCard | null
+    friends: Friend[]
+    achievements: AchievementItem[]
+    binders: BinderPreview[]
+    currentUserId: string
+    unlockedTitles: string[]
+}
 
-    const [
-        { data: profile },
-        { data: favoritedRaw },
-        { data: friendshipsRaw },
-        { data: earnedRaw },
-        { data: allAchievements },
-        { data: bindersRaw },
-        { data: earnedTitlesRaw },
-    ] = await Promise.all([
-        supabase
-            .from('profiles')
-            .select(
-                'id, username, first_name, last_name, profile_url, coins, level, xp, active_title, battle_power',
-            )
-            .eq('id', user?.id)
-            .single(),
-        supabase
-            .from('user_cards')
-            .select(
-                'id, card_level, grade, worth, nature, cards(id, name, image_url, image_url_hi, rarity, national_pokedex_number, set_id, pokemon_type, market_price_usd)',
-            )
-            .eq('user_id', user?.id)
-            .eq('is_showcased', true)
-            .limit(1),
-        admin
-            .from('friendships')
-            .select('id, requester_id, addressee_id')
-            .eq('status', 'accepted')
-            .or(`requester_id.eq.${user?.id},addressee_id.eq.${user?.id}`),
-        admin
-            .from('user_achievements')
-            .select('achievement_id, coins_claimed')
-            .eq('user_id', user?.id),
-        admin.from('achievements').select('*'),
-        supabase
-            .from('binders')
-            .select('id, name, color, is_featured')
-            .eq('user_id', user?.id)
-            .eq('is_featured', true)
-            .order('created_at', { ascending: false }),
-        supabase
-            .from('user_quests')
-            .select('quests!inner(title_reward)')
-            .eq('user_id', user?.id)
-            .eq('status', 'completed')
-            .not('quests.title_reward', 'is', null),
-    ])
+export default function ProfilePage() {
+    const { data, loading, refresh } = usePageCache<ProfileData>('/api/profile-data')
 
-    // showcase card — now driven by is_showcased (1 per user)
-    const showcaseRaw =
-        ((favoritedRaw ?? []) as unknown as RawCard[]).find(
-            (uc) => uc.cards !== null,
-        ) ?? null
-    const showcaseCard = showcaseRaw
-        ? {
-              id: showcaseRaw.id,
-              card_level: showcaseRaw.card_level,
-              grade: showcaseRaw.grade,
-              worth: (showcaseRaw as any).worth ?? null,
-              raw: (showcaseRaw.cards as any)?.market_price_usd ?? null,
-              nature: (showcaseRaw as any).nature ?? null,
-              cards: showcaseRaw.cards!,
-          }
-        : null
-
-    // friends — fetch profiles separately to avoid FK join issues
-    const earnedSet = new Set(
-        (earnedRaw ?? []).map((r: any) => r.achievement_id),
-    )
-    const claimedSet = new Set(
-        (earnedRaw ?? [])
-            .filter((r: any) => r.coins_claimed)
-            .map((r: any) => r.achievement_id),
-    )
-    const friendships = friendshipsRaw ?? []
-    const otherIds = friendships.map((f: any) =>
-        f.requester_id === user?.id ? f.addressee_id : f.requester_id,
-    )
-    const { data: friendProfiles } =
-        otherIds.length > 0
-            ? await admin
-                  .from('profiles')
-                  .select('id, username, profile_url')
-                  .in('id', otherIds)
-            : { data: [] }
-    const friends = (friendProfiles ?? []).map((p: any) => ({
-        id: p.id,
-        username: p.username,
-        profile_url: p.profile_url,
-    }))
-
-    // retroactively award first_friend if user has friends but achievement not yet earned
-    if (otherIds.length > 0 && !earnedSet.has('first_friend') && user?.id) {
-        await awardAchievements(user.id, ['first_friend'])
-        earnedSet.add('first_friend')
-    }
-
-    // achievements (own profile: show all visible + all hidden with masking if unearned)
-    const achievements = (allAchievements ?? []).map((a: any) => ({
-        id: a.id,
-        name: a.is_hidden && !earnedSet.has(a.id) ? '???' : a.name,
-        description:
-            a.is_hidden && !earnedSet.has(a.id) ? '???' : a.description,
-        icon: a.is_hidden && !earnedSet.has(a.id) ? '🔒' : a.icon,
-        isHidden: a.is_hidden,
-        coinReward: a.coin_reward,
-        earned: earnedSet.has(a.id),
-        coinsClaimed: claimedSet.has(a.id),
-    }))
-
-    const unlockedTitles = Array.from(
-        new Set(
-            (earnedTitlesRaw ?? [])
-                .map((r: any) => r.quests?.title_reward as string | null)
-                .filter((t): t is string => !!t),
-        ),
-    )
+    if (loading || !data) return <ProfileLoadingSkeleton />
 
     return (
         <ProfileView
-            profile={profile}
-            showcaseCard={showcaseCard}
-            friends={friends}
-            achievements={achievements}
-            binders={bindersRaw ?? []}
-            currentUserId={user?.id}
-            unlockedTitles={unlockedTitles}
+            profile={data.profile}
+            showcaseCard={data.showcaseCard}
+            friends={data.friends}
+            achievements={data.achievements}
+            binders={data.binders}
+            currentUserId={data.currentUserId}
+            unlockedTitles={data.unlockedTitles}
+            onRefresh={refresh}
         />
+    )
+}
+
+function ProfileLoadingSkeleton() {
+    return (
+        <div className="flex flex-col sm:flex-row gap-5 sm:items-start items-stretch justify-center" style={{ minHeight: 'calc(100vh - 64px)', background: '#08080d', padding: '20px 24px' }}>
+            <div className="flex flex-col flex-shrink-0 animate-pulse sm:w-[300px] w-full" style={{ gap: 12 }}>
+                <div className="rounded-2xl w-full sm:w-[300px]" style={{ height: 460, background: 'rgba(255,255,255,0.04)' }} />
+                <div style={{ height: 22, width: 160, borderRadius: 6, background: 'rgba(255,255,255,0.06)' }} />
+                <div className="flex gap-2">
+                    <div style={{ height: 20, width: 64, borderRadius: 6, background: 'rgba(255,255,255,0.06)' }} />
+                    <div style={{ height: 20, width: 64, borderRadius: 6, background: 'rgba(255,255,255,0.06)' }} />
+                </div>
+                <div style={{ height: 28, width: 120, borderRadius: 999, background: 'rgba(255,255,255,0.04)' }} />
+            </div>
+            <div className="flex flex-col rounded-2xl animate-pulse sm:w-[340px] w-full" style={{ minHeight: 580, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', padding: '24px 22px', gap: 20, flexShrink: 0 }}>
+                <div className="flex items-center gap-3">
+                    <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+                    <div className="flex flex-col gap-2">
+                        <div style={{ height: 16, width: 120, borderRadius: 6, background: 'rgba(255,255,255,0.08)' }} />
+                        <div style={{ height: 12, width: 80, borderRadius: 6, background: 'rgba(255,255,255,0.05)' }} />
+                    </div>
+                </div>
+                <div className="rounded-xl" style={{ height: 72, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }} />
+                {[80, 100, 140].map((h, i) => (
+                    <div key={i} className="rounded-xl" style={{ height: h, background: 'rgba(255,255,255,0.03)' }} />
+                ))}
+            </div>
+        </div>
     )
 }
