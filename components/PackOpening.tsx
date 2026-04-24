@@ -241,11 +241,17 @@ export default function PackOpening({
                 .single()
                 .then(({ data }) => {
                     if (data) {
-                        setUserCoins(Number(data.coins))
+                        const coins = Number(data.coins)
+                        setUserCoins(coins)
                         const lvl = Number(data.level ?? 1)
                         setUserLevel(lvl)
                         // XP per pack = 15 * sqrt(level), same formula as server
                         setXpGainPerPack(Math.round(15 * Math.sqrt(lvl)))
+                        // auto-select highest affordable batch count
+                        if (!free && effectiveCost > 0 && stock > 1) {
+                            const maxAffordable = Math.max(1, Math.min(stock, Math.floor(coins / effectiveCost)))
+                            setSelectedCount(maxAffordable)
+                        }
                     }
                 })
         })
@@ -1363,34 +1369,32 @@ export default function PackOpening({
                                 }}
                             >
                                 {!isAdmin && stock > 1 && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        {Array.from({ length: Math.min(stock, 10) }, (_, i) => i + 1).map(n => (
-                                            <button
-                                                key={n}
-                                                onClick={() => setSelectedCount(n)}
-                                                disabled={spinning || exiting}
-                                                style={{
-                                                    padding: '5px 10px',
-                                                    borderRadius: 20,
-                                                    border: selectedCount === n
-                                                        ? '1px solid rgba(96,165,250,0.7)'
-                                                        : '1px solid rgba(255,255,255,0.12)',
-                                                    background: selectedCount === n
-                                                        ? 'rgba(96,165,250,0.22)'
-                                                        : 'rgba(255,255,255,0.04)',
-                                                    color: selectedCount === n ? '#bfdbfe' : 'rgba(255,255,255,0.35)',
-                                                    fontSize: '0.68rem',
-                                                    fontWeight: 700,
-                                                    cursor: 'pointer',
-                                                    letterSpacing: '-0.01em',
-                                                    transition: 'background 0.12s ease, border-color 0.12s ease, color 0.12s ease',
-                                                    boxShadow: selectedCount === n ? '0 0 10px rgba(96,165,250,0.25)' : 'none',
-                                                }}
-                                            >
-                                                {n}x
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <button
+                                        onClick={() => setSelectedCount(n => n >= stock ? 1 : n + 1)}
+                                        disabled={spinning || exiting}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            background: selectedCount > 1
+                                                ? 'rgba(96,165,250,0.22)'
+                                                : 'rgba(96,165,250,0.08)',
+                                            border: selectedCount > 1
+                                                ? '1px solid rgba(96,165,250,0.7)'
+                                                : '1px solid rgba(96,165,250,0.25)',
+                                            borderRadius: 20,
+                                            padding: '6px 18px',
+                                            color: selectedCount > 1 ? '#bfdbfe' : '#60a5fa',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            letterSpacing: '-0.01em',
+                                            transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
+                                            boxShadow: selectedCount > 1 ? '0 0 14px rgba(96,165,250,0.3)' : 'none',
+                                        }}
+                                    >
+                                        {selectedCount}x
+                                    </button>
                                 )}
                                 {isAdmin &&
                                     ([10] as const).map((n) => (
@@ -1682,7 +1686,7 @@ export default function PackOpening({
                         {/* flip-all button */}
                         <div
                             className="flex flex-col items-center gap-2"
-                            style={{ marginTop: 'min(24px, 5vw)' }}
+                            style={{ marginTop: 'min(64px, 14vw)' }}
                         >
                             <button
                                 onClick={handleFlipAll}
@@ -1727,9 +1731,9 @@ export default function PackOpening({
                                         onClick={handleSkipAll}
                                         disabled={packTransitioning}
                                         style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            right: 8,
+                                            position: 'fixed',
+                                            top: 58,
+                                            right: 16,
                                             background: 'none',
                                             border: 'none',
                                             color: 'rgba(255,255,255,0.4)',
@@ -1738,6 +1742,7 @@ export default function PackOpening({
                                             cursor: 'pointer',
                                             padding: '4px 8px',
                                             letterSpacing: '-0.01em',
+                                            zIndex: 50,
                                         }}
                                     >
                                         skip to results
@@ -2121,7 +2126,7 @@ export default function PackOpening({
                                     {/* buttons row */}
                                     <div
                                         className="flex flex-col items-center gap-2"
-                                        style={{ marginTop: 'min(24px, 5vw)' }}
+                                        style={{ marginTop: 'min(64px, 14vw)' }}
                                     >
                                         {allFlipped ? (
                                             <button
