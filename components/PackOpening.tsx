@@ -1538,37 +1538,41 @@ export default function PackOpening({
                                 : 'translateY(16px)',
                         }}
                     >
-                        {/* rarity badge — top center above card stack */}
-                        <div style={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                            {showRarity && rarityCard && (
-                                <div
-                                    className="rarity-badge-reveal"
+                        {/* rarity badge — fixed top center */}
+                        {showRarity && rarityCard && (
+                            <div
+                                className="rarity-badge-reveal"
+                                style={{
+                                    position: 'fixed',
+                                    top: 66,
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    zIndex: 60,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    padding: '5px 18px',
+                                    borderRadius: 99,
+                                    background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
+                                    border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
+                                    boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                    pointerEvents: 'none',
+                                }}
+                            >
+                                <span
                                     style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: 2,
-                                        padding: '5px 18px',
-                                        borderRadius: 99,
-                                        background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
-                                        border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
-                                        boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                        fontSize: '0.55rem',
+                                        fontWeight: 800,
+                                        letterSpacing: '0.22em',
+                                        textTransform: 'uppercase',
+                                        color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
                                     }}
                                 >
-                                    <span
-                                        style={{
-                                            fontSize: '0.55rem',
-                                            fontWeight: 800,
-                                            letterSpacing: '0.22em',
-                                            textTransform: 'uppercase',
-                                            color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
-                                        }}
-                                    >
-                                        {rarityCard.rarity}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                                    {rarityCard.rarity}
+                                </span>
+                            </div>
+                        )}
                         <div
                             className="relative flex items-center justify-center"
                             style={{
@@ -1710,23 +1714,9 @@ export default function PackOpening({
                         const allFlipped = packRevealedCount >= packCards.length
                         const isLastPack = multiPackIndex >= openCount - 1
                         return (
-                            <div
-                                className={
-                                    multiPackIndex === 0
-                                        ? 'animate-cards-slide-up'
-                                        : undefined
-                                }
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    paddingTop: 'min(10px, 8vw)',
-                                    position: 'relative',
-                                    width: '100%',
-                                }}
-                            >
-                                {/* skip to results — top right, text only */}
-                                {!isLastPack && (
+                            <>
+                                {/* skip to results — outside the transformed div so position:fixed works on pack 1 */}
+                                {!isLastPack && createPortal(
                                     <button
                                         onClick={handleSkipAll}
                                         disabled={packTransitioning}
@@ -1742,43 +1732,63 @@ export default function PackOpening({
                                             cursor: 'pointer',
                                             padding: '4px 8px',
                                             letterSpacing: '-0.01em',
-                                            zIndex: 50,
+                                            zIndex: 10002,
                                         }}
                                     >
                                         skip to results
-                                    </button>
+                                    </button>,
+                                    document.body,
                                 )}
-                                {/* rarity badge — top center above cards */}
-                                <div style={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                                    {showRarity && rarityCard && (
-                                        <div
-                                            className="rarity-badge-reveal"
+                            <div
+                                className={
+                                    multiPackIndex === 0
+                                        ? 'animate-cards-slide-up'
+                                        : undefined
+                                }
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    paddingTop: 'min(10px, 8vw)',
+                                    position: 'relative',
+                                    width: '100%',
+                                }}
+                            >
+                                {/* rarity badge — fixed top center */}
+                                {showRarity && rarityCard && (
+                                    <div
+                                        className="rarity-badge-reveal"
+                                        style={{
+                                            position: 'fixed',
+                                            top: 66,
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            zIndex: 60,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: 2,
+                                            padding: '5px 18px',
+                                            borderRadius: 99,
+                                            background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
+                                            border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
+                                            boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                            pointerEvents: 'none',
+                                        }}
+                                    >
+                                        <span
                                             style={{
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                gap: 2,
-                                                padding: '5px 18px',
-                                                borderRadius: 99,
-                                                background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
-                                                border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
-                                                boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                                fontSize: '0.55rem',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.22em',
+                                                textTransform: 'uppercase',
+                                                color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
                                             }}
                                         >
-                                            <span
-                                                style={{
-                                                    fontSize: '0.55rem',
-                                                    fontWeight: 800,
-                                                    letterSpacing: '0.22em',
-                                                    textTransform: 'uppercase',
-                                                    color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
-                                                }}
-                                            >
-                                                {rarityCard.rarity}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
+                                            {rarityCard.rarity}
+                                        </span>
+                                    </div>
+                                )}
                                 <div
                                     style={{
                                         display: 'flex',
@@ -2165,6 +2175,7 @@ export default function PackOpening({
                                     Pack {multiPackIndex + 1} / {openCount}
                                 </div>
                             </div>
+                            </>
                         )
                     })()}
 
@@ -2190,7 +2201,7 @@ export default function PackOpening({
                                     className={`rounded-xl${currentIsRainbow ? ' glow-rainbow' : ''}`}
                                     style={{
                                         height: isMobile
-                                            ? 'min(300px, 72vw)'
+                                            ? 'min(360px, 76vw)'
                                             : '420px',
                                         width: 'auto',
                                         opacity: shattering ? 0 : 1,
@@ -2359,7 +2370,7 @@ export default function PackOpening({
                                     }}
                                 >
                                     {isMobile ? (
-                                        /* ── Mobile: card only, name row on top ── */
+                                        /* ── Mobile: counter → name+details → card with arrows ── */
                                         <div
                                             style={{
                                                 display: 'flex',
@@ -2369,41 +2380,95 @@ export default function PackOpening({
                                                 width: '100%',
                                             }}
                                         >
-                                            {/* name + dex row — same width as card */}
+                                            {/* card counter — top center */}
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--app-text-muted)' }}>
+                                                {doneIndex + 1} / {remainingCards.length}
+                                            </span>
+                                            {/* name + dex + details row */}
                                             <div
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: 8,
-                                                    width: 'min(300px, 72vw)',
-                                                    marginLeft: 100,
+                                                    justifyContent: 'space-between',
+                                                    width: 'min(360px, 92vw)',
                                                 }}
                                             >
-                                                <span
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '0.82rem',
+                                                            fontWeight: 700,
+                                                            color: '#e2e8f0',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                        }}
+                                                    >
+                                                        {currentCard.name}
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '0.68rem',
+                                                            color: '#6b7280',
+                                                            fontFamily: 'monospace',
+                                                            flexShrink: 0,
+                                                        }}
+                                                    >
+                                                        #{String(currentCard.national_pokedex_number ?? 0).padStart(3, '0')}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowDetails(true)}
                                                     style={{
-                                                        fontSize: '0.82rem',
-                                                        fontWeight: 700,
-                                                        color: '#e2e8f0',
+                                                        flexShrink: 0,
+                                                        padding: '4px 10px',
+                                                        borderRadius: 7,
+                                                        border: '1px solid rgba(255,255,255,0.3)',
+                                                        background: 'transparent',
+                                                        color: '#fff',
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap',
                                                     }}
                                                 >
-                                                    {currentCard.name}
-                                                </span>
-                                                <span
+                                                    Details
+                                                </button>
+                                            </div>
+                                            {/* card with arrows flanking */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <button
+                                                    onClick={() => setDoneIndex(prev => (prev - 1 + remainingCards.length) % remainingCards.length)}
                                                     style={{
-                                                        fontSize: '0.68rem',
-                                                        color: '#6b7280',
-                                                        fontFamily: 'monospace',
+                                                        border: '1px solid var(--app-border-2)',
+                                                        color: 'var(--app-text-secondary)',
+                                                        padding: '8px 14px',
+                                                        borderRadius: 8,
+                                                        fontSize: '1rem',
+                                                        background: 'transparent',
+                                                        cursor: 'pointer',
                                                         flexShrink: 0,
                                                     }}
                                                 >
-                                                    #
-                                                    {String(
-                                                        currentCard.national_pokedex_number ??
-                                                            0,
-                                                    ).padStart(3, '0')}
-                                                </span>
+                                                    ←
+                                                </button>
+                                                {cardNode}
+                                                <button
+                                                    onClick={() => setDoneIndex(prev => (prev + 1) % remainingCards.length)}
+                                                    style={{
+                                                        border: '1px solid var(--app-border-2)',
+                                                        color: 'var(--app-text-secondary)',
+                                                        padding: '8px 14px',
+                                                        borderRadius: 8,
+                                                        fontSize: '1rem',
+                                                        background: 'transparent',
+                                                        cursor: 'pointer',
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    →
+                                                </button>
                                             </div>
-                                            {cardNode}
                                         </div>
                                     ) : (
                                         /* ── Desktop/tablet: card + panel side by side, centered ── */
