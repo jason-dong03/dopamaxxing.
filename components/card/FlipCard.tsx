@@ -202,7 +202,7 @@ export default function FlipCard({
             </div>
 
             {flipped && !confirmed && (
-                <p className="text-gray-500 text-xs animate-pulse mt-1">
+                <p className="text-gray-500 text-xs animate-pulse mt-4">
                     tap to continue
                 </p>
             )}

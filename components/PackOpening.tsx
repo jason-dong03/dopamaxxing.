@@ -105,7 +105,7 @@ export default function PackOpening({
         'condition',
     )
     const [openCount, setOpenCount] = useState(count)
-    const [batchMode, setBatchMode] = useState(false)
+    const [selectedCount, setSelectedCount] = useState(1)
     const [adminBatchCount, setAdminBatchCount] = useState<1 | 10>(1)
 
     const [addedCardIds, setAddedCardIds] = useState<Set<string>>(new Set())
@@ -1214,16 +1214,16 @@ export default function PackOpening({
                                     if (!free && !isAdmin && stock <= 0) return
                                     if (isAdmin && adminBatchCount > 1)
                                         prefetchPack(adminBatchCount)
-                                    else if (batchMode && !isAdmin)
-                                        prefetchPack(stock)
+                                    else if (!isAdmin && selectedCount > 1)
+                                        prefetchPack(selectedCount)
                                     else prefetchPack()
                                 }}
                                 onClick={() => {
                                     if (!free && !isAdmin && stock <= 0) return
                                     if (isAdmin && adminBatchCount > 1)
                                         handleClick(adminBatchCount)
-                                    else if (batchMode && !isAdmin)
-                                        handleClick(stock)
+                                    else if (!isAdmin && selectedCount > 1)
+                                        handleClick(selectedCount)
                                     else handleClick()
                                 }}
                                 className={
@@ -1293,11 +1293,7 @@ export default function PackOpening({
                                             fontWeight: 600,
                                             color:
                                                 userCoins !== null
-                                                    ? userCoins >=
-                                                      (batchMode
-                                                          ? effectiveCost *
-                                                            stock
-                                                          : effectiveCost)
+                                                    ? userCoins >= effectiveCost * (isAdmin ? 1 : selectedCount)
                                                         ? '#4ade80'
                                                         : '#f87171'
                                                     : '#6b7280',
@@ -1305,8 +1301,8 @@ export default function PackOpening({
                                             transition: 'color 0.15s',
                                         }}
                                     >
-                                        {batchMode && !isAdmin
-                                            ? `$ ${(effectiveCost * stock).toFixed(2)}`
+                                        {!isAdmin && selectedCount > 1
+                                            ? `$ ${(effectiveCost * selectedCount).toFixed(2)}`
                                             : `$ ${effectiveCost.toFixed(2)}`}
                                     </span>
                                     {discount > 0 && (
@@ -1321,7 +1317,7 @@ export default function PackOpening({
                                             ${pack.cost.toFixed(2)}
                                         </span>
                                     )}
-                                    {batchMode && !isAdmin && (
+                                    {!isAdmin && selectedCount > 1 && (
                                         <span
                                             style={{
                                                 fontSize: '0.62rem',
@@ -1329,7 +1325,7 @@ export default function PackOpening({
                                                 letterSpacing: '-0.01em',
                                             }}
                                         >
-                                            ({stock} × $
+                                            ({selectedCount} × $
                                             {effectiveCost.toFixed(2)})
                                         </span>
                                     )}
@@ -1341,12 +1337,7 @@ export default function PackOpening({
                                                 letterSpacing: '0.04em',
                                             }}
                                         >
-                                            +
-                                            {xpGainPerPack *
-                                                (batchMode && !isAdmin
-                                                    ? stock
-                                                    : 1)}{' '}
-                                            XP
+                                            +{xpGainPerPack * (isAdmin ? 1 : selectedCount)} XP
                                         </span>
                                     )}
                                 </div>
@@ -1372,44 +1363,34 @@ export default function PackOpening({
                                 }}
                             >
                                 {!isAdmin && stock > 1 && (
-                                    <button
-                                        onClick={() => setBatchMode((v) => !v)}
-                                        disabled={spinning || exiting}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 6,
-                                            background: batchMode
-                                                ? 'rgba(96,165,250,0.28)'
-                                                : 'rgba(96,165,250,0.08)',
-                                            border: batchMode
-                                                ? '1px solid rgba(96,165,250,0.7)'
-                                                : '1px solid rgba(96,165,250,0.25)',
-                                            borderRadius: 20,
-                                            padding: '6px 18px',
-                                            color: batchMode
-                                                ? '#bfdbfe'
-                                                : '#60a5fa',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            letterSpacing: '-0.01em',
-                                            transition:
-                                                'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
-                                            boxShadow: batchMode
-                                                ? '0 0 14px rgba(96,165,250,0.3)'
-                                                : 'none',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform =
-                                                'scale(1.08) translateY(-2px)'
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = ''
-                                        }}
-                                    >
-                                        x{stock}
-                                    </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        {Array.from({ length: Math.min(stock, 10) }, (_, i) => i + 1).map(n => (
+                                            <button
+                                                key={n}
+                                                onClick={() => setSelectedCount(n)}
+                                                disabled={spinning || exiting}
+                                                style={{
+                                                    padding: '5px 10px',
+                                                    borderRadius: 20,
+                                                    border: selectedCount === n
+                                                        ? '1px solid rgba(96,165,250,0.7)'
+                                                        : '1px solid rgba(255,255,255,0.12)',
+                                                    background: selectedCount === n
+                                                        ? 'rgba(96,165,250,0.22)'
+                                                        : 'rgba(255,255,255,0.04)',
+                                                    color: selectedCount === n ? '#bfdbfe' : 'rgba(255,255,255,0.35)',
+                                                    fontSize: '0.68rem',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer',
+                                                    letterSpacing: '-0.01em',
+                                                    transition: 'background 0.12s ease, border-color 0.12s ease, color 0.12s ease',
+                                                    boxShadow: selectedCount === n ? '0 0 10px rgba(96,165,250,0.25)' : 'none',
+                                                }}
+                                            >
+                                                {n}x
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                                 {isAdmin &&
                                     ([10] as const).map((n) => (
@@ -1553,6 +1534,37 @@ export default function PackOpening({
                                 : 'translateY(16px)',
                         }}
                     >
+                        {/* rarity badge — top center above card stack */}
+                        <div style={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                            {showRarity && rarityCard && (
+                                <div
+                                    className="rarity-badge-reveal"
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        padding: '5px 18px',
+                                        borderRadius: 99,
+                                        background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
+                                        border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
+                                        boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            fontSize: '0.55rem',
+                                            fontWeight: 800,
+                                            letterSpacing: '0.22em',
+                                            textTransform: 'uppercase',
+                                            color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                        }}
+                                    >
+                                        {rarityCard.rarity}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                         <div
                             className="relative flex items-center justify-center"
                             style={{
@@ -1667,7 +1679,7 @@ export default function PackOpening({
                             })}
                         </div>
 
-                        {/* flip-all button + rarity odds */}
+                        {/* flip-all button */}
                         <div
                             className="flex flex-col items-center gap-2"
                             style={{ marginTop: 'min(24px, 5vw)' }}
@@ -1678,34 +1690,6 @@ export default function PackOpening({
                             >
                                 flip all
                             </button>
-                            {showRarity && rarityCard && (
-                                <div
-                                    className="rarity-badge-reveal"
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: 2,
-                                        padding: '5px 18px',
-                                        borderRadius: 99,
-                                        background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
-                                        border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
-                                        boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            fontSize: '0.55rem',
-                                            fontWeight: 800,
-                                            letterSpacing: '0.22em',
-                                            textTransform: 'uppercase',
-                                            color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
-                                        }}
-                                    >
-                                        {rarityCard.rarity}
-                                    </span>
-                                </div>
-                            )}
                         </div>
                     </div>
                 )}
@@ -1733,22 +1717,62 @@ export default function PackOpening({
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     paddingTop: 'min(10px, 8vw)',
+                                    position: 'relative',
+                                    width: '100%',
                                 }}
                             >
-                                {/* pack counter — always visible above cards */}
-                                <div
-                                    style={{
-                                        marginBottom: 40,
-                                        fontSize: '0.68rem',
-                                        fontWeight: 700,
-                                        letterSpacing: '0.12em',
-                                        color: '#6b7280',
-                                        textTransform: 'uppercase',
-                                        zIndex: 60,
-                                        position: 'relative',
-                                    }}
-                                >
-                                    Pack {multiPackIndex + 1} / {openCount}
+                                {/* skip to results — top right, text only */}
+                                {!isLastPack && (
+                                    <button
+                                        onClick={handleSkipAll}
+                                        disabled={packTransitioning}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: 8,
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'rgba(255,255,255,0.4)',
+                                            fontSize: '0.82rem',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            padding: '4px 8px',
+                                            letterSpacing: '-0.01em',
+                                        }}
+                                    >
+                                        skip to results
+                                    </button>
+                                )}
+                                {/* rarity badge — top center above cards */}
+                                <div style={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                                    {showRarity && rarityCard && (
+                                        <div
+                                            className="rarity-badge-reveal"
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: 2,
+                                                padding: '5px 18px',
+                                                borderRadius: 99,
+                                                background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
+                                                border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
+                                                boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    fontSize: '0.55rem',
+                                                    fontWeight: 800,
+                                                    letterSpacing: '0.22em',
+                                                    textTransform: 'uppercase',
+                                                    color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                                }}
+                                            >
+                                                {rarityCard.rarity}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div
                                     style={{
@@ -2120,45 +2144,20 @@ export default function PackOpening({
                                                 flip all
                                             </button>
                                         )}
-                                        {!isLastPack && (
-                                            <button
-                                                onClick={handleSkipAll}
-                                                disabled={packTransitioning}
-                                                className="px-3 py-1 rounded-lg text-xs border border-gray-800 text-gray-600 hover:border-gray-600 hover:text-gray-400 active:scale-95 transition-all"
-                                            >
-                                                skip to results
-                                            </button>
-                                        )}
-                                        {showRarity && rarityCard && (
-                                            <div
-                                                className="rarity-badge-reveal"
-                                                style={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    alignItems: 'center',
-                                                    gap: 2,
-                                                    padding: '5px 18px',
-                                                    borderRadius: 99,
-                                                    background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
-                                                    border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
-                                                    boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        fontSize: '0.55rem',
-                                                        fontWeight: 800,
-                                                        letterSpacing: '0.22em',
-                                                        textTransform:
-                                                            'uppercase',
-                                                        color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
-                                                    }}
-                                                >
-                                                    {rarityCard.rarity}
-                                                </span>
-                                            </div>
-                                        )}
                                     </div>
+                                </div>
+                                {/* pack counter — bottom center */}
+                                <div
+                                    style={{
+                                        marginTop: 20,
+                                        fontSize: '0.68rem',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.12em',
+                                        color: '#6b7280',
+                                        textTransform: 'uppercase',
+                                    }}
+                                >
+                                    Pack {multiPackIndex + 1} / {openCount}
                                 </div>
                             </div>
                         )
