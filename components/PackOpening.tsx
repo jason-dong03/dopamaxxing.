@@ -2361,7 +2361,7 @@ export default function PackOpening({
                                     }}
                                 >
                                     {isMobile ? (
-                                        /* ── Mobile: counter → name+details → card with arrows ── */
+                                        /* ── Mobile: counter → card with arrows → name+details ── */
                                         <div
                                             style={{
                                                 display: 'flex',
@@ -2375,16 +2375,56 @@ export default function PackOpening({
                                             <span style={{ fontSize: '0.72rem', color: 'var(--app-text-muted)' }}>
                                                 {doneIndex + 1} / {remainingCards.length}
                                             </span>
-                                            {/* name + dex + details row */}
+                                            {/* card with arrows flanking */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <button
+                                                    onClick={() => setDoneIndex(prev => (prev - 1 + remainingCards.length) % remainingCards.length)}
+                                                    style={{
+                                                        border: 'none',
+                                                        color: 'var(--app-text-secondary)',
+                                                        padding: '8px 14px',
+                                                        borderRadius: 8,
+                                                        fontSize: '1rem',
+                                                        background: 'transparent',
+                                                        cursor: 'pointer',
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    ←
+                                                </button>
+                                                {cardNode}
+                                                <button
+                                                    onClick={() => setDoneIndex(prev => (prev + 1) % remainingCards.length)}
+                                                    style={{
+                                                        border: 'none',
+                                                        color: 'var(--app-text-secondary)',
+                                                        padding: '8px 14px',
+                                                        borderRadius: 8,
+                                                        fontSize: '1rem',
+                                                        background: 'transparent',
+                                                        cursor: 'pointer',
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    →
+                                                </button>
+                                            </div>
+                                            {/* details (left) + name+dex (right) — width matches card */}
                                             <div
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'space-between',
-                                                    width: 'min(360px, 92vw)',
+                                                    width: 'min(360px, 76vw)',
                                                 }}
                                             >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                                <button
+                                                    onClick={() => setShowDetails(true)}
+                                                    className="btn-details-glow"
+                                                >
+                                                    Details
+                                                </button>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                                                     <span
                                                         style={{
                                                             fontSize: '0.82rem',
@@ -2408,57 +2448,6 @@ export default function PackOpening({
                                                         #{String(currentCard.national_pokedex_number ?? 0).padStart(3, '0')}
                                                     </span>
                                                 </div>
-                                                <button
-                                                    onClick={() => setShowDetails(true)}
-                                                    style={{
-                                                        flexShrink: 0,
-                                                        padding: '4px 10px',
-                                                        borderRadius: 7,
-                                                        border: '1px solid rgba(255,255,255,0.3)',
-                                                        background: 'transparent',
-                                                        color: '#fff',
-                                                        fontSize: '0.65rem',
-                                                        fontWeight: 600,
-                                                        cursor: 'pointer',
-                                                        whiteSpace: 'nowrap',
-                                                    }}
-                                                >
-                                                    Details
-                                                </button>
-                                            </div>
-                                            {/* card with arrows flanking */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <button
-                                                    onClick={() => setDoneIndex(prev => (prev - 1 + remainingCards.length) % remainingCards.length)}
-                                                    style={{
-                                                        border: '1px solid var(--app-border-2)',
-                                                        color: 'var(--app-text-secondary)',
-                                                        padding: '8px 14px',
-                                                        borderRadius: 8,
-                                                        fontSize: '1rem',
-                                                        background: 'transparent',
-                                                        cursor: 'pointer',
-                                                        flexShrink: 0,
-                                                    }}
-                                                >
-                                                    ←
-                                                </button>
-                                                {cardNode}
-                                                <button
-                                                    onClick={() => setDoneIndex(prev => (prev + 1) % remainingCards.length)}
-                                                    style={{
-                                                        border: '1px solid var(--app-border-2)',
-                                                        color: 'var(--app-text-secondary)',
-                                                        padding: '8px 14px',
-                                                        borderRadius: 8,
-                                                        fontSize: '1rem',
-                                                        background: 'transparent',
-                                                        cursor: 'pointer',
-                                                        flexShrink: 0,
-                                                    }}
-                                                >
-                                                    →
-                                                </button>
                                             </div>
                                         </div>
                                     ) : (
