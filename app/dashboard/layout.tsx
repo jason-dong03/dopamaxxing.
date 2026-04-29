@@ -33,7 +33,7 @@ export default async function DashboardLayout({
                     ageVerified={profile?.age_verified ?? false}
                     tosAcceptedAt={profile?.tos_accepted_at ?? null}
                 />
-                <main className="pb-16">{children}</main>
+                <main className="pb-16 animate-dashboard-fade-in">{children}</main>
                 <VersionBadge />
             </PendingRequestsProvider>
         </UserDataProvider>

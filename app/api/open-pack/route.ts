@@ -33,13 +33,6 @@ const GOD_PACK_RARITIES = [
     'Celestial',
     '???',
 ]
-const WEIGHTS_GOD_PACK: Record<string, number> = {
-    Mythical: 55,
-    Legendary: 25,
-    Divine: 12,
-    Celestial: 5,
-    '???': 3,
-}
 
 // ─── module-level set card cache (per worker, 1hr TTL) ────────────────────────
 type CardRow = Record<string, unknown>
@@ -117,40 +110,129 @@ export async function POST(request: NextRequest) {
 
         const { setId, free = false } = await request.json()
 
-        // ── Admin test pack — fully hardcoded, no DB reads or writes ────────
+        // ── Admin test pack — first card is ex7-107 (??? forced), rest are duds ─
         if (setId === 'admin-test') {
-            const { data: prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
-            if (!prof?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-            const DUDS = [
-                { id: 'test-dud-1', name: 'Caterpie', image_url: 'https://images.pokemontcg.io/sv08/1/high.webp', national_pokedex_number: 10 },
-                { id: 'test-dud-2', name: 'Weedle',   image_url: 'https://images.pokemontcg.io/sv08/2/high.webp', national_pokedex_number: 13 },
-                { id: 'test-dud-3', name: 'Pidgey',   image_url: 'https://images.pokemontcg.io/sv08/3/high.webp', national_pokedex_number: 16 },
-                { id: 'test-dud-4', name: 'Rattata',  image_url: 'https://images.pokemontcg.io/sv08/4/high.webp', national_pokedex_number: 19 },
-            ]
-            const makeCard = (base: object, rarity: string, worth: number) => ({
+            const { data: prof } = await supabase
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', user.id)
+                .single()
+
+            if (!prof?.is_admin) {
+                return NextResponse.json(
+                    { error: 'Forbidden' },
+                    { status: 403 },
+                )
+            }
+
+            const makeCard = (base: any, rarity: string, worth: number) => ({
                 ...base,
                 rarity,
-                set_id: 'sv08',
                 market_price_usd: worth,
-                isNew: true,
                 worth,
-                storedWorth: 0,
+                storedWorth: worth,
                 coins: 0,
+                isNew: true,
                 isHot: false,
                 card_level: 1,
+                preview_stats: rollStats(rarity),
+                preview_nature: rollNature(rarity),
+                preview_moves: [],
                 ...generateAttributes(rarity),
             })
+
             const cards = [
                 makeCard(
-                    { id: 'test-mystery', name: 'Poncho Pikachu', image_url: 'https://images.pokemontcg.io/xy-p/XY189/high.webp', national_pokedex_number: 25 },
+                    {
+                        id: 'test-mystery-mudkip',
+                        name: 'Mudkip Star',
+                        image_url:
+                            'https://assets.tcgdex.net/en/ex/ex7/107/high.webp',
+                        image_url_hi:
+                            'https://assets.tcgdex.net/en/ex/ex7/107/high.webp',
+                        national_pokedex_number: 252,
+                        pokedex_num: 252,
+                        set_id: 'ex7',
+                    },
                     '???',
                     9999,
                 ),
-                ...DUDS.map((d) => makeCard(d, 'Common', 0.05)),
+                makeCard(
+                    {
+                        id: 'test-caterpie',
+                        name: 'Caterpie',
+                        image_url:
+                            'https://assets.tcgdex.net/en/base/base1/45/high.webp',
+                        image_url_hi:
+                            'https://assets.tcgdex.net/en/base/base1/45/high.webp',
+                        national_pokedex_number: 10,
+                        pokedex_num: 10,
+                        set_id: 'base1',
+                    },
+                    'Common',
+                    0.05,
+                ),
+                makeCard(
+                    {
+                        id: 'test-weedle',
+                        name: 'Weedle',
+                        image_url:
+                            'https://assets.tcgdex.net/en/base/base1/69/high.webp',
+                        image_url_hi:
+                            'https://assets.tcgdex.net/en/base/base1/69/high.webp',
+                        national_pokedex_number: 13,
+                        pokedex_num: 13,
+                        set_id: 'base1',
+                    },
+                    'Common',
+                    0.05,
+                ),
+                makeCard(
+                    {
+                        id: 'test-pidgey',
+                        name: 'Pidgey',
+                        image_url:
+                            'https://assets.tcgdex.net/en/base/base1/57/high.webp',
+                        image_url_hi:
+                            'https://assets.tcgdex.net/en/base/base1/57/high.webp',
+                        national_pokedex_number: 16,
+                        pokedex_num: 16,
+                        set_id: 'base1',
+                    },
+                    'Common',
+                    0.05,
+                ),
+                makeCard(
+                    {
+                        id: 'test-rattata',
+                        name: 'Rattata',
+                        image_url:
+                            'https://assets.tcgdex.net/en/base/base1/61/high.webp',
+                        image_url_hi:
+                            'https://assets.tcgdex.net/en/base/base1/61/high.webp',
+                        national_pokedex_number: 19,
+                        pokedex_num: 19,
+                        set_id: 'base1',
+                    },
+                    'Common',
+                    0.05,
+                ),
             ]
-            return NextResponse.json({ cards, godPack: false, luckyFree: false })
-        }
 
+            return NextResponse.json({
+                cards,
+                godPack: false,
+                luckyFree: false,
+                newBR: 0,
+                xpGain: 0,
+                oldLevel: 1,
+                newLevel: 1,
+                oldXP: 0,
+                newXP: 0,
+                xpRequired: 100,
+                leveledUp: false,
+            })
+        }
         // look up pack cost from catalog (DB overrides static defaults)
         const mergedPacks = await getMergedPacks(supabase)
         const packDef = mergedPacks.find((p) => p.id === setId)

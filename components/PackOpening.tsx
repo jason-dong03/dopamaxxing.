@@ -10,7 +10,6 @@ import {
     rarityGlowRgb,
     rarityTextClass,
     rarityTextStyle,
-    rarityToOdds,
     calculateBuyback,
 } from '@/lib/rarityConfig'
 import { useRouter } from 'next/navigation'
@@ -70,17 +69,25 @@ export default function PackOpening({
     const isMobile = useIsMobile()
     const supabase = createClient()
     const { invalidate } = useInvalidate()
+    const clickLock = useRef(false)
     const effectiveCost = parseFloat((pack.cost * (1 - discount)).toFixed(2))
     const [userCoins, setUserCoins] = useState<number | null>(null)
     const [spinning, setSpinning] = useState(false)
     const [dramaticPulse, setDramaticPulse] = useState(false)
-    const [epicMythicPulse, setEpicMythicPulse] = useState<'epic'|'mythic'|null>(null)
-    const [catchShimmer, setCatchShimmer] = useState<'legendary'|'divine'|'celestial'|'mystery'|null>(null)
+    const [epicMythicPulse, setEpicMythicPulse] = useState<
+        'epic' | 'mythic' | null
+    >(null)
+    const [catchShimmer, setCatchShimmer] = useState<
+        'legendary' | 'divine' | 'celestial' | 'mystery' | null
+    >(null)
     const [slowShake, setSlowShake] = useState(false)
-    const [cutsceneTier, setCutsceneTier] = useState<'legendary'|'divine'|'celestial'|'mystery'|null>(null)
+    const [cutsceneTier, setCutsceneTier] = useState<
+        'legendary' | 'divine' | 'celestial' | 'mystery' | null
+    >(null)
     const cutsceneResolveRef = useRef<(() => void) | null>(null)
 
     const [exiting, setExiting] = useState(false)
+    const [ripping, setRipping] = useState(false)
     const [phase, setPhase] = useState<
         'idle' | 'revealing' | 'multi-revealing' | 'done'
     >('idle')
@@ -98,12 +105,12 @@ export default function PackOpening({
     const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set())
     const [animatingIndex, setAnimatingIndex] = useState<number | null>(null)
     const [doneIndex, setDoneIndex] = useState(0)
-    const [condPanelTab, setCondPanelTab] = useState<'condition' | 'stats' | 'moves'>(
-        'condition',
-    )
-    const [detailsCondPanelTab, setDetailsCondPanelTab] = useState<'condition' | 'stats' | 'moves'>(
-        'condition',
-    )
+    const [condPanelTab, setCondPanelTab] = useState<
+        'condition' | 'stats' | 'moves'
+    >('condition')
+    const [detailsCondPanelTab, setDetailsCondPanelTab] = useState<
+        'condition' | 'stats' | 'moves'
+    >('condition')
     const [openCount, setOpenCount] = useState(count)
     const [selectedCount, setSelectedCount] = useState(1)
     const [adminBatchCount, setAdminBatchCount] = useState<1 | 10>(1)
@@ -188,6 +195,7 @@ export default function PackOpening({
         promise: Promise<Response>
         key: string
     } | null>(null)
+    const touchStartYRef = useRef<number | null>(null)
     const idleDims =
         pack.aspect === 'box'
             ? { height: 'min(270px, 60vw)', width: 'min(360px, 78vw)' }
@@ -254,7 +262,13 @@ export default function PackOpening({
                         setXpGainPerPack(Math.round(15 * Math.sqrt(lvl)))
                         // auto-select highest affordable batch count
                         if (!free && effectiveCost > 0 && stock > 1) {
-                            const maxAffordable = Math.max(1, Math.min(stock, Math.floor(coins / effectiveCost)))
+                            const maxAffordable = Math.max(
+                                1,
+                                Math.min(
+                                    stock,
+                                    Math.floor(coins / effectiveCost),
+                                ),
+                            )
                             setSelectedCount(maxAffordable)
                         }
                     }
@@ -317,7 +331,7 @@ export default function PackOpening({
     }
 
     function prefetchPack(batchCount?: number) {
-        if (spinning || exiting) return
+        if (spinning || exiting || ripping) return
         if (!free && !isAdmin && stock <= 0) return
         const key = prefetchKey(batchCount)
         if (prefetchRef.current?.key === key) return
@@ -325,7 +339,9 @@ export default function PackOpening({
     }
 
     async function handleClick(batchCount?: number) {
-        if (spinning || exiting) return
+        if (clickLock.current) return
+        clickLock.current = true
+        if (spinning || exiting || ripping) return
         if (!free && !isAdmin && stock <= 0) return
         setCoinError(null)
         if (batchCount && batchCount > 1) {
@@ -436,17 +452,32 @@ export default function PackOpening({
 
         // ── determine top rarity (feeds both min-shake length + catch seq) ──
         const RARITY_SHAKE_COUNT: Record<string, number> = {
-            Legendary: 1, Divine: 1, Celestial: 2, '???': 3,
+            Legendary: 1,
+            Divine: 1,
+            Celestial: 2,
+            '???': 3,
         }
         const RARITY_SPARK_COLORS: Record<string, string[]> = {
-            Legendary: ['#facc15','#fbbf24','#f59e0b','#fde68a','#fff8'],
-            Divine:    ['#a78bfa','#818cf8','#c4b5fd','#7c3aed','#ddd6fe'],
-            Celestial: ['#f0f9ff','#bae6fd','#e0f2fe','#ffffff','#7dd3fc'],
-            '???':     ['#f472b6','#818cf8','#34d399','#facc15','#60a5fa','#fb923c','#fff'],
+            Legendary: ['#facc15', '#fbbf24', '#f59e0b', '#fde68a', '#fff8'],
+            Divine: ['#a78bfa', '#818cf8', '#c4b5fd', '#7c3aed', '#ddd6fe'],
+            Celestial: ['#f0f9ff', '#bae6fd', '#e0f2fe', '#ffffff', '#7dd3fc'],
+            '???': [
+                '#f472b6',
+                '#818cf8',
+                '#34d399',
+                '#facc15',
+                '#60a5fa',
+                '#fb923c',
+                '#fff',
+            ],
         }
         const presentRarities = new Set(openedCards.map((c) => c.rarity))
-        const topRarity = ['???','Celestial','Divine','Legendary'].find(r => presentRarities.has(r)) ?? null
-        const hasEpicPlus = presentRarities.has('Epic') || presentRarities.has('Mythical')
+        const topRarity =
+            ['???', 'Celestial', 'Divine', 'Legendary'].find((r) =>
+                presentRarities.has(r),
+            ) ?? null
+        const hasEpicPlus =
+            presentRarities.has('Epic') || presentRarities.has('Mythical')
 
         // ── ensure a minimum shake window even if API was instant ────────
         // Rarer pulls deserve more anticipation; commons just get a token shake.
@@ -462,7 +493,9 @@ export default function PackOpening({
         if (!topRarity && hasEpicPlus) {
             const tier = presentRarities.has('Mythical') ? 'mythic' : 'epic'
             setEpicMythicPulse(tier)
-            await new Promise((r) => setTimeout(r, tier === 'mythic' ? 500 : 450))
+            await new Promise((r) =>
+                setTimeout(r, tier === 'mythic' ? 500 : 450),
+            )
         }
 
         // ── pokéball-catch sequence for Legendary+ pulls ──────────────────
@@ -471,15 +504,23 @@ export default function PackOpening({
         const shakeDuration = isSlow ? 450 : 270
         const pauseBetween = isSlow ? 300 : 200
 
-        const shimmerTier = topRarity === '???' ? 'mystery'
-            : topRarity === 'Celestial' ? 'celestial'
-            : topRarity === 'Divine' ? 'divine'
-            : topRarity === 'Legendary' ? 'legendary' : null
+        const shimmerTier =
+            topRarity === '???'
+                ? 'mystery'
+                : topRarity === 'Celestial'
+                  ? 'celestial'
+                  : topRarity === 'Divine'
+                    ? 'divine'
+                    : topRarity === 'Legendary'
+                      ? 'legendary'
+                      : null
 
         // cutscene + gleam start together before the shake
         if (shimmerTier) {
             setCutsceneTier(shimmerTier)
-            await new Promise<void>((resolve) => { cutsceneResolveRef.current = resolve })
+            await new Promise<void>((resolve) => {
+                cutsceneResolveRef.current = resolve
+            })
             setCutsceneTier(null)
             setCatchShimmer(shimmerTier)
             setSlowShake(isSlow)
@@ -488,15 +529,16 @@ export default function PackOpening({
         function fireShakeSparks(shakeIndex: number) {
             const rect = packImgRef.current?.getBoundingClientRect()
             if (!rect) return
-            const count = 8 + shakeIndex * 6   // 8, 14, 20, 26
+            const count = 8 + shakeIndex * 6 // 8, 14, 20, 26
             const colors = topRarity ? RARITY_SPARK_COLORS[topRarity] : ['#fff']
             const isRainbow = topRarity === '???'
             const newSparks = Array.from({ length: count }, (_, i) => {
                 // origin: random point along left or right edge of the pack
                 const side = i % 2 === 0 ? 'left' : 'right'
-                const ox = side === 'left'
-                    ? rect.left + rect.width * 0.08
-                    : rect.right - rect.width * 0.08
+                const ox =
+                    side === 'left'
+                        ? rect.left + rect.width * 0.08
+                        : rect.right - rect.width * 0.08
                 const oy = rect.top + Math.random() * rect.height
                 // flare outward from the side it came from
                 const baseAngle = side === 'left' ? Math.PI : 0
@@ -516,7 +558,15 @@ export default function PackOpening({
                 }
             })
             setSparks((prev) => [...prev, ...newSparks])
-            setTimeout(() => setSparks((prev) => prev.filter((s) => !newSparks.some((n) => n.id === s.id))), 1300)
+            setTimeout(
+                () =>
+                    setSparks((prev) =>
+                        prev.filter(
+                            (s) => !newSparks.some((n) => n.id === s.id),
+                        ),
+                    ),
+                1300,
+            )
         }
 
         if (shakeCount > 0 && topRarity) {
@@ -525,7 +575,8 @@ export default function PackOpening({
                 setDramaticPulse(true)
                 await new Promise((r) => setTimeout(r, shakeDuration))
                 setDramaticPulse(false)
-                if (i < shakeCount - 1) await new Promise((r) => setTimeout(r, pauseBetween))
+                if (i < shakeCount - 1)
+                    await new Promise((r) => setTimeout(r, pauseBetween))
             }
             await new Promise((r) => setTimeout(r, 120))
         }
@@ -549,17 +600,19 @@ export default function PackOpening({
         setMultiPackIndex(0)
         setPackRevealedCount(0)
         setPackTransitioning(false)
-        router.refresh(); invalidate('profile')
+        router.refresh()
+        invalidate('profile')
 
         function doExit() {
-            setExiting(true)
+            setRipping(true)
             setTimeout(() => {
-                setExiting(false)
+                setRipping(false)
                 setCatchShimmer(null)
                 setSlowShake(false)
                 setEpicMythicPulse(null)
                 setPhase(isMulti ? 'multi-revealing' : 'revealing')
-            }, 260)
+                clickLock.current = false
+            }, 620)
         }
 
         doExit()
@@ -645,7 +698,8 @@ export default function PackOpening({
             isAutocompleting.current = false
             setAutoRunning(false)
             if (autoBack || wasBatchOpen.current) {
-                router.refresh(); invalidate('profile')
+                router.refresh()
+                invalidate('profile')
                 ;(onComplete ?? onBack)()
                 return
             }
@@ -655,6 +709,7 @@ export default function PackOpening({
             setAddedIndices(new Set())
             setDoneIndex(0)
             setExiting(false)
+            setRipping(false)
         } else {
             const newDoneIndex = Math.min(doneIndex, newRemaining.length - 1)
             setDoneIndex(newDoneIndex)
@@ -665,7 +720,8 @@ export default function PackOpening({
                 addedCardIds: [...addedCardIds],
             })
         }
-        router.refresh(); invalidate('profile')
+        router.refresh()
+        invalidate('profile')
     }
 
     function handleBuyback() {
@@ -723,7 +779,8 @@ export default function PackOpening({
         isAutocompleting.current = false
         setAutoRunning(false)
         if (autoBack || wasBatchOpen.current) {
-            router.refresh(); invalidate('profile')
+            router.refresh()
+            invalidate('profile')
             ;(onComplete ?? onBack)()
             return
         }
@@ -734,7 +791,9 @@ export default function PackOpening({
         setAddedIndices(new Set())
         setDoneIndex(0)
         setExiting(false)
-        router.refresh(); invalidate('profile')
+        setRipping(false)
+        router.refresh()
+        invalidate('profile')
     }
 
     async function handleFeedCard() {
@@ -915,7 +974,8 @@ export default function PackOpening({
             autocompleteActionMap.current = {}
             setAutoRunning(false)
             if (autoBack || wasBatchOpen.current) {
-                router.refresh(); invalidate('profile')
+                router.refresh()
+                invalidate('profile')
                 ;(onComplete ?? onBack)()
                 return
             }
@@ -925,6 +985,7 @@ export default function PackOpening({
             setAddedIndices(new Set())
             setDoneIndex(0)
             setExiting(false)
+            setRipping(false)
         } else {
             const newDoneIndex = Math.min(removedIndex, newRemaining.length - 1)
             setDoneIndex(newDoneIndex)
@@ -940,7 +1001,8 @@ export default function PackOpening({
                 }, 50)
             }
         }
-        router.refresh(); invalidate('profile')
+        router.refresh()
+        invalidate('profile')
     }
     function handleFlipAll() {
         const remaining = cards.length - revealedCount
@@ -1012,7 +1074,11 @@ export default function PackOpening({
     useEffect(() => {
         if (phase !== 'revealing' && phase !== 'multi-revealing') return
         function onKey(e: KeyboardEvent) {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+            if (
+                e.target instanceof HTMLInputElement ||
+                e.target instanceof HTMLTextAreaElement
+            )
+                return
             if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
                 e.preventDefault()
                 if (phase === 'revealing') {
@@ -1031,7 +1097,13 @@ export default function PackOpening({
         }
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-    }, [phase, revealedCount, packRevealedCount, cardsPerPack, packTransitioning])
+    }, [
+        phase,
+        revealedCount,
+        packRevealedCount,
+        cardsPerPack,
+        packTransitioning,
+    ])
 
     const currentCard = remainingCards[doneIndex]
     const packBgTier: 'celestial' | 'divine' | 'legendary' | 'mystery' | null =
@@ -1077,7 +1149,6 @@ export default function PackOpening({
 
     return (
         <>
-            {screenFlash && <div className="screen-flash-overlay" />}
             {cutsceneTier && (
                 <PackCutscene
                     tier={cutsceneTier}
@@ -1090,9 +1161,13 @@ export default function PackOpening({
             <div
                 className="flex flex-col items-center justify-center"
                 style={{
-                    minHeight: 'calc(100vh - 64px)',
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 64,
                     padding: '24px 16px',
-                    position: 'relative',
+                    background: 'var(--app-bg, #070709)',
                     zIndex: 10001,
                 }}
             >
@@ -1100,22 +1175,24 @@ export default function PackOpening({
                     packBgTier={packBgTier}
                     sparks={sparks}
                 />
+                {screenFlash && (
+                    <div className="screen-flash-overlay" style={{ zIndex: 100 }} />
+                )}
 
                 {/* pack */}
                 {phase === 'idle' && (
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                        }}
-                    >
+                    <>
                         {coinError && (
                             <div
-                                className="flex items-center gap-3 mb-6 px-4 py-3 rounded-xl"
+                                className="flex items-center gap-3 px-4 py-3 rounded-xl"
                                 style={{
+                                    position: 'absolute',
+                                    top: 24,
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
                                     background: 'rgba(239,68,68,0.06)',
                                     border: '1px solid rgba(239,68,68,0.2)',
+                                    zIndex: 5,
                                 }}
                             >
                                 <p className="text-red-400 text-xs">
@@ -1203,54 +1280,160 @@ export default function PackOpening({
                             )}
                         <div
                             ref={packImgRef}
-                            className={`${!isAdmin && !free && stock <= 0 ? 'cursor-not-allowed' : 'cursor-pointer animate-subtle-pulse hover:scale-105'} ${spinning ? 'animate-subtle-shake' : ''} ${dramaticPulse ? (slowShake ? 'animate-dramatic-pulse-slow' : 'animate-dramatic-pulse') : ''} ${epicMythicPulse === 'mythic' ? 'pack-pulse-mythic' : epicMythicPulse === 'epic' ? 'pack-pulse-epic' : ''} ${exiting ? 'animate-pack-exit' : ''}${!spinning && !dramaticPulse && !epicMythicPulse && !exiting && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
+                            className={`${!isAdmin && !free && stock <= 0 ? 'cursor-not-allowed' : ripping ? 'cursor-pointer' : 'cursor-pointer animate-subtle-pulse hover:scale-105'} ${spinning ? 'animate-subtle-shake' : ''} ${dramaticPulse ? (slowShake ? 'animate-dramatic-pulse-slow' : 'animate-dramatic-pulse') : ''} ${epicMythicPulse === 'mythic' ? 'pack-pulse-mythic' : epicMythicPulse === 'epic' ? 'pack-pulse-epic' : ''} ${exiting ? 'animate-pack-exit' : ''}${!spinning && !dramaticPulse && !epicMythicPulse && !exiting && !ripping && pack.idle_aura ? ` ${pack.idle_aura}` : ''}`}
                             style={{
                                 ...(epicMythicPulse
                                     ? {} // let .pack-pulse-* keyframes own the filter
                                     : !pack.idle_aura || spinning || exiting
-                                    ? {
-                                          filter:
-                                              !isAdmin && !free && stock <= 0
-                                                  ? 'grayscale(1) opacity(0.4)'
-                                                  : 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
-                                      }
-                                    : {}),
+                                      ? {
+                                            filter:
+                                                !isAdmin && !free && stock <= 0
+                                                    ? 'grayscale(1) opacity(0.4)'
+                                                    : 'drop-shadow(0 0 20px rgba(228,228,228,0.99))',
+                                        }
+                                      : {}),
                                 position: 'relative',
+                                overflow: 'visible',
                             }}
                         >
-                            <img
-                                src={pack.image}
-                                alt={pack.name}
-                                onPointerDown={() => {
-                                    if (!free && !isAdmin && stock <= 0) return
-                                    if (isAdmin && adminBatchCount > 1)
-                                        prefetchPack(adminBatchCount)
-                                    else if (!isAdmin && selectedCount > 1)
-                                        prefetchPack(selectedCount)
-                                    else prefetchPack()
-                                }}
-                                onClick={() => {
-                                    if (!free && !isAdmin && stock <= 0) return
-                                    if (isAdmin && adminBatchCount > 1)
-                                        handleClick(adminBatchCount)
-                                    else if (!isAdmin && selectedCount > 1)
-                                        handleClick(selectedCount)
-                                    else handleClick()
-                                }}
-                                className={
-                                    !isAdmin && !free && stock <= 0
-                                        ? 'cursor-not-allowed'
-                                        : 'cursor-pointer'
-                                }
-                                style={{
-                                    ...idleDims,
-                                    objectFit: 'contain',
-                                    display: 'block',
-                                }}
-                            />
+                            {ripping ? (
+                                // SVG clip-paths use bezier curves (smooth wave, not jagged triangles)
+                                // objectBoundingBox = 0–1 coords so it scales to any pack size
+                                <div
+                                    style={{
+                                        position: 'relative',
+                                        display: 'inline-block',
+                                        overflow: 'visible',
+                                    }}
+                                >
+                                    <svg
+                                        style={{
+                                            position: 'absolute',
+                                            width: 0,
+                                            height: 0,
+                                            overflow: 'hidden',
+                                        }}
+                                        aria-hidden="true"
+                                    >
+                                        <defs>
+                                            {/* single cubic bezier — one organic arc, not a repeating wave */}
+                                            <clipPath
+                                                id="pack-rip-top"
+                                                clipPathUnits="objectBoundingBox"
+                                            >
+                                                <path d="M0,0 L1,0 L1,0.083 C0.70,0.062 0.27,0.098 0,0.079 Z" />
+                                            </clipPath>
+                                            <clipPath
+                                                id="pack-rip-bottom"
+                                                clipPathUnits="objectBoundingBox"
+                                            >
+                                                <path d="M0,0.079 C0.27,0.098 0.70,0.062 1,0.083 L1,1 L0,1 Z" />
+                                            </clipPath>
+                                        </defs>
+                                    </svg>
+                                    {/* hidden spacer — gives container natural rendered dimensions */}
+                                    <img
+                                        src={pack.image}
+                                        alt=""
+                                        style={{
+                                            ...idleDims,
+                                            objectFit: 'contain',
+                                            display: 'block',
+                                            visibility: 'hidden',
+                                        }}
+                                    />
+                                    {/* top strip peels off */}
+                                    <img
+                                        src={pack.image}
+                                        alt=""
+                                        style={{
+                                            ...idleDims,
+                                            objectFit: 'contain',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            clipPath: 'url(#pack-rip-top)',
+                                        }}
+                                        className="pack-rip-top"
+                                    />
+                                    {/* bottom body stays */}
+                                    <img
+                                        src={pack.image}
+                                        alt=""
+                                        style={{
+                                            ...idleDims,
+                                            objectFit: 'contain',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            clipPath: 'url(#pack-rip-bottom)',
+                                        }}
+                                        className="pack-rip-bottom"
+                                    />
+                                </div>
+                            ) : (
+                                <img
+                                    src={pack.image}
+                                    alt={pack.name}
+                                    onPointerDown={() => {
+                                        if (!free && !isAdmin && stock <= 0)
+                                            return
+                                        if (isAdmin && adminBatchCount > 1)
+                                            prefetchPack(adminBatchCount)
+                                        else if (!isAdmin && selectedCount > 1)
+                                            prefetchPack(selectedCount)
+                                        else prefetchPack()
+                                    }}
+                                    onClick={() => {
+                                        if (!free && !isAdmin && stock <= 0)
+                                            return
+                                        if (isAdmin && adminBatchCount > 1)
+                                            handleClick(adminBatchCount)
+                                        else if (!isAdmin && selectedCount > 1)
+                                            handleClick(selectedCount)
+                                        else handleClick()
+                                    }}
+                                    onTouchStart={(e) => {
+                                        touchStartYRef.current =
+                                            e.touches[0].clientY
+                                    }}
+                                    onTouchEnd={(e) => {
+                                        if (touchStartYRef.current === null)
+                                            return
+                                        const dy =
+                                            touchStartYRef.current -
+                                            e.changedTouches[0].clientY
+                                        touchStartYRef.current = null
+                                        if (dy > 40) {
+                                            if (!free && !isAdmin && stock <= 0)
+                                                return
+                                            if (isAdmin && adminBatchCount > 1)
+                                                handleClick(adminBatchCount)
+                                            else if (
+                                                !isAdmin &&
+                                                selectedCount > 1
+                                            )
+                                                handleClick(selectedCount)
+                                            else handleClick()
+                                        }
+                                    }}
+                                    className={
+                                        !isAdmin && !free && stock <= 0
+                                            ? 'cursor-not-allowed'
+                                            : 'cursor-pointer'
+                                    }
+                                    style={{
+                                        ...idleDims,
+                                        objectFit: 'contain',
+                                        display: 'block',
+                                    }}
+                                />
+                            )}
                             {catchShimmer && (
                                 <div className="pack-gleam-clip">
-                                    <div className={`pack-gleam-streak ${catchShimmer}`} />
+                                    <div
+                                        className={`pack-gleam-streak ${catchShimmer}`}
+                                    />
                                 </div>
                             )}
                             {pack.idle_aura &&
@@ -1263,7 +1446,16 @@ export default function PackOpening({
                                     <div className="pack-shimmer-overlay" />
                                 )}
                         </div>
-                        <div className="flex flex-col items-center gap-2 mt-8">
+                        <div
+                            className="flex flex-col items-center gap-2"
+                            style={{
+                                position: 'absolute',
+                                bottom: 24,
+                                left: 0,
+                                right: 0,
+                                zIndex: 5,
+                            }}
+                        >
                             {!isAdmin && !free && stock <= 0 && (
                                 <div
                                     style={{
@@ -1304,7 +1496,11 @@ export default function PackOpening({
                                             fontWeight: 600,
                                             color:
                                                 userCoins !== null
-                                                    ? userCoins >= effectiveCost * (isAdmin ? 1 : selectedCount)
+                                                    ? userCoins >=
+                                                      effectiveCost *
+                                                          (isAdmin
+                                                              ? 1
+                                                              : selectedCount)
                                                         ? '#4ade80'
                                                         : '#f87171'
                                                     : '#6b7280',
@@ -1348,7 +1544,12 @@ export default function PackOpening({
                                                 letterSpacing: '0.04em',
                                             }}
                                         >
-                                            +{xpGainPerPack * (isAdmin ? 1 : selectedCount)} XP
+                                            +
+                                            {xpGainPerPack *
+                                                (isAdmin
+                                                    ? 1
+                                                    : selectedCount)}{' '}
+                                            XP
                                         </span>
                                     )}
                                 </div>
@@ -1375,27 +1576,42 @@ export default function PackOpening({
                             >
                                 {!isAdmin && stock > 1 && (
                                     <button
-                                        onClick={() => setSelectedCount(n => n >= stock ? 1 : n + 1)}
-                                        disabled={spinning || exiting}
+                                        onClick={() =>
+                                            setSelectedCount((n) =>
+                                                n >= stock ? 1 : n + 1,
+                                            )
+                                        }
+                                        disabled={
+                                            spinning || exiting || ripping
+                                        }
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: 6,
-                                            background: selectedCount > 1
-                                                ? 'rgba(96,165,250,0.22)'
-                                                : 'rgba(96,165,250,0.08)',
-                                            border: selectedCount > 1
-                                                ? '1px solid rgba(96,165,250,0.7)'
-                                                : '1px solid rgba(96,165,250,0.25)',
+                                            background:
+                                                selectedCount > 1
+                                                    ? 'rgba(96,165,250,0.22)'
+                                                    : 'rgba(96,165,250,0.08)',
+                                            border:
+                                                selectedCount > 1
+                                                    ? '1px solid rgba(96,165,250,0.7)'
+                                                    : '1px solid rgba(96,165,250,0.25)',
                                             borderRadius: 20,
                                             padding: '6px 18px',
-                                            color: selectedCount > 1 ? '#bfdbfe' : '#60a5fa',
+                                            color:
+                                                selectedCount > 1
+                                                    ? '#bfdbfe'
+                                                    : '#60a5fa',
                                             fontSize: '0.72rem',
                                             fontWeight: 700,
                                             cursor: 'pointer',
                                             letterSpacing: '-0.01em',
-                                            transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
-                                            boxShadow: selectedCount > 1 ? '0 0 14px rgba(96,165,250,0.3)' : 'none',
+                                            transition:
+                                                'background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
+                                            boxShadow:
+                                                selectedCount > 1
+                                                    ? '0 0 14px rgba(96,165,250,0.3)'
+                                                    : 'none',
                                         }}
                                     >
                                         {selectedCount}x
@@ -1410,7 +1626,9 @@ export default function PackOpening({
                                                     v === n ? 1 : n,
                                                 )
                                             }
-                                            disabled={spinning || exiting}
+                                            disabled={
+                                                spinning || exiting || ripping
+                                            }
                                             style={{
                                                 background:
                                                     adminBatchCount === n
@@ -1478,7 +1696,7 @@ export default function PackOpening({
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {/* god pack banner */}
@@ -1532,171 +1750,195 @@ export default function PackOpening({
                 {/* ↓ vertical position: adjust translateY below (mobile / desktop) */}
                 {phase === 'revealing' && (
                     <>
-                        {showRarity && rarityCard && createPortal(
-                            <div
-                                className="rarity-badge-reveal"
-                                style={{
-                                    position: 'fixed',
-                                    top: 66,
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    zIndex: 10002,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: 2,
-                                    padding: '5px 18px',
-                                    borderRadius: 99,
-                                    background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
-                                    border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
-                                    boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
-                                    pointerEvents: 'none',
-                                }}
-                            >
-                                <span
+                        {showRarity &&
+                            rarityCard &&
+                            createPortal(
+                                <div
                                     style={{
-                                        fontSize: '0.55rem',
-                                        fontWeight: 800,
-                                        letterSpacing: '0.22em',
-                                        textTransform: 'uppercase',
-                                        color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                        position: 'fixed',
+                                        top: 108,
+                                        left: 0,
+                                        right: 0,
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        zIndex: 10002,
+                                        pointerEvents: 'none',
                                     }}
                                 >
-                                    {rarityCard.rarity}
-                                </span>
-                            </div>,
-                            document.body,
-                        )}
-                    <div
-                        className="animate-cards-slide-up"
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            paddingTop: 'min(20px, 5vw)',
-                            transform: isMobile
-                                ? 'translateY(11px)'
-                                : 'translateY(16px)',
-                        }}
-                    >
+                                    <div
+                                        className="rarity-badge-reveal"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            padding: '5px 18px',
+                                            borderRadius: 99,
+                                            background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
+                                            border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
+                                            boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontSize: '0.55rem',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.1em',
+                                                textTransform: 'uppercase',
+                                                color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                            }}
+                                        >
+                                            {rarityCard.rarity}
+                                        </span>
+                                    </div>
+                                </div>,
+                                document.body,
+                            )}
                         <div
-                            className="relative flex items-center justify-center"
+                            className="animate-cards-slide-up"
                             style={{
-                                height: 'min(350px, 80vw)',
-                                width: 'min(280px, 72vw)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
                             }}
                         >
-                            {/* rarity glow behind the top card */}
                             <div
-                                className={
-                                    specialActive &&
-                                    isRainbow(rarityCard?.rarity ?? '')
-                                        ? 'bg-rainbow-radial'
-                                        : ''
-                                }
+                                className="relative flex items-center justify-center"
                                 style={{
-                                    position: 'absolute',
-                                    width: '130%',
-                                    height: '130%',
-                                    borderRadius: '50%',
-                                    ...(!isRainbow(
-                                        rarityCard?.rarity ?? '',
-                                    ) && {
-                                        background: `radial-gradient(ellipse at center, rgba(${specialGlow}, 0.6) 0%, transparent 65%)`,
-                                    }),
-                                    filter: 'blur(32px)',
-                                    zIndex: 0,
-                                    pointerEvents: 'none',
-                                    opacity: specialActive ? 1 : 0,
-                                    transition: 'opacity 600ms ease-in-out',
+                                    height: 'min(350px, 80vw)',
+                                    width: 'min(280px, 72vw)',
+                                    position: 'relative',
                                 }}
-                            />
-                            {cards.map((card, index) => {
-                                const isTop = index === revealedCount
-                                const isRevealed = index < revealedCount
-                                if (isRevealed) return null
-                                const fanVisible = fanningOut
-                                const n = cards.length - revealedCount
-                                const i = index - revealedCount
-                                const offset = i - (n - 1) / 2
-                                return (
-                                    <div
-                                        key={`${card.id}-${index}`}
-                                        ref={isTop ? topCardRef : undefined}
-                                        className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
-                                        style={
-                                            fanVisible
-                                                ? {
-                                                      transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
-                                                      zIndex: 50,
-                                                      pointerEvents: 'none',
-                                                      transition:
-                                                          'transform 450ms cubic-bezier(0.2, 0, 0.8, 1)',
-                                                  }
-                                                : {
-                                                      transform: `translateY(${(index - revealedCount) * -6}px) rotate(${(index - revealedCount) * -1}deg)`,
-                                                      zIndex: isTop
-                                                          ? 50
-                                                          : 50 - index,
-                                                      pointerEvents: isTop
-                                                          ? 'auto'
-                                                          : 'none',
-                                                  }
-                                        }
-                                    >
-                                        <FlipCard
-                                            card={card}
-                                            onReveal={
-                                                isTop ? handleReveal : () => {}
+                            >
+                                {/* rarity glow behind the top card */}
+                                <div
+                                    className={
+                                        specialActive &&
+                                        isRainbow(rarityCard?.rarity ?? '')
+                                            ? 'bg-rainbow-radial'
+                                            : ''
+                                    }
+                                    style={{
+                                        position: 'absolute',
+                                        width: '130%',
+                                        height: '130%',
+                                        borderRadius: '50%',
+                                        ...(!isRainbow(
+                                            rarityCard?.rarity ?? '',
+                                        ) && {
+                                            background: `radial-gradient(ellipse at center, rgba(${specialGlow}, 0.6) 0%, transparent 65%)`,
+                                        }),
+                                        filter: 'blur(32px)',
+                                        zIndex: 0,
+                                        pointerEvents: 'none',
+                                        opacity: specialActive ? 1 : 0,
+                                        transition: 'opacity 600ms ease-in-out',
+                                    }}
+                                />
+                                {cards.map((card, index) => {
+                                    const isTop = index === revealedCount
+                                    const isRevealed = index < revealedCount
+                                    if (isRevealed) return null
+                                    const fanVisible = fanningOut
+                                    const n = cards.length - revealedCount
+                                    const i = index - revealedCount
+                                    const offset = i - (n - 1) / 2
+                                    return (
+                                        <div
+                                            key={`${card.id}-${index}`}
+                                            ref={isTop ? topCardRef : undefined}
+                                            className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
+                                            style={
+                                                fanVisible
+                                                    ? {
+                                                          transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
+                                                          zIndex: 50,
+                                                          pointerEvents: 'none',
+                                                          transition:
+                                                              'transform 450ms cubic-bezier(0.2, 0, 0.8, 1)',
+                                                      }
+                                                    : {
+                                                          transform: `translateY(${(index - revealedCount) * -6}px) rotate(${(index - revealedCount) * -1}deg)`,
+                                                          zIndex: isTop
+                                                              ? 50
+                                                              : 50 - index,
+                                                          pointerEvents: isTop
+                                                              ? 'auto'
+                                                              : 'none',
+                                                      }
                                             }
-                                            onFlipped={
-                                                isTop
-                                                    ? () => {
-                                                          setShowRarity(true)
-                                                          setRarityCard(card)
-                                                          if (
-                                                              [
-                                                                  'Legendary',
-                                                                  'Divine',
-                                                                  'Celestial',
-                                                                  '???',
-                                                              ].includes(
-                                                                  card.rarity,
-                                                              )
-                                                          ) {
-                                                              setScreenFlash(
+                                        >
+                                            <FlipCard
+                                                card={card}
+                                                onReveal={
+                                                    isTop
+                                                        ? handleReveal
+                                                        : () => {}
+                                                }
+                                                onFlipped={
+                                                    isTop
+                                                        ? () => {
+                                                              setShowRarity(
                                                                   true,
                                                               )
-                                                              setTimeout(
-                                                                  () =>
-                                                                      setScreenFlash(
-                                                                          false,
-                                                                      ),
-                                                                  450,
+                                                              setRarityCard(
+                                                                  card,
                                                               )
+                                                              if (
+                                                                  [
+                                                                      'Legendary',
+                                                                      'Divine',
+                                                                      'Celestial',
+                                                                      '???',
+                                                                  ].includes(
+                                                                      card.rarity,
+                                                                  )
+                                                              ) {
+                                                                  setScreenFlash(
+                                                                      true,
+                                                                  )
+                                                                  setTimeout(
+                                                                      () =>
+                                                                          setScreenFlash(
+                                                                              false,
+                                                                          ),
+                                                                      450,
+                                                                  )
+                                                              }
                                                           }
-                                                      }
-                                                    : () => {}
-                                            }
-                                            onConfirmed={
-                                                isTop
-                                                    ? () => setShowRarity(false)
-                                                    : () => {}
-                                            }
-                                            onSpecialChange={(active, glow) => {
-                                                setSpecialActive(active)
-                                                setSpecialGlow(glow)
-                                            }}
-                                        />
-                                    </div>
-                                )
-                            })}
-                        </div>
+                                                        : () => {}
+                                                }
+                                                onConfirmed={
+                                                    isTop
+                                                        ? () =>
+                                                              setShowRarity(
+                                                                  false,
+                                                              )
+                                                        : () => {}
+                                                }
+                                                onSpecialChange={(
+                                                    active,
+                                                    glow,
+                                                ) => {
+                                                    setSpecialActive(active)
+                                                    setSpecialGlow(glow)
+                                                }}
+                                            />
+                                        </div>
+                                    )
+                                })}
+                            </div>
 
-                        {/* flip-all button */}
+                        </div>
+                        {/* flip-all button — anchored at bottom so it doesn't shift card centering */}
                         <div
-                            className="flex flex-col items-center gap-2"
-                            style={{ marginTop: 'min(64px, 14vw)' }}
+                            style={{
+                                position: 'absolute',
+                                bottom: 24,
+                                left: 0,
+                                right: 0,
+                                display: 'flex',
+                                justifyContent: 'center',
+                                zIndex: 5,
+                            }}
                         >
                             <button
                                 onClick={handleFlipAll}
@@ -1705,7 +1947,6 @@ export default function PackOpening({
                                 flip all
                             </button>
                         </div>
-                    </div>
                     </>
                 )}
 
@@ -1723,449 +1964,639 @@ export default function PackOpening({
                         return (
                             <>
                                 {/* skip to results — outside the transformed div so position:fixed works on pack 1 */}
-                                {!isLastPack && createPortal(
-                                    <button
-                                        onClick={handleSkipAll}
-                                        disabled={packTransitioning}
-                                        style={{
-                                            position: 'fixed',
-                                            top: 58,
-                                            right: 16,
-                                            background: 'none',
-                                            border: 'none',
-                                            color: 'rgba(255,255,255,0.4)',
-                                            fontSize: '0.82rem',
-                                            fontWeight: 500,
-                                            cursor: 'pointer',
-                                            padding: '4px 8px',
-                                            letterSpacing: '-0.01em',
-                                            zIndex: 10002,
-                                        }}
-                                    >
-                                        skip to results
-                                    </button>,
-                                    document.body,
-                                )}
-                                {showRarity && rarityCard && !allFlipped && createPortal(
-                                    <div
-                                        className="rarity-badge-reveal"
-                                        style={{
-                                            position: 'fixed',
-                                            top: 66,
-                                            left: '50%',
-                                            transform: 'translateX(-50%)',
-                                            zIndex: 10002,
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: 2,
-                                            padding: '5px 18px',
-                                            borderRadius: 99,
-                                            background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
-                                            border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
-                                            boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
-                                            pointerEvents: 'none',
-                                        }}
-                                    >
-                                        <span
+                                {!isLastPack &&
+                                    createPortal(
+                                        <button
+                                            onClick={handleSkipAll}
+                                            disabled={packTransitioning}
                                             style={{
-                                                fontSize: '0.55rem',
-                                                fontWeight: 800,
-                                                letterSpacing: '0.22em',
-                                                textTransform: 'uppercase',
-                                                color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                                position: 'fixed',
+                                                top: 58,
+                                                right: 16,
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'rgba(255,255,255,0.4)',
+                                                fontSize: '0.82rem',
+                                                fontWeight: 500,
+                                                cursor: 'pointer',
+                                                padding: '4px 8px',
+                                                letterSpacing: '-0.01em',
+                                                zIndex: 10002,
                                             }}
                                         >
-                                            {rarityCard.rarity}
-                                        </span>
-                                    </div>,
-                                    document.body,
-                                )}
-                            <div
-                                className={
-                                    multiPackIndex === 0
-                                        ? 'animate-cards-slide-up'
-                                        : undefined
-                                }
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    paddingTop: 'min(10px, 8vw)',
-                                    position: 'relative',
-                                    width: '100%',
-                                }}
-                            >
+                                            skip to results
+                                        </button>,
+                                        document.body,
+                                    )}
+                                {showRarity &&
+                                    rarityCard &&
+                                    !allFlipped &&
+                                    createPortal(
+                                        <div
+                                            style={{
+                                                position: 'fixed',
+                                                top: 108,
+                                                left: 0,
+                                                right: 0,
+                                                display: 'flex',
+                                                justifyContent: 'center',
+                                                zIndex: 10002,
+                                                pointerEvents: 'none',
+                                            }}
+                                        >
+                                            <div
+                                                className="rarity-badge-reveal"
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    padding: '5px 18px',
+                                                    borderRadius: 99,
+                                                    background: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.12)`,
+                                                    border: `1px solid rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.45)`,
+                                                    boxShadow: `0 0 18px rgba(${rarityGlowRgb(rarityCard.rarity)}, 0.3)`,
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontSize: '0.55rem',
+                                                        fontWeight: 800,
+                                                        letterSpacing: '0.1em',
+                                                        textTransform:
+                                                            'uppercase',
+                                                        color: `rgba(${rarityGlowRgb(rarityCard.rarity)}, 1)`,
+                                                    }}
+                                                >
+                                                    {rarityCard.rarity}
+                                                </span>
+                                            </div>
+                                        </div>,
+                                        document.body,
+                                    )}
                                 <div
+                                    className={
+                                        multiPackIndex === 0
+                                            ? 'animate-cards-slide-up'
+                                            : undefined
+                                    }
                                     style={{
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
-                                        opacity: packTransitioning ? 0 : 1,
-                                        transition: 'opacity 350ms ease-in-out',
+                                        paddingTop: 'min(10px, 8vw)',
+                                        position: 'relative',
+                                        width: '100%',
                                     }}
                                 >
-                                    {allFlipped ? (
-                                        isMobile ? (
-                                            /* Mobile: single card carousel with arrows */
-                                            <div
-                                                style={{
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    alignItems: 'center',
-                                                    gap: 10,
-                                                    animation:
-                                                        'fadeIn 250ms ease-out',
-                                                }}
-                                            >
-                                                {/* rarity pill above card */}
-                                                <div
-                                                    style={{
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        padding: '4px 16px',
-                                                        borderRadius: 99,
-                                                        background: `rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 0.12)`,
-                                                        border: `1px solid rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 0.45)`,
-                                                        boxShadow: `0 0 14px rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 0.3)`,
-                                                    }}
-                                                >
-                                                    <span style={{
-                                                        fontSize: '0.52rem',
-                                                        fontWeight: 800,
-                                                        letterSpacing: '0.18em',
-                                                        textTransform: 'uppercase' as const,
-                                                        color: `rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 1)`,
-                                                        paddingLeft: '0.18em',
-                                                    }}>
-                                                        {packCards[batchRevealIndex]?.rarity}
-                                                    </span>
-                                                </div>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            opacity: packTransitioning ? 0 : 1,
+                                            transition:
+                                                'opacity 350ms ease-in-out',
+                                        }}
+                                    >
+                                        {allFlipped ? (
+                                            isMobile ? (
+                                                /* Mobile: single card carousel with arrows */
                                                 <div
                                                     style={{
                                                         display: 'flex',
+                                                        flexDirection: 'column',
                                                         alignItems: 'center',
-                                                        gap: 16,
+                                                        gap: 10,
+                                                        animation:
+                                                            'fadeIn 250ms ease-out',
                                                     }}
                                                 >
-                                                    <button
-                                                        onClick={() =>
-                                                            setBatchRevealIndex(
-                                                                (p) =>
-                                                                    (p -
-                                                                        1 +
-                                                                        packCards.length) %
-                                                                    packCards.length,
-                                                            )
-                                                        }
-                                                        style={{
-                                                            border: '1px solid rgba(255,255,255,0.15)',
-                                                            background:
-                                                                'transparent',
-                                                            color: 'rgba(255,255,255,0.6)',
-                                                            borderRadius: 8,
-                                                            padding: '6px 14px',
-                                                            fontSize: '1rem',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        ←
-                                                    </button>
-                                                    <img
-                                                        key={`${packCards[batchRevealIndex]?.id}-mobile-face`}
-                                                        src={
-                                                            packCards[
-                                                                batchRevealIndex
-                                                            ]?.image_url
-                                                        }
-                                                        alt={
-                                                            packCards[
-                                                                batchRevealIndex
-                                                            ]?.name
-                                                        }
-                                                        className="rounded-xl"
-                                                        style={{
-                                                            height: 'min(300px, 68vw)',
-                                                            width: 'auto',
-                                                            boxShadow: `0 0 20px 6px rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 0.65)`,
-                                                        }}
-                                                    />
-                                                    <button
-                                                        onClick={() =>
-                                                            setBatchRevealIndex(
-                                                                (p) =>
-                                                                    (p + 1) %
-                                                                    packCards.length,
-                                                            )
-                                                        }
-                                                        style={{
-                                                            border: '1px solid rgba(255,255,255,0.15)',
-                                                            background:
-                                                                'transparent',
-                                                            color: 'rgba(255,255,255,0.6)',
-                                                            borderRadius: 8,
-                                                            padding: '6px 14px',
-                                                            fontSize: '1rem',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    >
-                                                        →
-                                                    </button>
-                                                </div>
-                                                {/* card name + dex */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e2e8f0' }}>
-                                                        {packCards[batchRevealIndex]?.name}
-                                                    </span>
-                                                    <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>
-                                                        #{String(packCards[batchRevealIndex]?.national_pokedex_number ?? 0).padStart(3, '0')}
-                                                    </span>
-                                                </div>
-                                                {/* counter below name */}
-                                                <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>
-                                                    {batchRevealIndex + 1} / {packCards.length}
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            /* Desktop: 1 row ≤5 cards, 2 rows >5 cards */
-                                            (() => {
-                                                const twoRows =
-                                                    packCards.length > 5
-                                                const cols = twoRows
-                                                    ? Math.ceil(
-                                                          packCards.length / 2,
-                                                      )
-                                                    : packCards.length
-                                                const cardH = twoRows
-                                                    ? 155
-                                                    : 220
-                                                return (
+                                                    {/* rarity pill above card */}
                                                     <div
                                                         style={{
-                                                            display: 'grid',
-                                                            gridTemplateColumns: `repeat(${cols}, auto)`,
+                                                            display:
+                                                                'inline-flex',
+                                                            alignItems:
+                                                                'center',
                                                             justifyContent:
                                                                 'center',
-                                                            gap: 10,
-                                                            maxWidth: '98vw',
-                                                            padding: '4px 8px',
-                                                            animation:
-                                                                'fadeIn 250ms ease-out',
+                                                            padding: '4px 16px',
+                                                            borderRadius: 99,
+                                                            background: `rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 0.12)`,
+                                                            border: `1px solid rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 0.45)`,
+                                                            boxShadow: `0 0 14px rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 0.3)`,
                                                         }}
                                                     >
-                                                        {packCards.map(
-                                                            (card, i) => (
-                                                                <img
-                                                                    key={`${card.id}-${packStart + i}-face`}
-                                                                    src={
-                                                                        card.image_url
-                                                                    }
-                                                                    alt={
-                                                                        card.name
-                                                                    }
-                                                                    className="rounded-lg"
-                                                                    style={{
-                                                                        height: `${cardH}px`,
-                                                                        width: 'auto',
-                                                                        boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
-                                                                    }}
-                                                                />
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                )
-                                            })()
-                                        )
-                                    ) : (
-                                        <div
-                                            className="relative flex items-center justify-center"
-                                            style={{
-                                                height: 'min(350px, 80vw)',
-                                                width: 'min(280px, 72vw)',
-                                            }}
-                                        >
-                                            {/* rarity glow */}
-                                            <div
-                                                className={
-                                                    specialActive &&
-                                                    isRainbow(
-                                                        rarityCard?.rarity ??
-                                                            '',
-                                                    )
-                                                        ? 'bg-rainbow-radial'
-                                                        : ''
-                                                }
-                                                style={{
-                                                    position: 'absolute',
-                                                    width: '130%',
-                                                    height: '130%',
-                                                    borderRadius: '50%',
-                                                    ...(!isRainbow(
-                                                        rarityCard?.rarity ??
-                                                            '',
-                                                    ) && {
-                                                        background: `radial-gradient(ellipse at center, rgba(${specialGlow}, 0.6) 0%, transparent 65%)`,
-                                                    }),
-                                                    filter: 'blur(32px)',
-                                                    zIndex: 0,
-                                                    pointerEvents: 'none',
-                                                    opacity: specialActive
-                                                        ? 1
-                                                        : 0,
-                                                    transition:
-                                                        'opacity 600ms ease-in-out',
-                                                }}
-                                            />
-                                            {packCards.map((card, i) => {
-                                                const isTop =
-                                                    i === packRevealedCount
-                                                const isRevealed =
-                                                    i < packRevealedCount
-                                                if (isRevealed) return null
-                                                const fanVisible = fanningOut
-                                                const n =
-                                                    packCards.length -
-                                                    packRevealedCount
-                                                const offset =
-                                                    i -
-                                                    packRevealedCount -
-                                                    (n - 1) / 2
-                                                return (
-                                                    <div
-                                                        key={`${card.id}-${packStart + i}`}
-                                                        className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
-                                                        style={
-                                                            fanVisible
-                                                                ? {
-                                                                      transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
-                                                                      zIndex: 50,
-                                                                      pointerEvents:
-                                                                          'none',
-                                                                      transition:
-                                                                          'transform 450ms cubic-bezier(0.2, 0, 0.8, 1)',
-                                                                  }
-                                                                : {
-                                                                      transform: `translateY(${(i - packRevealedCount) * -6}px) rotate(${(i - packRevealedCount) * -1}deg)`,
-                                                                      zIndex: isTop
-                                                                          ? 50
-                                                                          : 50 -
-                                                                            i,
-                                                                      pointerEvents:
-                                                                          isTop
-                                                                              ? 'auto'
-                                                                              : 'none',
-                                                                  }
-                                                        }
-                                                    >
-                                                        <FlipCard
-                                                            card={card}
-                                                            onReveal={
-                                                                isTop
-                                                                    ? handlePackReveal
-                                                                    : () => {}
+                                                        <span
+                                                            style={{
+                                                                fontSize:
+                                                                    '0.52rem',
+                                                                fontWeight: 800,
+                                                                letterSpacing:
+                                                                    '0.1em',
+                                                                textTransform:
+                                                                    'uppercase' as const,
+                                                                color: `rgba(${rarityGlowRgb(packCards[batchRevealIndex]?.rarity ?? '')}, 1)`,
+                                                            }}
+                                                        >
+                                                            {
+                                                                packCards[
+                                                                    batchRevealIndex
+                                                                ]?.rarity
                                                             }
-                                                            onFlipped={
-                                                                isTop
-                                                                    ? () => {
-                                                                          setShowRarity(
-                                                                              true,
-                                                                          )
-                                                                          setRarityCard(
-                                                                              card,
-                                                                          )
-                                                                          if (
-                                                                              [
-                                                                                  'Legendary',
-                                                                                  'Divine',
-                                                                                  'Celestial',
-                                                                                  '???',
-                                                                              ].includes(
-                                                                                  card.rarity,
-                                                                              )
-                                                                          ) {
-                                                                              setScreenFlash(
+                                                        </span>
+                                                    </div>
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems:
+                                                                'center',
+                                                            gap: 16,
+                                                        }}
+                                                    >
+                                                        <button
+                                                            onClick={() =>
+                                                                setBatchRevealIndex(
+                                                                    (p) =>
+                                                                        (p -
+                                                                            1 +
+                                                                            packCards.length) %
+                                                                        packCards.length,
+                                                                )
+                                                            }
+                                                            style={{
+                                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                                background:
+                                                                    'transparent',
+                                                                color: 'rgba(255,255,255,0.6)',
+                                                                borderRadius: 8,
+                                                                padding:
+                                                                    '6px 14px',
+                                                                fontSize:
+                                                                    '1rem',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            ←
+                                                        </button>
+                                                        {(() => {
+                                                            const bc =
+                                                                packCards[
+                                                                    batchRevealIndex
+                                                                ]
+                                                            if (!bc) return null
+                                                            const attrs = [
+                                                                bc.attr_centering,
+                                                                bc.attr_corners,
+                                                                bc.attr_edges,
+                                                                bc.attr_surface,
+                                                            ].filter(
+                                                                (
+                                                                    v,
+                                                                ): v is number =>
+                                                                    v != null,
+                                                            )
+                                                            const overall =
+                                                                attrs.length
+                                                                    ? attrs.reduce(
+                                                                          (
+                                                                              s,
+                                                                              v,
+                                                                          ) =>
+                                                                              s +
+                                                                              v,
+                                                                          0,
+                                                                      ) /
+                                                                      attrs.length
+                                                                    : null
+                                                            const src =
+                                                                overall !==
+                                                                    null &&
+                                                                overall > 8 &&
+                                                                bc.image_url_hi
+                                                                    ? bc.image_url_hi
+                                                                    : bc.image_url
+                                                            return (
+                                                                <div
+                                                                    key={`${bc.id}-mobile-face`}
+                                                                    className="relative rounded-xl"
+                                                                    style={{
+                                                                        height: 'min(300px, 68vw)',
+                                                                        width: 'auto',
+                                                                        flexShrink: 0,
+                                                                    }}
+                                                                >
+                                                                    <img
+                                                                        src={
+                                                                            src
+                                                                        }
+                                                                        alt={
+                                                                            bc.name
+                                                                        }
+                                                                        className="rounded-xl"
+                                                                        style={{
+                                                                            height: 'min(300px, 68vw)',
+                                                                            width: 'auto',
+                                                                            boxShadow: `0 0 20px 6px rgba(${rarityGlowRgb(bc.rarity)}, 0.65)`,
+                                                                            filter: conditionFilter(
+                                                                                overall,
+                                                                            ),
+                                                                        }}
+                                                                    />
+                                                                    <WearOverlay
+                                                                        ucId={
+                                                                            bc.id
+                                                                        }
+                                                                        overallCond={
+                                                                            overall
+                                                                        }
+                                                                        attrSurface={
+                                                                            bc.attr_surface ??
+                                                                            null
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            )
+                                                        })()}
+                                                        <button
+                                                            onClick={() =>
+                                                                setBatchRevealIndex(
+                                                                    (p) =>
+                                                                        (p +
+                                                                            1) %
+                                                                        packCards.length,
+                                                                )
+                                                            }
+                                                            style={{
+                                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                                background:
+                                                                    'transparent',
+                                                                color: 'rgba(255,255,255,0.6)',
+                                                                borderRadius: 8,
+                                                                padding:
+                                                                    '6px 14px',
+                                                                fontSize:
+                                                                    '1rem',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            →
+                                                        </button>
+                                                    </div>
+                                                    {/* card name + dex */}
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems:
+                                                                'center',
+                                                            gap: 6,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                fontSize:
+                                                                    '0.8rem',
+                                                                fontWeight: 700,
+                                                                color: '#e2e8f0',
+                                                            }}
+                                                        >
+                                                            {
+                                                                packCards[
+                                                                    batchRevealIndex
+                                                                ]?.name
+                                                            }
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize:
+                                                                    '0.65rem',
+                                                                color: '#6b7280',
+                                                            }}
+                                                        >
+                                                            #
+                                                            {String(
+                                                                packCards[
+                                                                    batchRevealIndex
+                                                                ]
+                                                                    ?.national_pokedex_number ??
+                                                                    0,
+                                                            ).padStart(3, '0')}
+                                                        </span>
+                                                    </div>
+                                                    {/* counter below name */}
+                                                    <span
+                                                        style={{
+                                                            fontSize: '0.65rem',
+                                                            color: '#6b7280',
+                                                        }}
+                                                    >
+                                                        {batchRevealIndex + 1} /{' '}
+                                                        {packCards.length}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                /* Desktop: 1 row ≤5 cards, 2 rows >5 cards */
+                                                (() => {
+                                                    const twoRows =
+                                                        packCards.length > 5
+                                                    const cols = twoRows
+                                                        ? Math.ceil(
+                                                              packCards.length /
+                                                                  2,
+                                                          )
+                                                        : packCards.length
+                                                    const cardH = twoRows
+                                                        ? 155
+                                                        : 220
+                                                    return (
+                                                        <div
+                                                            style={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: `repeat(${cols}, auto)`,
+                                                                justifyContent:
+                                                                    'center',
+                                                                gap: 10,
+                                                                maxWidth:
+                                                                    '98vw',
+                                                                padding:
+                                                                    '4px 8px',
+                                                                animation:
+                                                                    'fadeIn 250ms ease-out',
+                                                            }}
+                                                        >
+                                                            {packCards.map(
+                                                                (card, i) => {
+                                                                    const attrs =
+                                                                        [
+                                                                            card.attr_centering,
+                                                                            card.attr_corners,
+                                                                            card.attr_edges,
+                                                                            card.attr_surface,
+                                                                        ].filter(
+                                                                            (
+                                                                                v,
+                                                                            ): v is number =>
+                                                                                v !=
+                                                                                null,
+                                                                        )
+                                                                    const overall =
+                                                                        attrs.length
+                                                                            ? attrs.reduce(
+                                                                                  (
+                                                                                      s,
+                                                                                      v,
+                                                                                  ) =>
+                                                                                      s +
+                                                                                      v,
+                                                                                  0,
+                                                                              ) /
+                                                                              attrs.length
+                                                                            : null
+                                                                    const src =
+                                                                        overall !==
+                                                                            null &&
+                                                                        overall >
+                                                                            8 &&
+                                                                        card.image_url_hi
+                                                                            ? card.image_url_hi
+                                                                            : card.image_url
+                                                                    return (
+                                                                        <div
+                                                                            key={`${card.id}-${packStart + i}-face`}
+                                                                            className="relative rounded-lg"
+                                                                            style={{
+                                                                                height: `${cardH}px`,
+                                                                                width: 'auto',
+                                                                            }}
+                                                                        >
+                                                                            <img
+                                                                                src={
+                                                                                    src
+                                                                                }
+                                                                                alt={
+                                                                                    card.name
+                                                                                }
+                                                                                className="rounded-lg"
+                                                                                style={{
+                                                                                    height: `${cardH}px`,
+                                                                                    width: 'auto',
+                                                                                    boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
+                                                                                    filter: conditionFilter(
+                                                                                        overall,
+                                                                                    ),
+                                                                                }}
+                                                                            />
+                                                                            <WearOverlay
+                                                                                ucId={
+                                                                                    card.id
+                                                                                }
+                                                                                overallCond={
+                                                                                    overall
+                                                                                }
+                                                                                attrSurface={
+                                                                                    card.attr_surface ??
+                                                                                    null
+                                                                                }
+                                                                            />
+                                                                        </div>
+                                                                    )
+                                                                },
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })()
+                                            )
+                                        ) : (
+                                            <div
+                                                className="relative flex items-center justify-center"
+                                                style={{
+                                                    height: 'min(350px, 80vw)',
+                                                    width: 'min(280px, 72vw)',
+                                                }}
+                                            >
+                                                {/* rarity glow */}
+                                                <div
+                                                    className={
+                                                        specialActive &&
+                                                        isRainbow(
+                                                            rarityCard?.rarity ??
+                                                                '',
+                                                        )
+                                                            ? 'bg-rainbow-radial'
+                                                            : ''
+                                                    }
+                                                    style={{
+                                                        position: 'absolute',
+                                                        width: '130%',
+                                                        height: '130%',
+                                                        borderRadius: '50%',
+                                                        ...(!isRainbow(
+                                                            rarityCard?.rarity ??
+                                                                '',
+                                                        ) && {
+                                                            background: `radial-gradient(ellipse at center, rgba(${specialGlow}, 0.6) 0%, transparent 65%)`,
+                                                        }),
+                                                        filter: 'blur(32px)',
+                                                        zIndex: 0,
+                                                        pointerEvents: 'none',
+                                                        opacity: specialActive
+                                                            ? 1
+                                                            : 0,
+                                                        transition:
+                                                            'opacity 600ms ease-in-out',
+                                                    }}
+                                                />
+                                                {packCards.map((card, i) => {
+                                                    const isTop =
+                                                        i === packRevealedCount
+                                                    const isRevealed =
+                                                        i < packRevealedCount
+                                                    if (isRevealed) return null
+                                                    const fanVisible =
+                                                        fanningOut
+                                                    const n =
+                                                        packCards.length -
+                                                        packRevealedCount
+                                                    const offset =
+                                                        i -
+                                                        packRevealedCount -
+                                                        (n - 1) / 2
+                                                    return (
+                                                        <div
+                                                            key={`${card.id}-${packStart + i}`}
+                                                            className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
+                                                            style={
+                                                                fanVisible
+                                                                    ? {
+                                                                          transform: `translateX(${offset * 58}px) translateY(-65px) rotate(${offset * 13}deg)`,
+                                                                          zIndex: 50,
+                                                                          pointerEvents:
+                                                                              'none',
+                                                                          transition:
+                                                                              'transform 450ms cubic-bezier(0.2, 0, 0.8, 1)',
+                                                                      }
+                                                                    : {
+                                                                          transform: `translateY(${(i - packRevealedCount) * -6}px) rotate(${(i - packRevealedCount) * -1}deg)`,
+                                                                          zIndex: isTop
+                                                                              ? 50
+                                                                              : 50 -
+                                                                                i,
+                                                                          pointerEvents:
+                                                                              isTop
+                                                                                  ? 'auto'
+                                                                                  : 'none',
+                                                                      }
+                                                            }
+                                                        >
+                                                            <FlipCard
+                                                                card={card}
+                                                                onReveal={
+                                                                    isTop
+                                                                        ? handlePackReveal
+                                                                        : () => {}
+                                                                }
+                                                                onFlipped={
+                                                                    isTop
+                                                                        ? () => {
+                                                                              setShowRarity(
                                                                                   true,
                                                                               )
-                                                                              setTimeout(
-                                                                                  () =>
-                                                                                      setScreenFlash(
-                                                                                          false,
-                                                                                      ),
-                                                                                  450,
+                                                                              setRarityCard(
+                                                                                  card,
                                                                               )
+                                                                              if (
+                                                                                  [
+                                                                                      'Legendary',
+                                                                                      'Divine',
+                                                                                      'Celestial',
+                                                                                      '???',
+                                                                                  ].includes(
+                                                                                      card.rarity,
+                                                                                  )
+                                                                              ) {
+                                                                                  setScreenFlash(
+                                                                                      true,
+                                                                                  )
+                                                                                  setTimeout(
+                                                                                      () =>
+                                                                                          setScreenFlash(
+                                                                                              false,
+                                                                                          ),
+                                                                                      450,
+                                                                                  )
+                                                                              }
                                                                           }
-                                                                      }
-                                                                    : () => {}
-                                                            }
-                                                            onConfirmed={
-                                                                isTop
-                                                                    ? () =>
-                                                                          setShowRarity(
-                                                                              false,
-                                                                          )
-                                                                    : () => {}
-                                                            }
-                                                            onSpecialChange={(
-                                                                active,
-                                                                glow,
-                                                            ) => {
-                                                                setSpecialActive(
+                                                                        : () => {}
+                                                                }
+                                                                onConfirmed={
+                                                                    isTop
+                                                                        ? () =>
+                                                                              setShowRarity(
+                                                                                  false,
+                                                                              )
+                                                                        : () => {}
+                                                                }
+                                                                onSpecialChange={(
                                                                     active,
-                                                                )
-                                                                setSpecialGlow(
                                                                     glow,
-                                                                )
-                                                            }}
-                                                        />
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* buttons row */}
-                                    <div
-                                        className="flex flex-col items-center gap-2"
-                                        style={{ marginTop: 'min(20px, 5vw)' }}
-                                    >
-                                        {allFlipped ? (
-                                            <button
-                                                onClick={handleNextPack}
-                                                disabled={packTransitioning}
-                                                className="px-6 py-2 rounded-xl text-sm font-semibold border border-gray-500 text-white hover:border-white hover:bg-white/10 active:scale-95 transition-all"
-                                                style={{
-                                                    letterSpacing: '0.04em',
-                                                }}
-                                            >
-                                                {isLastPack
-                                                    ? 'see results →'
-                                                    : 'next pack →'}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={handleFlipPackAll}
-                                                className="px-4 py-1.5 rounded-xl text-xs font-medium border border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
-                                            >
-                                                flip all
-                                            </button>
+                                                                ) => {
+                                                                    setSpecialActive(
+                                                                        active,
+                                                                    )
+                                                                    setSpecialGlow(
+                                                                        glow,
+                                                                    )
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         )}
+
+                                        {/* buttons row */}
+                                        <div
+                                            className="flex flex-col items-center gap-2"
+                                            style={{
+                                                marginTop: 'min(20px, 5vw)',
+                                            }}
+                                        >
+                                            {allFlipped ? (
+                                                <button
+                                                    onClick={handleNextPack}
+                                                    disabled={packTransitioning}
+                                                    className="px-6 py-2 rounded-xl text-sm font-semibold border border-gray-500 text-white hover:border-white hover:bg-white/10 active:scale-95 transition-all"
+                                                    style={{
+                                                        letterSpacing: '0.04em',
+                                                    }}
+                                                >
+                                                    {isLastPack
+                                                        ? 'see results →'
+                                                        : 'next pack →'}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={handleFlipPackAll}
+                                                    className="px-4 py-1.5 rounded-xl text-xs font-medium border border-gray-700 text-gray-300 hover:border-gray-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all"
+                                                >
+                                                    flip all
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* pack counter — bottom center */}
+                                    <div
+                                        style={{
+                                            marginTop: 20,
+                                            fontSize: '0.68rem',
+                                            fontWeight: 700,
+                                            letterSpacing: '0.12em',
+                                            color: '#6b7280',
+                                            textTransform: 'uppercase',
+                                        }}
+                                    >
+                                        Pack {multiPackIndex + 1} / {openCount}
                                     </div>
                                 </div>
-                                {/* pack counter — bottom center */}
-                                <div
-                                    style={{
-                                        marginTop: 20,
-                                        fontSize: '0.68rem',
-                                        fontWeight: 700,
-                                        letterSpacing: '0.12em',
-                                        color: '#6b7280',
-                                        textTransform: 'uppercase',
-                                    }}
-                                >
-                                    Pack {multiPackIndex + 1} / {openCount}
-                                </div>
-                            </div>
                             </>
                         )
                     })()}
@@ -2283,6 +2714,64 @@ export default function PackOpening({
                                         side="right"
                                     />
                                 )}
+                                {/* Mobile overlays: name top-left, Details top-right */}
+                                {isMobile && (
+                                    <>
+                                        <div
+                                            style={{
+                                                position: 'absolute',
+                                                top: 10,
+                                                left: 14,
+                                                zIndex: 20,
+                                                pointerEvents: 'none',
+                                                maxWidth: '55%',
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 700,
+                                                    color: '#fff',
+                                                    textShadow:
+                                                        '0 1px 4px rgba(0,0,0,0.9)',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                    display: 'block',
+                                                }}
+                                            >
+                                                {currentCard.name}
+                                            </span>
+                                            <span
+                                                style={{
+                                                    fontSize: '0.6rem',
+                                                    color: 'rgba(255,255,255,0.55)',
+                                                    fontFamily: 'monospace',
+                                                    textShadow:
+                                                        '0 1px 3px rgba(0,0,0,0.8)',
+                                                }}
+                                            >
+                                                #
+                                                {String(
+                                                    currentCard.national_pokedex_number ??
+                                                        0,
+                                                ).padStart(3, '0')}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowDetails(true)}
+                                            className="btn-details-glow"
+                                            style={{
+                                                position: 'absolute',
+                                                top: 10,
+                                                right: 14,
+                                                zIndex: 20,
+                                            }}
+                                        >
+                                            Details
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         )
 
@@ -2325,7 +2814,9 @@ export default function PackOpening({
                                 shattering={shattering}
                                 isFetchingCopies={isFetchingCopies}
                                 handleAddToBag={handleAddToBag}
-                                handleAddToBagDuplicate={handleAddToBagDuplicate}
+                                handleAddToBagDuplicate={
+                                    handleAddToBagDuplicate
+                                }
                                 handleFeedCard={handleFeedCard}
                                 handleBuyback={handleBuyback}
                                 onAction={() => setShowDetails(false)}
@@ -2342,12 +2833,18 @@ export default function PackOpening({
                             currentCard.attr_surface,
                         ].filter((v): v is number => v != null)
                         const mobileOverall = mobileAttrs.length
-                            ? Math.round((mobileAttrs.reduce((s, v) => s + v, 0) / mobileAttrs.length) * 10) / 10
+                            ? Math.round(
+                                  (mobileAttrs.reduce((s, v) => s + v, 0) /
+                                      mobileAttrs.length) *
+                                      10,
+                              ) / 10
                             : null
                         const mobileBuyback = calculateBuyback(
                             currentCard.rarity,
                             Number(currentCard.worth) || 0,
-                            (currentCard.set_id as string | undefined)?.endsWith('-1ed') ?? false,
+                            (
+                                currentCard.set_id as string | undefined
+                            )?.endsWith('-1ed') ?? false,
                         )
 
                         return (
@@ -2372,20 +2869,41 @@ export default function PackOpening({
                                             }}
                                         >
                                             {/* card counter — top center */}
-                                            <span style={{ fontSize: '0.72rem', color: 'var(--app-text-muted)' }}>
-                                                {doneIndex + 1} / {remainingCards.length}
+                                            <span
+                                                style={{
+                                                    fontSize: '0.72rem',
+                                                    color: 'var(--app-text-muted)',
+                                                }}
+                                            >
+                                                {doneIndex + 1} /{' '}
+                                                {remainingCards.length}
                                             </span>
                                             {/* card with arrows flanking */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 8,
+                                                }}
+                                            >
                                                 <button
-                                                    onClick={() => setDoneIndex(prev => (prev - 1 + remainingCards.length) % remainingCards.length)}
+                                                    onClick={() =>
+                                                        setDoneIndex(
+                                                            (prev) =>
+                                                                (prev -
+                                                                    1 +
+                                                                    remainingCards.length) %
+                                                                remainingCards.length,
+                                                        )
+                                                    }
                                                     style={{
                                                         border: 'none',
                                                         color: 'var(--app-text-secondary)',
                                                         padding: '8px 14px',
                                                         borderRadius: 8,
                                                         fontSize: '1rem',
-                                                        background: 'transparent',
+                                                        background:
+                                                            'transparent',
                                                         cursor: 'pointer',
                                                         flexShrink: 0,
                                                     }}
@@ -2394,60 +2912,27 @@ export default function PackOpening({
                                                 </button>
                                                 {cardNode}
                                                 <button
-                                                    onClick={() => setDoneIndex(prev => (prev + 1) % remainingCards.length)}
+                                                    onClick={() =>
+                                                        setDoneIndex(
+                                                            (prev) =>
+                                                                (prev + 1) %
+                                                                remainingCards.length,
+                                                        )
+                                                    }
                                                     style={{
                                                         border: 'none',
                                                         color: 'var(--app-text-secondary)',
                                                         padding: '8px 14px',
                                                         borderRadius: 8,
                                                         fontSize: '1rem',
-                                                        background: 'transparent',
+                                                        background:
+                                                            'transparent',
                                                         cursor: 'pointer',
                                                         flexShrink: 0,
                                                     }}
                                                 >
                                                     →
                                                 </button>
-                                            </div>
-                                            {/* details (left) + name+dex (right) — width matches card */}
-                                            <div
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'space-between',
-                                                    width: 'min(360px, 76vw)',
-                                                }}
-                                            >
-                                                <button
-                                                    onClick={() => setShowDetails(true)}
-                                                    className="btn-details-glow"
-                                                >
-                                                    Details
-                                                </button>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                                                    <span
-                                                        style={{
-                                                            fontSize: '0.82rem',
-                                                            fontWeight: 700,
-                                                            color: '#e2e8f0',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            whiteSpace: 'nowrap',
-                                                        }}
-                                                    >
-                                                        {currentCard.name}
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            fontSize: '0.68rem',
-                                                            color: '#6b7280',
-                                                            fontFamily: 'monospace',
-                                                            flexShrink: 0,
-                                                        }}
-                                                    >
-                                                        #{String(currentCard.national_pokedex_number ?? 0).padStart(3, '0')}
-                                                    </span>
-                                                </div>
                                             </div>
                                         </div>
                                     ) : (
@@ -2503,21 +2988,38 @@ export default function PackOpening({
                                         setDoneIndex={setDoneIndex}
                                         autoReverse={prefs.autoReverse}
                                         isMobile={isMobile}
-                                        onShowDetails={() => setShowDetails(true)}
-                                        mobileInfoPanel={isMobile ? {
-                                            worth: Number(currentCard.worth) || 0,
-                                            overall: mobileOverall,
-                                            card_level: currentCard.card_level,
-                                            buybackAmount: mobileBuyback.amount,
-                                            bagFull: bagCount !== null && bagCount >= bagCapacity,
-                                            actDisabled: animatingIndex !== null || shattering,
-                                            isFetchingCopies,
-                                            currentCardIsNew,
-                                            handleAddToBag,
-                                            handleAddToBagDuplicate,
-                                            handleFeedCard,
-                                            handleBuyback,
-                                        } : undefined}
+                                        onShowDetails={() =>
+                                            setShowDetails(true)
+                                        }
+                                        mobileInfoPanel={
+                                            isMobile
+                                                ? {
+                                                      worth:
+                                                          Number(
+                                                              currentCard.worth,
+                                                          ) || 0,
+                                                      overall: mobileOverall,
+                                                      card_level:
+                                                          currentCard.card_level,
+                                                      buybackAmount:
+                                                          mobileBuyback.amount,
+                                                      bagFull:
+                                                          bagCount !== null &&
+                                                          bagCount >=
+                                                              bagCapacity,
+                                                      actDisabled:
+                                                          animatingIndex !==
+                                                              null ||
+                                                          shattering,
+                                                      isFetchingCopies,
+                                                      currentCardIsNew,
+                                                      handleAddToBag,
+                                                      handleAddToBagDuplicate,
+                                                      handleFeedCard,
+                                                      handleBuyback,
+                                                  }
+                                                : undefined
+                                        }
                                     />
                                 </div>
 
@@ -2538,39 +3040,75 @@ export default function PackOpening({
                                                 setShowDetails(false)
                                         }}
                                     >
-                                        <div style={{
-                                            width: '100%',
-                                            maxWidth: 440,
-                                            maxHeight: '100dvh',
-                                            overflowY: 'auto',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                        }}>
+                                        <div
+                                            style={{
+                                                width: '100%',
+                                                maxWidth: 440,
+                                                maxHeight: '100dvh',
+                                                overflowY: 'auto',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                            }}
+                                        >
                                             {/* sticky close bar */}
-                                            <div style={{
-                                                position: 'sticky', top: 0,
-                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                padding: '14px 20px 10px',
-                                                background: 'rgba(10,10,18,0.92)',
-                                                backdropFilter: 'blur(12px)',
-                                                borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                                zIndex: 1,
-                                            }}>
-                                                <span style={{ fontSize: '0.6rem', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
+                                            <div
+                                                style={{
+                                                    position: 'sticky',
+                                                    top: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent:
+                                                        'space-between',
+                                                    padding: '14px 20px 10px',
+                                                    background:
+                                                        'rgba(10,10,18,0.92)',
+                                                    backdropFilter:
+                                                        'blur(12px)',
+                                                    borderBottom:
+                                                        '1px solid rgba(255,255,255,0.04)',
+                                                    zIndex: 1,
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontSize: '0.6rem',
+                                                        color: '#374151',
+                                                        textTransform:
+                                                            'uppercase',
+                                                        letterSpacing: '0.1em',
+                                                        fontWeight: 600,
+                                                    }}
+                                                >
                                                     Card Details
                                                 </span>
                                                 <button
-                                                    onClick={() => setShowDetails(false)}
+                                                    onClick={() =>
+                                                        setShowDetails(false)
+                                                    }
                                                     style={{
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        width: 28, height: 28, borderRadius: '50%',
-                                                        background: 'rgba(255,255,255,0.06)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent:
+                                                            'center',
+                                                        width: 28,
+                                                        height: 28,
+                                                        borderRadius: '50%',
+                                                        background:
+                                                            'rgba(255,255,255,0.06)',
                                                         border: '1px solid rgba(255,255,255,0.08)',
-                                                        color: '#6b7280', fontSize: '0.75rem', cursor: 'pointer',
+                                                        color: '#6b7280',
+                                                        fontSize: '0.75rem',
+                                                        cursor: 'pointer',
                                                     }}
-                                                >✕</button>
+                                                >
+                                                    ✕
+                                                </button>
                                             </div>
-                                            <div style={{ padding: '20px 20px 40px' }}>
+                                            <div
+                                                style={{
+                                                    padding: '20px 20px 40px',
+                                                }}
+                                            >
                                                 {detailsPanel}
                                             </div>
                                         </div>

@@ -59,7 +59,10 @@ export default function DashboardLoading() {
         } else {
             setMode('simple')
             setPhase('loading')
-            setStep(STEPS.length - 1)
+            const stepTimers = STEPS.slice(1).map(({ ms }, i) =>
+                setTimeout(() => setStep(i + 1), ms),
+            )
+            return () => stepTimers.forEach(clearTimeout)
         }
     }, [])
 

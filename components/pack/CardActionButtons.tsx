@@ -230,78 +230,149 @@ export function CardActionButtons({
                 </div>
             )}
 
-            {/* sell all */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px 0', width: '100%' }}>
-                {sellAllConfirm ? (
-                    <>
-                        <span style={{ fontSize: '0.7rem', color: '#f87171', marginRight: 8 }}>
-                            rare+ card detected — sell all?
-                        </span>
+            {/* sell all + auto: desktop/tablet = one row; mobile = stacked */}
+            {!isMobile ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '2px 0', width: '100%' }}>
+                    {sellAllConfirm ? (
+                        <>
+                            <span style={{ fontSize: '0.7rem', color: '#f87171' }}>
+                                rare+ card detected — sell all?
+                            </span>
+                            <button
+                                onClick={doSellAll}
+                                style={{
+                                    fontSize: '0.72rem', fontWeight: 700, padding: '6px 14px',
+                                    borderRadius: 8, background: 'rgba(239,68,68,0.15)',
+                                    border: '1px solid rgba(239,68,68,0.4)', color: '#f87171',
+                                    cursor: 'pointer', whiteSpace: 'nowrap',
+                                }}
+                            >
+                                yes, sell all
+                            </button>
+                            <button
+                                onClick={() => setSellAllConfirm(false)}
+                                style={{
+                                    fontSize: '0.72rem', fontWeight: 700, padding: '6px 14px',
+                                    borderRadius: 8, background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af',
+                                    cursor: 'pointer', whiteSpace: 'nowrap',
+                                }}
+                            >
+                                cancel
+                            </button>
+                        </>
+                    ) : autoRunning ? (
                         <button
-                            onClick={doSellAll}
+                            onClick={handleStopAutocomplete}
+                            className="rounded-xl text-xs font-semibold"
                             style={{
-                                fontSize: '0.72rem', fontWeight: 700, padding: '6px 14px',
-                                borderRadius: 8, background: 'rgba(239,68,68,0.15)',
-                                border: '1px solid rgba(239,68,68,0.4)', color: '#f87171',
-                                cursor: 'pointer', whiteSpace: 'nowrap', marginRight: 6,
+                                background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)',
+                                color: '#f87171', cursor: 'pointer', padding: '8px 22px', whiteSpace: 'nowrap',
                             }}
                         >
-                            yes, sell all
+                            ⏹ stop
                         </button>
-                        <button
-                            onClick={() => setSellAllConfirm(false)}
-                            style={{
-                                fontSize: '0.72rem', fontWeight: 700, padding: '6px 14px',
-                                borderRadius: 8, background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af',
-                                cursor: 'pointer', whiteSpace: 'nowrap',
-                            }}
-                        >
-                            cancel
-                        </button>
-                    </>
-                ) : autoRunning ? (
-                    <button
-                        onClick={handleStopAutocomplete}
-                        className="rounded-xl text-xs font-semibold"
-                        style={{
-                            background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)',
-                            color: '#f87171', cursor: 'pointer', padding: '8px 22px', whiteSpace: 'nowrap',
-                        }}
-                    >
-                        ⏹ stop
-                    </button>
-                ) : (
-                    <button
-                        onClick={handleSellAll}
-                        className="rounded-xl text-xs font-semibold"
-                        style={{
-                            background: 'rgba(234,179,8,0.1)',
-                            border: '1px solid rgba(234,179,8,0.45)',
-                            color: '#facc15',
-                            cursor: 'pointer',
-                            padding: '8px 14px',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        sell all {totalFormatted}
-                    </button>
-                )}
-            </div>
-            {/* auto + settings — below sell all */}
-            {!autoRunning && !sellAllConfirm && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '2px 0' }}>
-                    <button
-                        onClick={() => handleAutocomplete(autoReverse)}
-                        className="btn-autocomplete rounded-xl text-xs font-semibold"
-                        style={{ padding: '8px 14px', whiteSpace: 'nowrap', border: autoReverse ? '1px solid yellow' : '' }}
-                    >
-                        {autoReverse ? 'auto (reversed)' : 'auto'}
-                    </button>
-                    <button onClick={() => setShowSettings(true)} className="btn-icon p-2">
-                        ⚙
-                    </button>
+                    ) : (
+                        <>
+                            <button
+                                onClick={handleSellAll}
+                                className="rounded-xl text-xs font-semibold"
+                                style={{
+                                    background: 'rgba(234,179,8,0.1)',
+                                    border: '1px solid rgba(234,179,8,0.45)',
+                                    color: '#facc15', cursor: 'pointer',
+                                    padding: '8px 14px', whiteSpace: 'nowrap',
+                                }}
+                            >
+                                sell all {totalFormatted}
+                            </button>
+                            <button
+                                onClick={() => handleAutocomplete(autoReverse)}
+                                className="btn-autocomplete rounded-xl text-xs font-semibold"
+                                style={{ padding: '8px 14px', whiteSpace: 'nowrap', border: autoReverse ? '1px solid yellow' : '' }}
+                            >
+                                {autoReverse ? 'auto (reversed)' : 'auto'}
+                            </button>
+                            <button onClick={() => setShowSettings(true)} className="btn-icon p-2">
+                                ⚙
+                            </button>
+                        </>
+                    )}
                 </div>
+            ) : (
+                <>
+                    {/* Mobile: sell all row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px 0', width: '100%' }}>
+                        {sellAllConfirm ? (
+                            <>
+                                <span style={{ fontSize: '0.7rem', color: '#f87171', marginRight: 8 }}>
+                                    rare+ card detected — sell all?
+                                </span>
+                                <button
+                                    onClick={doSellAll}
+                                    style={{
+                                        fontSize: '0.72rem', fontWeight: 700, padding: '6px 14px',
+                                        borderRadius: 8, background: 'rgba(239,68,68,0.15)',
+                                        border: '1px solid rgba(239,68,68,0.4)', color: '#f87171',
+                                        cursor: 'pointer', whiteSpace: 'nowrap', marginRight: 6,
+                                    }}
+                                >
+                                    yes, sell all
+                                </button>
+                                <button
+                                    onClick={() => setSellAllConfirm(false)}
+                                    style={{
+                                        fontSize: '0.72rem', fontWeight: 700, padding: '6px 14px',
+                                        borderRadius: 8, background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af',
+                                        cursor: 'pointer', whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    cancel
+                                </button>
+                            </>
+                        ) : autoRunning ? (
+                            <button
+                                onClick={handleStopAutocomplete}
+                                className="rounded-xl text-xs font-semibold"
+                                style={{
+                                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.4)',
+                                    color: '#f87171', cursor: 'pointer', padding: '8px 22px', whiteSpace: 'nowrap',
+                                }}
+                            >
+                                ⏹ stop
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSellAll}
+                                className="rounded-xl text-xs font-semibold"
+                                style={{
+                                    background: 'rgba(234,179,8,0.1)',
+                                    border: '1px solid rgba(234,179,8,0.45)',
+                                    color: '#facc15', cursor: 'pointer',
+                                    padding: '8px 14px', whiteSpace: 'nowrap',
+                                }}
+                            >
+                                sell all {totalFormatted}
+                            </button>
+                        )}
+                    </div>
+                    {/* Mobile: auto + settings row */}
+                    {!autoRunning && !sellAllConfirm && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '2px 0' }}>
+                            <button
+                                onClick={() => handleAutocomplete(autoReverse)}
+                                className="btn-autocomplete rounded-xl text-xs font-semibold"
+                                style={{ padding: '8px 14px', whiteSpace: 'nowrap', border: autoReverse ? '1px solid yellow' : '' }}
+                            >
+                                {autoReverse ? 'auto (reversed)' : 'auto'}
+                            </button>
+                            <button onClick={() => setShowSettings(true)} className="btn-icon p-2">
+                                ⚙
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     )

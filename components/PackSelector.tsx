@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile } from '@/lib/userStore'
 import { PACKS, type Pack } from '@/lib/packs'
@@ -196,7 +197,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
             selectedPack.aspect === 'pack' || !!selectedPack.theme_pokedex_ids
 
         return usePackOpening ? (
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            typeof document !== 'undefined' ? createPortal(
                 <PackOpening
                     pack={selectedPack}
                     count={selectedCount}
@@ -218,8 +219,9 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                             ),
                         }))
                     }}
-                />
-            </div>
+                />,
+                document.body,
+            ) : null
         ) : (
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <CrateOpening
