@@ -947,7 +947,7 @@ function MobilePackCard({
                             width: 'auto',
                             maxWidth: '100%',
                             height: 'auto',
-                            maxHeight: 'min(38vh, 320px)',
+                            maxHeight: 'min(46vh, 400px)',
                             objectFit: 'contain',
                             filter: bagFull
                                 ? 'drop-shadow(0 0 6px rgba(228,228,228,0.12))'
@@ -1042,27 +1042,26 @@ function MobilePackCard({
                                 ${Number(pack.cost).toFixed(2)}
                             </span>
                         )}
-                    </div>
-                    {!isAdmin && (
-                        <div
-                            style={{
-                                fontSize: isLevelGated ? '0.72rem' : '0.82rem',
-                                fontWeight: 700,
-                                color: isLevelGated
-                                    ? '#ef4444'
+                        {!isAdmin && (
+                            <div
+                                style={{
+                                    fontSize: isLevelGated ? '0.7rem' : '0.78rem',
+                                    fontWeight: 700,
+                                    color: isLevelGated
+                                        ? '#ef4444'
+                                        : stock > 0
+                                          ? '#ffffff'
+                                          : '#ef4444',
+                                }}
+                            >
+                                {isLevelGated
+                                    ? `🔒 Lv ${pack.level_required}`
                                     : stock > 0
-                                      ? '#ffffff'
-                                      : '#ef4444',
-                                marginTop: 2,
-                            }}
-                        >
-                            {isLevelGated
-                                ? `🔒 Unlocks at level ${pack.level_required}`
-                                : stock > 0
-                                  ? `x${stock} in stock`
-                                  : 'out of stock'}
-                        </div>
-                    )}
+                                      ? `x${stock} in stock`
+                                      : 'out of stock'}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1376,7 +1375,7 @@ function ThemeLabel({ pack }: { pack: Pack }) {
         <div
             style={{
                 display: 'inline-flex',
-                alignSelf: 'flex-start',
+                alignSelf: 'center',
                 width: 'fit-content',
                 maxWidth: '100%',
                 alignItems: 'center',

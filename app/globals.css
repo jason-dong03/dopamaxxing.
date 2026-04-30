@@ -381,7 +381,7 @@ body {
     background: linear-gradient(
         90deg,
         transparent 0%,
-        rgba(180, 140, 255, 0.85) 50%,
+        rgba(248, 113, 113, 0.85) 50%,
         transparent 100%
     );
     animation: packGleamSweep 1.3s ease-in-out infinite;
@@ -626,59 +626,36 @@ body {
 }
 
 /* ── Pack rip animation ──────────────────────────────────────────────────── */
-/* Top strip peels OFF the screen — lifts toward viewer then fades away     */
+/* Top strip peels OVER the pack — drifts left, slight drop, fades out */
 @keyframes packRipPeel {
     0% {
-        transform: perspective(700px) rotateX(0deg) rotateY(0deg)
-            translateZ(0px);
+        transform: translate3d(0, 0, 0) rotate(0deg);
         opacity: 1;
-    }
-    20% {
-        transform: perspective(700px) rotateX(-8deg) rotateY(-5deg)
-            translateZ(40px);
-        opacity: 1;
-    }
-    50% {
-        transform: perspective(700px) rotateX(-20deg) rotateY(-14deg)
-            translateZ(120px);
-        opacity: 0.75;
-    }
-    80% {
-        transform: perspective(700px) rotateX(-30deg) rotateY(-22deg)
-            translateZ(220px);
-        opacity: 0.25;
     }
     100% {
-        transform: perspective(700px) rotateX(-38deg) rotateY(-28deg)
-            translateZ(300px);
+        transform: translate3d(-38px, 16px, 0) rotate(-10deg);
         opacity: 0;
     }
 }
 /* Bottom body — barely moves, just a hair of settle then fades */
 @keyframes packRipSettle {
     0% {
-        transform: translateY(0px);
+        transform: translate3d(0, 0, 0);
         opacity: 1;
-    }
-    40% {
-        transform: translateY(3px);
-        opacity: 1;
-    }
-    85% {
-        transform: translateY(2px);
-        opacity: 0.65;
     }
     100% {
-        transform: translateY(2px);
+        transform: translate3d(0, 2px, 0);
         opacity: 0;
     }
 }
 .pack-rip-top {
     transform-origin: right top;
-    animation: packRipPeel 530ms cubic-bezier(0.55, 0, 1, 1) forwards;
+    will-change: transform, opacity;
+    animation: packRipPeel 480ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 .pack-rip-bottom {
-    animation: packRipSettle 590ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    will-change: transform, opacity;
+    animation: packRipSettle 520ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 @keyframes passiveCoinToast {
     0% {
@@ -1137,12 +1114,12 @@ body {
 @keyframes auraDivineGlow {
     0%,
     100% {
-        filter: drop-shadow(0 0 16px rgba(120, 20, 210, 0.85))
+        filter: drop-shadow(0 0 16px rgba(220, 38, 38, 0.85))
             drop-shadow(0 0 6px rgba(0, 0, 0, 0.9));
     }
     50% {
-        filter: drop-shadow(0 0 36px rgba(150, 0, 255, 1))
-            drop-shadow(0 0 14px rgba(60, 0, 120, 0.9));
+        filter: drop-shadow(0 0 36px rgba(239, 68, 68, 1))
+            drop-shadow(0 0 14px rgba(127, 29, 29, 0.9));
     }
 }
 @keyframes auraCelestialGlow {
@@ -2028,7 +2005,7 @@ body {
     background: linear-gradient(
         90deg,
         transparent 0%,
-        rgba(180, 140, 255, 0.72) 50%,
+        rgba(248, 113, 113, 0.72) 50%,
         transparent 100%
     );
 }
@@ -2130,8 +2107,8 @@ body {
     animation: auraFlashBuild 0.52s ease-in forwards;
     background: radial-gradient(
         ellipse at center,
-        rgba(139, 92, 246, 0.6) 0%,
-        rgba(67, 20, 180, 0.3) 50%,
+        rgba(239, 68, 68, 0.6) 0%,
+        rgba(127, 29, 29, 0.3) 50%,
         transparent 75%
     );
 }

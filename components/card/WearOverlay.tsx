@@ -34,14 +34,14 @@ export default function WearOverlay({
     // 0 → 1 over cond 9 → 1
     const wearLevel = Math.max(0, (9.0 - overallCond) / 8.0)
 
-    // Scratch opacity: faint at 7-8, moderate at 5-6, heavy below 5
-    const scratchOpacity = Math.pow(wearLevel, 1.5) * 0.92
-    //  8.0→0.04  7.0→0.13  6.0→0.24  5.0→0.35  4.0→0.49  1.0→0.92
+    // Scratch opacity — toned down significantly
+    const scratchOpacity = Math.pow(wearLevel, 1.5) * 0.32
+    //  8.0→0.014  7.0→0.045  6.0→0.083  5.0→0.122  4.0→0.170  1.0→0.32
 
-    // Grain opacity: heavier below cond 5
+    // Grain opacity — toned down significantly
     const surfacePenalty = attrSurface != null ? Math.max(0, (7.5 - attrSurface) / 7.5) : 0.3
-    const heavyBoost = overallCond < 5 ? Math.pow((5 - overallCond) / 4, 0.7) * 0.45 : 0
-    const grainOpacity = Math.pow(wearLevel, 0.7) * (0.15 + surfacePenalty * 0.22) + heavyBoost
+    const heavyBoost = overallCond < 5 ? Math.pow((5 - overallCond) / 4, 0.7) * 0.12 : 0
+    const grainOpacity = Math.pow(wearLevel, 0.7) * (0.05 + surfacePenalty * 0.07) + heavyBoost
 
     // Per-card variation: random rotation (0 / 90 / 180 / 270) + optional flip
     const rotations = [0, 90, 180, 270]
@@ -50,8 +50,8 @@ export default function WearOverlay({
     const flipY = h(3) > 0.5 ? -1 : 1
     const scratchTransform = `rotate(${rotation}deg) scaleX(${flipX}) scaleY(${flipY})`
 
-    // Brightness boost so scratches read on dark card areas
-    const brightnessPct = 110 + wearLevel * 60  // 110% → 170%
+    // Brightness boost so scratches read on dark card areas — reduced
+    const brightnessPct = 100 + wearLevel * 25  // 100% → 125%
 
     // PSA 1 = catastrophic — grain only
     const showScratches = grade !== 1

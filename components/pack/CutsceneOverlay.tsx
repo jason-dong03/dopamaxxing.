@@ -21,9 +21,9 @@ const TIER_CONFIG: Record<Tier, {
     divine: {
         line1: "what's this...?",
         line2: 'A divine force awakens...',
-        color: '#c4b5fd',
-        glowColor: 'rgba(139,92,246,0.5)',
-        bgTint: 'rgba(40,0,90,0.9)',
+        color: '#fca5a5',
+        glowColor: 'rgba(239,68,68,0.5)',
+        bgTint: 'rgba(90,0,10,0.9)',
     },
     celestial: {
         line1: "what's this...?",

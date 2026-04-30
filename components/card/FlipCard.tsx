@@ -3,14 +3,13 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { rarityGlowRgb, isRainbow } from '@/lib/rarityConfig'
-import WearOverlay from '@/components/card/WearOverlay'
-import { conditionFilter } from '@/lib/cardAttributes'
 
 type Props = {
     card: {
         id: string
         name: string
         image_url: string
+        image_url_hi?: string
         rarity: string
         attr_surface?: number
         attr_centering?: number
@@ -66,18 +65,7 @@ export default function FlipCard({
     const isHolo = HOLO_RARITIES.includes(card.rarity)
     const isLegendaryPlus = LEGENDARY_PLUS.includes(card.rarity)
 
-    const overallCond = (() => {
-        const vals = [
-            card.attr_centering,
-            card.attr_corners,
-            card.attr_edges,
-            card.attr_surface,
-        ].filter((v): v is number => v != null)
-        return vals.length
-            ? vals.reduce((s, v) => s + v, 0) / vals.length
-            : null
-    })()
-    const condFilterVal = conditionFilter(overallCond)
+    const cardSrc = card.image_url_hi || card.image_url
 
     const glowStyle = cardIsRainbow
         ? undefined
@@ -229,12 +217,9 @@ export default function FlipCard({
                                 className={cardIsRainbow ? 'glow-rainbow' : ''}
                             >
                                 <img
-                                    src={card.image_url}
+                                    src={cardSrc}
                                     alt={card.name}
                                     className="w-full h-full object-cover rounded-xl"
-                                    style={{
-                                        filter: flipped ? condFilterVal : undefined,
-                                    }}
                                 />
                                 {isHolo && flipped && (
                                     <div className="card-holo-shimmer" />
@@ -243,13 +228,6 @@ export default function FlipCard({
                                     <div
                                         className="absolute inset-0 rounded-xl animate-shine pointer-events-none"
                                         style={{ zIndex: 10 }}
-                                    />
-                                )}
-                                {flipped && (
-                                    <WearOverlay
-                                        ucId={card.id}
-                                        overallCond={overallCond}
-                                        attrSurface={card.attr_surface ?? null}
                                     />
                                 )}
                             </div>
@@ -297,10 +275,9 @@ export default function FlipCard({
                                 className={cardIsRainbow ? 'glow-rainbow' : ''}
                             >
                                 <img
-                                    src={card.image_url}
+                                    src={cardSrc}
                                     alt={card.name}
                                     className="w-full h-full object-cover rounded-xl"
-                                    style={{ filter: condFilterVal }}
                                 />
                                 {isHolo && (
                                     <div className="card-holo-shimmer" />

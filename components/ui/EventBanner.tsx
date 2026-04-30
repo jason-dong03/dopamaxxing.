@@ -93,6 +93,7 @@ export default function EventBanner({ events }: { events: EventWithExpiry[] }) {
                         ev={ev}
                         now={now}
                         mounted={mounted}
+                        isMobile={isMobile}
                     />
                 ))}
             </div>
@@ -104,10 +105,12 @@ function EventPill({
     ev,
     now,
     mounted,
+    isMobile,
 }: {
     ev: EventWithExpiry
     now: number
     mounted: boolean
+    isMobile: boolean
 }) {
     const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
     const [touch, setTouch] = useState<{ x: number; y: number } | null>(null)
@@ -207,7 +210,8 @@ function EventPill({
                         style={{
                             position: 'fixed',
                             left: tooltipPos.x,
-                            top: tooltipPos.y + 10,
+                            top: isMobile ? tooltipPos.y - 10 : tooltipPos.y + 10,
+                            transform: isMobile ? 'translateY(-100%)' : undefined,
                             zIndex: 9999,
                             pointerEvents: 'none',
                             width: 220,

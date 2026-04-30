@@ -196,6 +196,7 @@ export default function PackOpening({
         key: string
     } | null>(null)
     const touchStartYRef = useRef<number | null>(null)
+    const swipeStartXRef = useRef<number | null>(null)
     const idleDims = isMobile
         ? pack.aspect === 'box'
             ? { height: 'min(340px, 80vw)', width: 'min(440px, 94vw)' }
@@ -464,7 +465,7 @@ export default function PackOpening({
         }
         const RARITY_SPARK_COLORS: Record<string, string[]> = {
             Legendary: ['#facc15', '#fbbf24', '#f59e0b', '#fde68a', '#fff8'],
-            Divine: ['#a78bfa', '#818cf8', '#c4b5fd', '#7c3aed', '#ddd6fe'],
+            Divine: ['#ef4444', '#f87171', '#fca5a5', '#b91c1c', '#fecaca'],
             Celestial: ['#f0f9ff', '#bae6fd', '#e0f2fe', '#ffffff', '#7dd3fc'],
             '???': [
                 '#f472b6',
@@ -1363,20 +1364,6 @@ export default function PackOpening({
                                             visibility: 'hidden',
                                         }}
                                     />
-                                    {/* top strip peels off */}
-                                    <img
-                                        src={pack.image}
-                                        alt=""
-                                        style={{
-                                            ...idleDims,
-                                            objectFit: 'contain',
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            clipPath: 'url(#pack-rip-top)',
-                                        }}
-                                        className="pack-rip-top"
-                                    />
                                     {/* bottom body stays */}
                                     <img
                                         src={pack.image}
@@ -1388,8 +1375,24 @@ export default function PackOpening({
                                             top: 0,
                                             left: 0,
                                             clipPath: 'url(#pack-rip-bottom)',
+                                            zIndex: 1,
                                         }}
                                         className="pack-rip-bottom"
+                                    />
+                                    {/* top strip peels off — rendered last so it falls OVER the body */}
+                                    <img
+                                        src={pack.image}
+                                        alt=""
+                                        style={{
+                                            ...idleDims,
+                                            objectFit: 'contain',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            clipPath: 'url(#pack-rip-top)',
+                                            zIndex: 2,
+                                        }}
+                                        className="pack-rip-top"
                                     />
                                 </div>
                             ) : (
@@ -2146,143 +2149,88 @@ export default function PackOpening({
                                                             }
                                                         </span>
                                                     </div>
-                                                    <div
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems:
-                                                                'center',
-                                                            gap: 16,
-                                                        }}
-                                                    >
-                                                        <button
-                                                            onClick={() =>
-                                                                setBatchRevealIndex(
-                                                                    (p) =>
-                                                                        (p -
-                                                                            1 +
-                                                                            packCards.length) %
-                                                                        packCards.length,
-                                                                )
-                                                            }
-                                                            style={{
-                                                                border: '1px solid rgba(255,255,255,0.15)',
-                                                                background:
-                                                                    'transparent',
-                                                                color: 'rgba(255,255,255,0.6)',
-                                                                borderRadius: 8,
-                                                                padding:
-                                                                    '6px 14px',
-                                                                fontSize:
-                                                                    '1rem',
-                                                                cursor: 'pointer',
-                                                            }}
-                                                        >
-                                                            ←
-                                                        </button>
-                                                        {(() => {
-                                                            const bc =
-                                                                packCards[
-                                                                    batchRevealIndex
-                                                                ]
-                                                            if (!bc) return null
-                                                            const attrs = [
-                                                                bc.attr_centering,
-                                                                bc.attr_corners,
-                                                                bc.attr_edges,
-                                                                bc.attr_surface,
-                                                            ].filter(
-                                                                (
-                                                                    v,
-                                                                ): v is number =>
-                                                                    v != null,
-                                                            )
-                                                            const overall =
-                                                                attrs.length
-                                                                    ? attrs.reduce(
-                                                                          (
-                                                                              s,
-                                                                              v,
-                                                                          ) =>
-                                                                              s +
-                                                                              v,
-                                                                          0,
-                                                                      ) /
-                                                                      attrs.length
-                                                                    : null
-                                                            const src =
-                                                                overall !==
-                                                                    null &&
-                                                                overall > 8 &&
-                                                                bc.image_url_hi
-                                                                    ? bc.image_url_hi
-                                                                    : bc.image_url
-                                                            return (
-                                                                <div
-                                                                    key={`${bc.id}-mobile-face`}
-                                                                    className="relative rounded-xl"
+                                                    {(() => {
+                                                        const bc =
+                                                            packCards[
+                                                                batchRevealIndex
+                                                            ]
+                                                        if (!bc) return null
+                                                        const src =
+                                                            bc.image_url_hi ||
+                                                            bc.image_url
+                                                        return (
+                                                            <div
+                                                                key={`${bc.id}-mobile-face`}
+                                                                className="relative rounded-xl"
+                                                                onTouchStart={(
+                                                                    e,
+                                                                ) => {
+                                                                    swipeStartXRef.current =
+                                                                        e.touches[0].clientX
+                                                                }}
+                                                                onTouchEnd={(
+                                                                    e,
+                                                                ) => {
+                                                                    if (
+                                                                        swipeStartXRef.current ===
+                                                                        null
+                                                                    )
+                                                                        return
+                                                                    const dx =
+                                                                        e.changedTouches[0]
+                                                                            .clientX -
+                                                                        swipeStartXRef.current
+                                                                    swipeStartXRef.current =
+                                                                        null
+                                                                    if (
+                                                                        Math.abs(
+                                                                            dx,
+                                                                        ) < 40
+                                                                    )
+                                                                        return
+                                                                    if (dx < 0)
+                                                                        setBatchRevealIndex(
+                                                                            (
+                                                                                p,
+                                                                            ) =>
+                                                                                (p +
+                                                                                    1) %
+                                                                                packCards.length,
+                                                                        )
+                                                                    else
+                                                                        setBatchRevealIndex(
+                                                                            (
+                                                                                p,
+                                                                            ) =>
+                                                                                (p -
+                                                                                    1 +
+                                                                                    packCards.length) %
+                                                                                packCards.length,
+                                                                        )
+                                                                }}
+                                                                style={{
+                                                                    height: 'min(300px, 68vw)',
+                                                                    width: 'auto',
+                                                                    flexShrink: 0,
+                                                                    touchAction:
+                                                                        'pan-y',
+                                                                }}
+                                                            >
+                                                                <img
+                                                                    src={src}
+                                                                    alt={bc.name}
+                                                                    className="rounded-xl"
                                                                     style={{
                                                                         height: 'min(300px, 68vw)',
                                                                         width: 'auto',
-                                                                        flexShrink: 0,
+                                                                        boxShadow: `0 0 20px 6px rgba(${rarityGlowRgb(bc.rarity)}, 0.65)`,
+                                                                        pointerEvents:
+                                                                            'none',
                                                                     }}
-                                                                >
-                                                                    <img
-                                                                        src={
-                                                                            src
-                                                                        }
-                                                                        alt={
-                                                                            bc.name
-                                                                        }
-                                                                        className="rounded-xl"
-                                                                        style={{
-                                                                            height: 'min(300px, 68vw)',
-                                                                            width: 'auto',
-                                                                            boxShadow: `0 0 20px 6px rgba(${rarityGlowRgb(bc.rarity)}, 0.65)`,
-                                                                            filter: conditionFilter(
-                                                                                overall,
-                                                                            ),
-                                                                        }}
-                                                                    />
-                                                                    <WearOverlay
-                                                                        ucId={
-                                                                            bc.id
-                                                                        }
-                                                                        overallCond={
-                                                                            overall
-                                                                        }
-                                                                        attrSurface={
-                                                                            bc.attr_surface ??
-                                                                            null
-                                                                        }
-                                                                    />
-                                                                </div>
-                                                            )
-                                                        })()}
-                                                        <button
-                                                            onClick={() =>
-                                                                setBatchRevealIndex(
-                                                                    (p) =>
-                                                                        (p +
-                                                                            1) %
-                                                                        packCards.length,
-                                                                )
-                                                            }
-                                                            style={{
-                                                                border: '1px solid rgba(255,255,255,0.15)',
-                                                                background:
-                                                                    'transparent',
-                                                                color: 'rgba(255,255,255,0.6)',
-                                                                borderRadius: 8,
-                                                                padding:
-                                                                    '6px 14px',
-                                                                fontSize:
-                                                                    '1rem',
-                                                                cursor: 'pointer',
-                                                            }}
-                                                        >
-                                                            →
-                                                        </button>
-                                                    </div>
+                                                                />
+                                                            </div>
+                                                        )
+                                                    })()}
                                                     {/* card name + dex */}
                                                     <div
                                                         style={{
@@ -2323,16 +2271,79 @@ export default function PackOpening({
                                                             ).padStart(3, '0')}
                                                         </span>
                                                     </div>
-                                                    {/* counter below name */}
-                                                    <span
+                                                    {/* arrows + counter */}
+                                                    <div
                                                         style={{
-                                                            fontSize: '0.65rem',
-                                                            color: '#6b7280',
+                                                            display: 'flex',
+                                                            alignItems:
+                                                                'center',
+                                                            gap: 14,
                                                         }}
                                                     >
-                                                        {batchRevealIndex + 1} /{' '}
-                                                        {packCards.length}
-                                                    </span>
+                                                        <button
+                                                            onClick={() =>
+                                                                setBatchRevealIndex(
+                                                                    (p) =>
+                                                                        (p -
+                                                                            1 +
+                                                                            packCards.length) %
+                                                                        packCards.length,
+                                                                )
+                                                            }
+                                                            style={{
+                                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                                background:
+                                                                    'transparent',
+                                                                color: 'rgba(255,255,255,0.6)',
+                                                                borderRadius: 8,
+                                                                padding:
+                                                                    '4px 12px',
+                                                                fontSize:
+                                                                    '0.9rem',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            ←
+                                                        </button>
+                                                        <span
+                                                            style={{
+                                                                fontSize:
+                                                                    '0.65rem',
+                                                                color: '#6b7280',
+                                                                minWidth: 36,
+                                                                textAlign:
+                                                                    'center',
+                                                            }}
+                                                        >
+                                                            {batchRevealIndex +
+                                                                1}{' '}
+                                                            / {packCards.length}
+                                                        </span>
+                                                        <button
+                                                            onClick={() =>
+                                                                setBatchRevealIndex(
+                                                                    (p) =>
+                                                                        (p +
+                                                                            1) %
+                                                                        packCards.length,
+                                                                )
+                                                            }
+                                                            style={{
+                                                                border: '1px solid rgba(255,255,255,0.15)',
+                                                                background:
+                                                                    'transparent',
+                                                                color: 'rgba(255,255,255,0.6)',
+                                                                borderRadius: 8,
+                                                                padding:
+                                                                    '4px 12px',
+                                                                fontSize:
+                                                                    '0.9rem',
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            →
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 /* Desktop: 1 row ≤5 cards, 2 rows >5 cards */
@@ -2366,40 +2377,9 @@ export default function PackOpening({
                                                         >
                                                             {packCards.map(
                                                                 (card, i) => {
-                                                                    const attrs =
-                                                                        [
-                                                                            card.attr_centering,
-                                                                            card.attr_corners,
-                                                                            card.attr_edges,
-                                                                            card.attr_surface,
-                                                                        ].filter(
-                                                                            (
-                                                                                v,
-                                                                            ): v is number =>
-                                                                                v !=
-                                                                                null,
-                                                                        )
-                                                                    const overall =
-                                                                        attrs.length
-                                                                            ? attrs.reduce(
-                                                                                  (
-                                                                                      s,
-                                                                                      v,
-                                                                                  ) =>
-                                                                                      s +
-                                                                                      v,
-                                                                                  0,
-                                                                              ) /
-                                                                              attrs.length
-                                                                            : null
                                                                     const src =
-                                                                        overall !==
-                                                                            null &&
-                                                                        overall >
-                                                                            8 &&
-                                                                        card.image_url_hi
-                                                                            ? card.image_url_hi
-                                                                            : card.image_url
+                                                                        card.image_url_hi ||
+                                                                        card.image_url
                                                                     return (
                                                                         <div
                                                                             key={`${card.id}-${packStart + i}-face`}
@@ -2421,22 +2401,7 @@ export default function PackOpening({
                                                                                     height: `${cardH}px`,
                                                                                     width: 'auto',
                                                                                     boxShadow: `0 0 12px 3px rgba(${rarityGlowRgb(card.rarity)}, 0.55)`,
-                                                                                    filter: conditionFilter(
-                                                                                        overall,
-                                                                                    ),
                                                                                 }}
-                                                                            />
-                                                                            <WearOverlay
-                                                                                ucId={
-                                                                                    card.id
-                                                                                }
-                                                                                overallCond={
-                                                                                    overall
-                                                                                }
-                                                                                attrSurface={
-                                                                                    card.attr_surface ??
-                                                                                    null
-                                                                                }
                                                                             />
                                                                         </div>
                                                                     )
@@ -2646,11 +2611,8 @@ export default function PackOpening({
                             >
                                 <img
                                     src={
-                                        currentOverallCond !== null &&
-                                        currentOverallCond > 8 &&
-                                        currentCard.image_url_hi
-                                            ? currentCard.image_url_hi
-                                            : currentCard.image_url
+                                        currentCard.image_url_hi ||
+                                        currentCard.image_url
                                     }
                                     alt={currentCard.name}
                                     className={`rounded-xl${currentIsRainbow ? ' glow-rainbow' : ''}`}
@@ -2748,11 +2710,8 @@ export default function PackOpening({
                                     <ShatterEffect
                                         rarity={currentCard.rarity}
                                         imageUrl={
-                                            currentOverallCond !== null &&
-                                            currentOverallCond > 8 &&
-                                            currentCard.image_url_hi
-                                                ? currentCard.image_url_hi
-                                                : currentCard.image_url
+                                            currentCard.image_url_hi ||
+                                            currentCard.image_url
                                         }
                                     />
                                 )}
