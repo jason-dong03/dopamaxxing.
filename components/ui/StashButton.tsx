@@ -16,7 +16,7 @@ export default function StashButton() {
     const [inventory, setInventory] = useState<Record<string, number>>({})
     const [open, setOpen] = useState(false)
     const [tab, setTab] = useState<Tab>('drops')
-    const [opening, setOpening] = useState<{ pending: PendingPack; pack: Pack } | null>(null)
+    const [opening, setOpening] = useState<{ group: PendingPack[]; pack: Pack } | null>(null)
     const [openQueue, setOpenQueue] = useState<PendingPack[]>([])
     const [claiming, setClaiming] = useState(false)
     const [claimingId, setClaimingId] = useState<string | null>(null)
@@ -66,32 +66,37 @@ export default function StashButton() {
         if (open) fetchInventory()
     }, [open])
 
-    async function openDrop(pending: PendingPack) {
-        const pack = PACKS.find(p => p.id === pending.pack_id)
+    function openGroup(group: PendingPack[]) {
+        if (!group.length) return
+        const pack = PACKS.find(p => p.id === group[0].pack_id)
         if (!pack) return
-        await fetch('/api/pending-packs', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: pending.id }),
-        })
-        setDrops(prev => prev.filter(d => d.id !== pending.id))
+        setOpenQueue([])
         setOpen(false)
-        setOpening({ pending, pack })
+        setOpening({ group, pack })
     }
 
     function openFirstPending(pendingPacks: PendingPack[]) {
         if (!pendingPacks.length) return
-        const pending = pendingPacks[0]
-        const pack = PACKS.find(p => p.id === pending.pack_id)
+        const pack = PACKS.find(p => p.id === pendingPacks[0].pack_id)
         if (!pack) return
-        fetch('/api/pending-packs', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: pending.id }),
-        })
         setOpenQueue(pendingPacks.slice(1))
         setOpen(false)
-        setOpening({ pending, pack })
+        setOpening({ group: [pendingPacks[0]], pack })
+    }
+
+    // Consume pending_packs only after the user actually opens them
+    function handlePackOpened(_packId: string, countOpened: number) {
+        if (!opening) return
+        const toDelete = opening.group.slice(0, countOpened).map(d => d.id)
+        if (!toDelete.length) return
+        setDrops(prev => prev.filter(d => !toDelete.includes(d.id)))
+        for (const id of toDelete) {
+            fetch('/api/pending-packs', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+            }).catch(() => {})
+        }
     }
 
     async function handleBack() {
@@ -107,13 +112,8 @@ export default function StashButton() {
             const next = openQueue[0]
             const pack = PACKS.find(p => p.id === next.pack_id)
             if (pack) {
-                fetch('/api/pending-packs', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: next.id }),
-                })
                 setOpenQueue(prev => prev.slice(1))
-                setOpening({ pending: next, pack })
+                setOpening({ group: [next], pack })
                 return
             }
         }
@@ -222,7 +222,16 @@ export default function StashButton() {
                                 overflowY: 'auto',
                                 display: 'flex', flexDirection: 'column',
                             }}>
-                                <PackOpening key={opening.pending.id} pack={opening.pack} onBack={handleBack} onComplete={handleComplete} autoBack free />
+                                <PackOpening
+                                    key={opening.group.map(d => d.id).join(',')}
+                                    pack={opening.pack}
+                                    count={opening.group.length}
+                                    onBack={handleBack}
+                                    onComplete={handleComplete}
+                                    onPackOpened={handlePackOpened}
+                                    autoBack
+                                    free
+                                />
                             </div>
                         </>,
                         document.body
@@ -287,42 +296,67 @@ export default function StashButton() {
                                             <p style={{ fontSize: '0.75rem', color: '#4b5563', textAlign: 'center', padding: '24px 0' }}>
                                                 No drops yet — chat in Discord to earn packs!
                                             </p>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                {drops.map(drop => {
-                                                    const pack = PACKS.find(p => p.id === drop.pack_id)
-                                                    return (
-                                                        <button
-                                                            key={drop.id}
-                                                            onClick={() => openDrop(drop)}
-                                                            style={{
-                                                                display: 'flex', alignItems: 'center', gap: 12,
-                                                                background: 'rgba(180,83,9,0.1)',
-                                                                border: '1px solid rgba(180,83,9,0.25)',
-                                                                borderRadius: 10, padding: '10px 14px',
-                                                                cursor: 'pointer', width: '100%', textAlign: 'left',
-                                                                transition: 'background 150ms ease',
-                                                            }}
-                                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(180,83,9,0.22)'}
-                                                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(180,83,9,0.1)'}
-                                                        >
-                                                            {pack?.image
-                                                                ? <img src={pack.image} alt={pack.name} style={{ width: 36, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
-                                                                : <span style={{ fontSize: '1.4rem' }}>📦</span>
-                                                            }
-                                                            <div>
-                                                                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#fcd34d' }}>
-                                                                    {pack?.name ?? drop.pack_id}
+                                        ) : (() => {
+                                            // Group identical packs into stacked rows
+                                            const groups = new Map<string, PendingPack[]>()
+                                            for (const drop of drops) {
+                                                const list = groups.get(drop.pack_id) ?? []
+                                                list.push(drop)
+                                                groups.set(drop.pack_id, list)
+                                            }
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                    {Array.from(groups.entries()).map(([packId, group]) => {
+                                                        const pack = PACKS.find(p => p.id === packId)
+                                                        const count = group.length
+                                                        const sources = Array.from(new Set(group.map(d => d.source)))
+                                                        const sourceLabel = sources.length === 1 ? sources[0] : `${sources.length} sources`
+                                                        return (
+                                                            <button
+                                                                key={packId}
+                                                                onClick={() => openGroup(group)}
+                                                                style={{
+                                                                    display: 'flex', alignItems: 'center', gap: 12,
+                                                                    background: 'rgba(180,83,9,0.1)',
+                                                                    border: '1px solid rgba(180,83,9,0.25)',
+                                                                    borderRadius: 10, padding: '10px 14px',
+                                                                    cursor: 'pointer', width: '100%', textAlign: 'left',
+                                                                    transition: 'background 150ms ease',
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(180,83,9,0.22)'}
+                                                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(180,83,9,0.1)'}
+                                                            >
+                                                                {pack?.image
+                                                                    ? <img src={pack.image} alt={pack.name} style={{ width: 36, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                                                                    : <span style={{ fontSize: '1.4rem' }}>📦</span>
+                                                                }
+                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                    <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#fcd34d' }}>
+                                                                        {pack?.name ?? packId}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '0.62rem', color: '#4b5563', marginTop: 2 }}>
+                                                                        from {sourceLabel} · tap to open{count > 1 ? ' all' : ''}
+                                                                    </div>
                                                                 </div>
-                                                                <div style={{ fontSize: '0.62rem', color: '#4b5563', marginTop: 2 }}>
-                                                                    from {drop.source} · tap to open
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                    )
-                                                })}
-                                            </div>
-                                        )
+                                                                {count > 1 && (
+                                                                    <span style={{
+                                                                        fontSize: '0.72rem', fontWeight: 800,
+                                                                        color: '#fcd34d',
+                                                                        background: 'rgba(180,83,9,0.25)',
+                                                                        border: '1px solid rgba(180,83,9,0.4)',
+                                                                        borderRadius: 8,
+                                                                        padding: '3px 8px',
+                                                                        flexShrink: 0,
+                                                                    }}>
+                                                                        ×{count}
+                                                                    </span>
+                                                                )}
+                                                            </button>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )
+                                        })()
                                     )}
 
                                     {tab === 'rewards' && (

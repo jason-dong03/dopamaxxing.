@@ -5,6 +5,8 @@ import type { UserCard } from '@/lib/types'
 import { fmt } from '@/lib/utils'
 import { tierBuyBack } from '@/lib/rarityConfig'
 
+const HIGH_RARITY_CONFIRM = new Set(['Legendary', 'Divine', 'Celestial', '???'])
+
 export function SellButton({
     uc,
     sellAmount,
@@ -16,12 +18,23 @@ export function SellButton({
 }) {
     const [selling, setSelling] = useState(false)
     const [showTooltip, setShowTooltip] = useState(false)
+    const [confirming, setConfirming] = useState(false)
     const buybackPct = Math.round(tierBuyBack(uc.cards.rarity) * 100)
+    const needsConfirm = HIGH_RARITY_CONFIRM.has(uc.cards.rarity)
 
-    async function handleClick() {
-        if (selling) return
+    async function doSell() {
+        setConfirming(false)
         setSelling(true)
         await onSell()
+    }
+
+    function handleClick() {
+        if (selling) return
+        if (needsConfirm) {
+            setConfirming(true)
+            return
+        }
+        void doSell()
     }
 
     return (
@@ -111,6 +124,107 @@ export function SellButton({
                     </>
                 )}
             </button>
+
+            {confirming && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 300,
+                        background: 'rgba(0,0,0,0.7)',
+                        backdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 20px',
+                    }}
+                    onClick={() => setConfirming(false)}
+                >
+                    <div
+                        style={{
+                            background: 'var(--app-surface-2, #18181b)',
+                            border: '1px solid var(--app-border)',
+                            borderRadius: 20,
+                            padding: '28px 24px',
+                            maxWidth: 380,
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 16,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3
+                            style={{
+                                margin: 0,
+                                fontSize: '1rem',
+                                fontWeight: 700,
+                                color: 'var(--app-text)',
+                            }}
+                        >
+                            Sell {uc.cards.rarity} card?
+                        </h3>
+                        <p
+                            style={{
+                                margin: 0,
+                                fontSize: '0.8rem',
+                                color: 'var(--app-text-muted)',
+                                lineHeight: 1.6,
+                            }}
+                        >
+                            You&apos;re about to sell{' '}
+                            <span style={{ color: 'var(--app-text)', fontWeight: 600 }}>
+                                {uc.cards.name}
+                            </span>{' '}
+                            for
+                            <br />
+                            <span
+                                style={{
+                                    fontSize: '1.1rem',
+                                    fontWeight: 700,
+                                    color: '#4ade80',
+                                }}
+                            >
+                                +${fmt(sellAmount)}
+                            </span>
+                        </p>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                                onClick={() => setConfirming(false)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 0',
+                                    borderRadius: 10,
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'transparent',
+                                    color: 'var(--app-text-muted)',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => void doSell()}
+                                style={{
+                                    flex: 2,
+                                    padding: '10px 0',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    background: 'rgba(239,68,68,0.15)',
+                                    color: '#f87171',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Sell
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

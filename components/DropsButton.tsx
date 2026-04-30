@@ -362,42 +362,67 @@ export default function DropsButton() {
                                     <p style={{ fontSize: '0.75rem', color: '#4b5563', textAlign: 'center', padding: '24px 0' }}>
                                         No drops yet — chat in Discord to earn packs!
                                     </p>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {drops.map(drop => {
-                                            const pack = PACKS.find(p => p.id === drop.pack_id)
-                                            return (
-                                                <button
-                                                    key={drop.id}
-                                                    onClick={() => openDrop(drop)}
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', gap: 12,
-                                                        background: 'rgba(180,83,9,0.1)',
-                                                        border: '1px solid rgba(180,83,9,0.25)',
-                                                        borderRadius: 10, padding: '10px 14px',
-                                                        cursor: 'pointer', width: '100%', textAlign: 'left',
-                                                        transition: 'background 150ms ease',
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(180,83,9,0.22)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(180,83,9,0.1)'}
-                                                >
-                                                    {pack?.image
-                                                        ? <img src={pack.image} alt={pack.name} style={{ width: 36, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
-                                                        : <span style={{ fontSize: '1.4rem' }}>📦</span>
-                                                    }
-                                                    <div>
-                                                        <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#fcd34d' }}>
-                                                            {pack?.name ?? drop.pack_id}
+                                ) : (() => {
+                                    // Group identical packs into stacked rows
+                                    const groups = new Map<string, PendingPack[]>()
+                                    for (const drop of drops) {
+                                        const list = groups.get(drop.pack_id) ?? []
+                                        list.push(drop)
+                                        groups.set(drop.pack_id, list)
+                                    }
+                                    return (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {Array.from(groups.entries()).map(([packId, group]) => {
+                                                const pack = PACKS.find(p => p.id === packId)
+                                                const count = group.length
+                                                const sources = Array.from(new Set(group.map(d => d.source)))
+                                                const sourceLabel = sources.length === 1 ? sources[0] : `${sources.length} sources`
+                                                return (
+                                                    <button
+                                                        key={packId}
+                                                        onClick={() => count > 1 ? openFirstPending(group) : openDrop(group[0])}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', gap: 12,
+                                                            background: 'rgba(180,83,9,0.1)',
+                                                            border: '1px solid rgba(180,83,9,0.25)',
+                                                            borderRadius: 10, padding: '10px 14px',
+                                                            cursor: 'pointer', width: '100%', textAlign: 'left',
+                                                            transition: 'background 150ms ease',
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(180,83,9,0.22)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(180,83,9,0.1)'}
+                                                    >
+                                                        {pack?.image
+                                                            ? <img src={pack.image} alt={pack.name} style={{ width: 36, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                                                            : <span style={{ fontSize: '1.4rem' }}>📦</span>
+                                                        }
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#fcd34d' }}>
+                                                                {pack?.name ?? packId}
+                                                            </div>
+                                                            <div style={{ fontSize: '0.62rem', color: '#4b5563', marginTop: 2 }}>
+                                                                from {sourceLabel} · tap to open{count > 1 ? ' all' : ''}
+                                                            </div>
                                                         </div>
-                                                        <div style={{ fontSize: '0.62rem', color: '#4b5563', marginTop: 2 }}>
-                                                            from {drop.source} · tap to open
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                )
+                                                        {count > 1 && (
+                                                            <span style={{
+                                                                fontSize: '0.72rem', fontWeight: 800,
+                                                                color: '#fcd34d',
+                                                                background: 'rgba(180,83,9,0.25)',
+                                                                border: '1px solid rgba(180,83,9,0.4)',
+                                                                borderRadius: 8,
+                                                                padding: '3px 8px',
+                                                                flexShrink: 0,
+                                                            }}>
+                                                                ×{count}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    )
+                                })()
                             )}
 
                             {tab === 'rewards' && (

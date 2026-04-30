@@ -112,7 +112,7 @@ export default function PackOpening({
         'condition' | 'stats' | 'moves'
     >('condition')
     const [openCount, setOpenCount] = useState(count)
-    const [selectedCount, setSelectedCount] = useState(1)
+    const [selectedCount, setSelectedCount] = useState(count > 1 ? count : 1)
     const [adminBatchCount, setAdminBatchCount] = useState<1 | 10>(1)
 
     const [addedCardIds, setAddedCardIds] = useState<Set<string>>(new Set())

@@ -774,7 +774,7 @@ function MobilePackCarousel({
                     ? 'linear-gradient(180deg, rgba(234,179,8,0.06), rgba(255,255,255,0.02))'
                     : 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))',
                 boxShadow: '0 18px 50px rgba(0,0,0,0.22)',
-                padding: '14px 0 12px',
+                padding: '8px 0 8px',
                 position: 'relative',
             }}
         >
@@ -802,7 +802,7 @@ function MobilePackCarousel({
                             flex: '0 0 100%',
                             scrollSnapAlign: 'center',
                             scrollSnapStop: 'always',
-                            padding: '0 14px',
+                            padding: '0 10px',
                             boxSizing: 'border-box',
                         }}
                     >
@@ -834,7 +834,7 @@ function MobilePackCarousel({
                         display: 'flex',
                         justifyContent: 'center',
                         gap: 6,
-                        marginTop: 12,
+                        marginTop: 8,
                     }}
                 >
                     {packs.map((_, i) => (
@@ -919,7 +919,7 @@ function MobilePackCard({
                     background: 'rgba(255,255,255,0.02)',
                     border: `1px solid ${borderColor}`,
                     borderRadius: 18,
-                    padding: '14px 14px 16px',
+                    padding: '10px 12px 12px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'stretch',
@@ -937,7 +937,7 @@ function MobilePackCard({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: '14px 8px 10px',
+                        padding: '4px 6px 6px',
                     }}
                 >
                     <img
@@ -947,7 +947,7 @@ function MobilePackCard({
                             width: 'auto',
                             maxWidth: '100%',
                             height: 'auto',
-                            maxHeight: 'min(60vh, 460px)',
+                            maxHeight: 'min(38vh, 320px)',
                             objectFit: 'contain',
                             filter: bagFull
                                 ? 'drop-shadow(0 0 6px rgba(228,228,228,0.12))'
@@ -962,9 +962,9 @@ function MobilePackCard({
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 6,
-                        marginTop: 8,
-                        paddingTop: 10,
+                        gap: 4,
+                        marginTop: 4,
+                        paddingTop: 8,
                         borderTop: '1px solid rgba(255,255,255,0.06)',
                     }}
                 >
