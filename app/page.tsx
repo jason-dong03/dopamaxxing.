@@ -90,6 +90,19 @@ export default function LandingPage() {
 
     const hasNavigatedRef = useRef(false)
 
+    // Reset OAuth loading state if user cancels and the browser restores
+    // this page from bfcache (back button after OAuth screen).
+    useEffect(() => {
+        function handlePageShow(e: PageTransitionEvent) {
+            if (e.persisted) {
+                setLoading(null)
+                hasNavigatedRef.current = false
+            }
+        }
+        window.addEventListener('pageshow', handlePageShow)
+        return () => window.removeEventListener('pageshow', handlePageShow)
+    }, [])
+
     useEffect(() => {
         let cancelled = false
 

@@ -34,9 +34,11 @@ function useCountdown(target: string | null) {
 export default function BlackMarket({
     coins,
     onCoinsChange,
+    userLevel = 1,
 }: {
     coins: number
     onCoinsChange?: (delta: number) => void
+    userLevel?: number
 }) {
     const [state, setState] = useState<BlackMarketState | null>(null)
     const [expanded, setExpanded] = useState(false)
@@ -165,6 +167,7 @@ export default function BlackMarket({
             {/* Market panel — floats above character */}
             {expanded && (
                 <div
+                    className="bm-panel-glow"
                     style={{
                         pointerEvents: 'all',
                         marginBottom: 8,
@@ -172,11 +175,8 @@ export default function BlackMarket({
                         maxHeight: '70vh',
                         overflowY: 'auto',
                         borderRadius: 14,
-                        background:
-                            'linear-gradient(180deg, #1a0a0a 0%, #0d0505 100%)',
-                        border: '1px solid rgba(239,68,68,0.35)',
-                        boxShadow:
-                            '0 8px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(239,68,68,0.1)',
+                        background: '#000',
+                        border: '1px solid rgba(255,255,255,0.7)',
                     }}
                 >
                     {/* Panel header */}
@@ -255,7 +255,26 @@ export default function BlackMarket({
                             )
                             const canAfford = coins >= discounted
                             const outOfStock = item.quantity_remaining <= 0
-                            const disabled = !canAfford || outOfStock || !!buying
+                            const levelLocked =
+                                !!pack.level_required &&
+                                userLevel < pack.level_required
+                            const disabled =
+                                !canAfford ||
+                                outOfStock ||
+                                levelLocked ||
+                                !!buying
+                            // accent color: red when locked, green when unlocked
+                            const accent = levelLocked
+                                ? {
+                                      border: '1px solid rgba(239,68,68,0.45)',
+                                      bg: 'rgba(239,68,68,0.08)',
+                                      text: '#fca5a5',
+                                  }
+                                : {
+                                      border: '1px solid rgba(74,222,128,0.45)',
+                                      bg: 'rgba(74,222,128,0.08)',
+                                      text: '#86efac',
+                                  }
                             return (
                                 <div
                                     key={item.id}
@@ -265,8 +284,12 @@ export default function BlackMarket({
                                         gap: 12,
                                         padding: '12px 16px',
                                         borderBottom:
-                                            '1px solid rgba(239,68,68,0.08)',
-                                        opacity: outOfStock ? 0.45 : 1,
+                                            '1px solid rgba(255,255,255,0.06)',
+                                        background: accent.bg,
+                                        opacity:
+                                            outOfStock || levelLocked
+                                                ? 0.55
+                                                : 1,
                                     }}
                                 >
                                     <img
@@ -284,7 +307,7 @@ export default function BlackMarket({
                                             style={{
                                                 fontSize: '0.78rem',
                                                 fontWeight: 700,
-                                                color: '#fca5a5',
+                                                color: accent.text,
                                                 marginBottom: 2,
                                             }}
                                         >
@@ -384,18 +407,30 @@ export default function BlackMarket({
                                             style={{
                                                 padding: '4px 12px',
                                                 borderRadius: 7,
-                                                border: '1px solid rgba(239,68,68,0.5)',
+                                                border: accent.border,
                                                 background: disabled
-                                                    ? 'rgba(255,255,255,0.04)'
-                                                    : 'rgba(239,68,68,0.18)',
-                                                color: disabled ? '#4b5563' : '#fca5a5',
+                                                    ? levelLocked
+                                                        ? 'rgba(239,68,68,0.12)'
+                                                        : 'rgba(255,255,255,0.04)'
+                                                    : 'rgba(74,222,128,0.18)',
+                                                color: disabled
+                                                    ? levelLocked
+                                                        ? '#fca5a5'
+                                                        : '#4b5563'
+                                                    : '#86efac',
                                                 fontSize: '0.65rem',
                                                 fontWeight: 700,
-                                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                                cursor: disabled
+                                                    ? 'not-allowed'
+                                                    : 'pointer',
                                                 transition: 'all 150ms ease',
                                             }}
                                         >
-                                            {buying === item.id ? '…' : 'Buy'}
+                                            {buying === item.id
+                                                ? '…'
+                                                : levelLocked
+                                                  ? `Lv ${pack.level_required}`
+                                                  : 'Buy'}
                                         </button>
                                     </div>
                                 </div>

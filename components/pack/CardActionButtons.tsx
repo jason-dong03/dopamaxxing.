@@ -157,7 +157,7 @@ export function CardActionButtons({
                         <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.07)' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                             <span style={{ fontSize: '0.48rem', color: 'var(--app-text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>level</span>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#60a5fa', fontFamily: 'monospace' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ffffff', fontFamily: 'monospace' }}>
                                 {mobileInfoPanel.card_level ?? 1}
                             </span>
                         </div>
@@ -301,11 +301,11 @@ export function CardActionButtons({
                 </div>
             ) : (
                 <>
-                    {/* Mobile: sell all row */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px 0', width: '100%' }}>
+                    {/* Mobile: single row — sell all + auto + settings (or confirm / stop) */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '2px 0', width: '100%', flexWrap: 'wrap' }}>
                         {sellAllConfirm ? (
                             <>
-                                <span style={{ fontSize: '0.7rem', color: '#f87171', marginRight: 8 }}>
+                                <span style={{ fontSize: '0.7rem', color: '#f87171', marginRight: 4 }}>
                                     rare+ card detected — sell all?
                                 </span>
                                 <button
@@ -314,7 +314,7 @@ export function CardActionButtons({
                                         fontSize: '0.72rem', fontWeight: 700, padding: '6px 14px',
                                         borderRadius: 8, background: 'rgba(239,68,68,0.15)',
                                         border: '1px solid rgba(239,68,68,0.4)', color: '#f87171',
-                                        cursor: 'pointer', whiteSpace: 'nowrap', marginRight: 6,
+                                        cursor: 'pointer', whiteSpace: 'nowrap',
                                     }}
                                 >
                                     yes, sell all
@@ -343,35 +343,27 @@ export function CardActionButtons({
                                 ⏹ stop
                             </button>
                         ) : (
-                            <button
-                                onClick={handleSellAll}
-                                className="rounded-xl text-xs font-semibold"
-                                style={{
-                                    background: 'rgba(234,179,8,0.1)',
-                                    border: '1px solid rgba(234,179,8,0.45)',
-                                    color: '#facc15', cursor: 'pointer',
-                                    padding: '8px 14px', whiteSpace: 'nowrap',
-                                }}
-                            >
-                                sell all {totalFormatted}
-                            </button>
+                            <>
+                                <button
+                                    onClick={handleSellAll}
+                                    className="btn-autocomplete rounded-xl text-xs font-semibold"
+                                    style={{ padding: '8px 14px', whiteSpace: 'nowrap' }}
+                                >
+                                    sell all {totalFormatted}
+                                </button>
+                                <button
+                                    onClick={() => handleAutocomplete(autoReverse)}
+                                    className="btn-autocomplete rounded-xl text-xs font-semibold"
+                                    style={{ padding: '8px 14px', whiteSpace: 'nowrap', border: autoReverse ? '1px solid yellow' : '' }}
+                                >
+                                    {autoReverse ? 'auto (reversed)' : 'auto'}
+                                </button>
+                                <button onClick={() => setShowSettings(true)} className="btn-icon p-2">
+                                    ⚙
+                                </button>
+                            </>
                         )}
                     </div>
-                    {/* Mobile: auto + settings row */}
-                    {!autoRunning && !sellAllConfirm && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '2px 0' }}>
-                            <button
-                                onClick={() => handleAutocomplete(autoReverse)}
-                                className="btn-autocomplete rounded-xl text-xs font-semibold"
-                                style={{ padding: '8px 14px', whiteSpace: 'nowrap', border: autoReverse ? '1px solid yellow' : '' }}
-                            >
-                                {autoReverse ? 'auto (reversed)' : 'auto'}
-                            </button>
-                            <button onClick={() => setShowSettings(true)} className="btn-icon p-2">
-                                ⚙
-                            </button>
-                        </div>
-                    )}
                 </>
             )}
         </div>

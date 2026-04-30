@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { rarityGlowRgb, isRainbow } from '@/lib/rarityConfig'
 import WearOverlay from '@/components/card/WearOverlay'
 import { conditionFilter } from '@/lib/cardAttributes'
@@ -55,7 +56,9 @@ export default function FlipCard({
     const [popped, setPopped] = useState(false)
     const [hovering, setHovering] = useState(false)
     const [legendarySpinning, setLegendarySpinning] = useState(false)
-    const [showSparks, setShowSparks] = useState(false)
+    const [sparks, setSparks] = useState<
+        Array<{ ex: number; ey: number; dur: number }>
+    >([])
 
     const glowRgb = rarityGlowRgb(card.rarity)
     const cardIsRainbow = isRainbow(card.rarity)
@@ -109,7 +112,13 @@ export default function FlipCard({
     }
 
     return (
-        <div className="flex flex-col items-center gap-2">
+        <div
+            className="relative"
+            style={{
+                width: `${cardWidth}px`,
+                height: `${cardHeight}px`,
+            }}
+        >
             {flash && (
                 <div
                     className="fixed inset-0 pointer-events-none animate-flash"
@@ -118,6 +127,7 @@ export default function FlipCard({
             )}
             <div
                 onClick={handleClick}
+                data-flip-clickable
                 className="cursor-pointer relative"
                 style={{
                     width: `${cardWidth}px`,
@@ -256,10 +266,22 @@ export default function FlipCard({
                             }}
                             className="animate-legendary-3d-spin"
                             onAnimationEnd={() => {
-                                setShowSparks(true)
+                                const positions = Array.from({
+                                    length: SPARK_COUNT,
+                                }).map((_, i) => {
+                                    const angle =
+                                        (i / SPARK_COUNT) * Math.PI * 2
+                                    const dist = 110 + Math.random() * 90
+                                    return {
+                                        ex: Math.cos(angle) * dist,
+                                        ey: Math.sin(angle) * dist,
+                                        dur: 0.7 + Math.random() * 0.35,
+                                    }
+                                })
+                                setSparks(positions)
                                 setLegendarySpinning(false)
                                 setHovering(true)
-                                setTimeout(() => setShowSparks(false), 900)
+                                setTimeout(() => setSparks([]), 900)
                             }}
                         >
                             {/* front face — card art */}
@@ -305,7 +327,7 @@ export default function FlipCard({
                     )}
 
                     {/* Sparks burst at end of legendary spin */}
-                    {showSparks && (
+                    {sparks.length > 0 && (
                         <div
                             style={{
                                 position: 'absolute',
@@ -314,42 +336,51 @@ export default function FlipCard({
                                 zIndex: 20,
                             }}
                         >
-                            {Array.from({ length: SPARK_COUNT }).map((_, i) => {
-                                const angle = (i / SPARK_COUNT) * Math.PI * 2
-                                const dist = 110 + Math.random() * 90
-                                const ex = Math.cos(angle) * dist
-                                const ey = Math.sin(angle) * dist
-                                const dur = 0.7 + Math.random() * 0.35
-                                return (
-                                    <div
-                                        key={i}
-                                        className={`flip-card-spark${cardIsRainbow ? ' rainbow' : ''}`}
-                                        style={
-                                            {
-                                                background: cardIsRainbow
-                                                    ? undefined
-                                                    : `rgba(${glowRgb}, 1)`,
-                                                boxShadow: cardIsRainbow
-                                                    ? undefined
-                                                    : `0 0 10px 3px rgba(${glowRgb}, 0.85)`,
-                                                animationDuration: `${dur}s`,
-                                                '--ex': `${ex}px`,
-                                                '--ey': `${ey}px`,
-                                            } as React.CSSProperties
-                                        }
-                                    />
-                                )
-                            })}
+                            {sparks.map((p, i) => (
+                                <div
+                                    key={i}
+                                    className={`flip-card-spark${cardIsRainbow ? ' rainbow' : ''}`}
+                                    style={
+                                        {
+                                            background: cardIsRainbow
+                                                ? undefined
+                                                : `rgba(${glowRgb}, 1)`,
+                                            boxShadow: cardIsRainbow
+                                                ? undefined
+                                                : `0 0 10px 3px rgba(${glowRgb}, 0.85)`,
+                                            animationDuration: `${p.dur}s`,
+                                            '--ex': `${p.ex}px`,
+                                            '--ey': `${p.ey}px`,
+                                        } as React.CSSProperties
+                                    }
+                                />
+                            ))}
                         </div>
                     )}
                 </div>
             </div>
 
-            {flipped && !confirmed && (
-                <p className="text-gray-500 text-xs animate-pulse mt-4">
-                    tap to continue
-                </p>
-            )}
+            {flipped &&
+                !confirmed &&
+                typeof document !== 'undefined' &&
+                createPortal(
+                    <p
+                        className="text-gray-500 text-xs animate-pulse"
+                        style={{
+                            position: 'fixed',
+                            bottom: 76,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            whiteSpace: 'nowrap',
+                            pointerEvents: 'none',
+                            zIndex: 10003,
+                            margin: 0,
+                        }}
+                    >
+                        tap to continue
+                    </p>,
+                    document.body,
+                )}
         </div>
     )
 }

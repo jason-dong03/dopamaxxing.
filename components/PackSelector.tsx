@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useIsMobile } from '@/lib/useIsMobile'
 import { createClient } from '@/lib/supabase/client'
 import { useProfile } from '@/lib/userStore'
 import { PACKS, type Pack } from '@/lib/packs'
@@ -114,6 +115,22 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
             .catch(() => {})
     }, [])
 
+    const refreshBag = useCallback(() => {
+        const supabase = createClient()
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return
+            supabase
+                .from('user_cards')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .then(({ count }) => {
+                    const c = count ?? 0
+                    setBagCount(c)
+                    _cache.bagCount = c
+                })
+        })
+    }, [])
+
     useEffect(() => {
         const supabase = createClient()
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -201,7 +218,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                 <PackOpening
                     pack={selectedPack}
                     count={selectedCount}
-                    stock={isAdmin ? 999 : (stock[selectedPack.id] ?? 1)}
+                    stock={isAdmin ? 999 : (stock[selectedPack.id] ?? 0)}
                     discount={discounts[selectedPack.id] ?? 0}
                     isAdmin={isAdmin}
                     free={!!(isAdmin && selectedPack.test)}
@@ -209,6 +226,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                         setSelectedPack(null)
                         setSelectedCount(1)
                         refreshStock()
+                        refreshBag()
                     }}
                     onPackOpened={(packId, countOpened) => {
                         setStock((prev) => ({
@@ -231,6 +249,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                         setSelectedPack(null)
                         setSelectedCount(1)
                         if (!isAdmin) refreshStock()
+                        refreshBag()
                     }}
                 />
             </div>
@@ -289,6 +308,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                 <BlackMarket
                     coins={effectiveCoins}
                     onCoinsChange={(delta) => setCoins(prev => (prev ?? 0) + delta)}
+                    userLevel={userLevel}
                 />
 
                 <PackTabs
@@ -548,6 +568,7 @@ function PackShopList({
 }) {
     const lineColor = gold ? 'rgba(234,179,8,0.18)' : 'var(--app-border-2)'
     const textColor = gold ? '#92400e' : 'var(--app-text-secondary)'
+    const isMobile = useIsMobile()
 
     return (
         <section style={{ marginBottom: 0 }} {...rest}>
@@ -575,74 +596,481 @@ function PackShopList({
                 <div style={{ height: 1, flex: 1, background: lineColor }} />
             </div>
 
-            <div
-                style={{
-                    width: '100%',
-                    maxWidth: 660,
-                    margin: '0 auto',
-                    borderRadius: 18,
-                    border: `1px solid ${gold ? 'rgba(234,179,8,0.20)' : 'var(--app-border-2)'}`,
-                    background: gold
-                        ? 'linear-gradient(180deg, rgba(234,179,8,0.06), rgba(255,255,255,0.02))'
-                        : 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))',
-                    boxShadow: '0 18px 50px rgba(0,0,0,0.22)',
-                    padding: 14,
-                }}
-            >
-                <div
-                    style={{
-                        maxHeight: '62vh',
-                        overflowY: 'auto',
-                        overflowX: 'hidden',
-                        scrollbarWidth: 'none',
-                        msOverflowStyle: 'none',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 10,
-                    }}
-                >
-                    <style>{`
-                        .pack-shop-scroll::-webkit-scrollbar {
-                            display: none;
-                        }
-                    `}</style>
-
-                    <div
-                        className="pack-shop-scroll"
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 10,
-                        }}
-                        onMouseLeave={() => onHover(null)}
-                    >
-                        {nextRefreshAt && (
+            {isMobile ? (
+                <>
+                    {nextRefreshAt && (
+                        <div style={{ marginBottom: 8 }}>
                             <StockCountdown
                                 nextRefreshAt={nextRefreshAt}
                                 onExpired={onStockExpired}
                             />
-                        )}
-                        {packs.map((pack) => (
-                            <ShopPackRow
-                                key={pack.id}
-                                pack={pack}
-                                hovered={hoveredId === pack.id}
-                                coins={coins}
-                                bagFull={bagFull}
-                                gold={gold}
-                                stock={stock[pack.id] ?? 0}
-                                discount={discounts[pack.id] ?? 0}
-                                isAdmin={isAdmin}
-                                userLevel={userLevel}
-                                onHover={onHover}
-                                onSelect={() => onSelect(pack)}
-                                onPreview={onPreview}
-                            />
-                        ))}
+                        </div>
+                    )}
+                    <MobilePackCarousel
+                        tabKey={title}
+                        packs={packs}
+                        coins={coins}
+                        bagFull={bagFull}
+                        gold={gold}
+                        stock={stock}
+                        discounts={discounts}
+                        isAdmin={isAdmin}
+                        userLevel={userLevel}
+                        hoveredId={hoveredId}
+                        onHover={onHover}
+                        onSelect={onSelect}
+                        onPreview={onPreview}
+                    />
+                </>
+            ) : (
+                <div
+                    style={{
+                        width: '100%',
+                        maxWidth: 660,
+                        margin: '0 auto',
+                        borderRadius: 18,
+                        border: `1px solid ${gold ? 'rgba(234,179,8,0.20)' : 'var(--app-border-2)'}`,
+                        background: gold
+                            ? 'linear-gradient(180deg, rgba(234,179,8,0.06), rgba(255,255,255,0.02))'
+                            : 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))',
+                        boxShadow: '0 18px 50px rgba(0,0,0,0.22)',
+                        padding: 14,
+                    }}
+                >
+                    <div
+                        style={{
+                            maxHeight: '62vh',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            scrollbarWidth: 'none',
+                            msOverflowStyle: 'none',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10,
+                        }}
+                    >
+                        <style>{`
+                            .pack-shop-scroll::-webkit-scrollbar {
+                                display: none;
+                            }
+                        `}</style>
+
+                        <div
+                            className="pack-shop-scroll"
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 10,
+                            }}
+                            onMouseLeave={() => onHover(null)}
+                        >
+                            {nextRefreshAt && (
+                                <StockCountdown
+                                    nextRefreshAt={nextRefreshAt}
+                                    onExpired={onStockExpired}
+                                />
+                            )}
+                            {packs.map((pack) => (
+                                <ShopPackRow
+                                    key={pack.id}
+                                    pack={pack}
+                                    hovered={hoveredId === pack.id}
+                                    coins={coins}
+                                    bagFull={bagFull}
+                                    gold={gold}
+                                    stock={stock[pack.id] ?? 0}
+                                    discount={discounts[pack.id] ?? 0}
+                                    isAdmin={isAdmin}
+                                    userLevel={userLevel}
+                                    onHover={onHover}
+                                    onSelect={() => onSelect(pack)}
+                                    onPreview={onPreview}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </section>
+    )
+}
+
+function MobilePackCarousel({
+    tabKey,
+    packs,
+    coins,
+    bagFull,
+    gold,
+    stock,
+    discounts,
+    isAdmin,
+    userLevel,
+    hoveredId,
+    onHover,
+    onSelect,
+    onPreview,
+}: {
+    tabKey: string
+    packs: Pack[]
+    coins: number
+    bagFull: boolean
+    gold?: boolean
+    stock: Record<string, number>
+    discounts: Record<string, number>
+    isAdmin?: boolean
+    userLevel: number
+    hoveredId: string | null
+    onHover: (id: string | null) => void
+    onSelect: (pack: Pack) => void
+    onPreview: (pack: Pack) => void
+}) {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const storageKey = `pack-carousel-idx:${tabKey}`
+    const [currentIndex, setCurrentIndex] = useState(() => {
+        if (typeof window === 'undefined') return 0
+        const saved = sessionStorage.getItem(storageKey)
+        const n = saved ? parseInt(saved, 10) : 0
+        return Number.isFinite(n) && n >= 0 ? Math.min(n, Math.max(0, packs.length - 1)) : 0
+    })
+
+    // restore scroll position on mount / when pack count changes
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        const child = el.children[currentIndex] as HTMLElement | undefined
+        if (child) {
+            el.scrollTo({ left: child.offsetLeft, behavior: 'auto' })
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [packs.length])
+
+    function handleScroll() {
+        const el = containerRef.current
+        if (!el) return
+        const slideWidth = el.offsetWidth
+        const idx = Math.round(el.scrollLeft / slideWidth)
+        if (idx !== currentIndex && idx >= 0 && idx < packs.length) {
+            setCurrentIndex(idx)
+            sessionStorage.setItem(storageKey, String(idx))
+        }
+    }
+
+    function jumpTo(idx: number) {
+        const el = containerRef.current
+        if (!el) return
+        const child = el.children[idx] as HTMLElement | undefined
+        if (child) el.scrollTo({ left: child.offsetLeft, behavior: 'smooth' })
+    }
+
+    return (
+        <div
+            style={{
+                width: '100%',
+                maxWidth: 660,
+                margin: '0 auto',
+                borderRadius: 18,
+                border: `1px solid ${gold ? 'rgba(234,179,8,0.20)' : 'var(--app-border-2)'}`,
+                background: gold
+                    ? 'linear-gradient(180deg, rgba(234,179,8,0.06), rgba(255,255,255,0.02))'
+                    : 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))',
+                boxShadow: '0 18px 50px rgba(0,0,0,0.22)',
+                padding: '14px 0 12px',
+                position: 'relative',
+            }}
+        >
+            <style>{`
+                .mobile-pack-carousel::-webkit-scrollbar { display: none; }
+            `}</style>
+            <div
+                ref={containerRef}
+                className="mobile-pack-carousel"
+                onScroll={handleScroll}
+                style={{
+                    display: 'flex',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    scrollSnapType: 'x mandatory',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                }}
+            >
+                {packs.map((pack) => (
+                    <div
+                        key={pack.id}
+                        style={{
+                            flex: '0 0 100%',
+                            scrollSnapAlign: 'center',
+                            scrollSnapStop: 'always',
+                            padding: '0 14px',
+                            boxSizing: 'border-box',
+                        }}
+                    >
+                        <MobilePackCard
+                            pack={pack}
+                            coins={coins}
+                            bagFull={bagFull}
+                            gold={gold}
+                            stock={stock[pack.id] ?? 0}
+                            discount={discounts[pack.id] ?? 0}
+                            isAdmin={isAdmin}
+                            userLevel={userLevel}
+                            onSelect={() => {
+                                // remember the pack the user opened so we restore here
+                                const idx = packs.findIndex((p) => p.id === pack.id)
+                                if (idx >= 0)
+                                    sessionStorage.setItem(storageKey, String(idx))
+                                onSelect(pack)
+                            }}
+                            onPreview={onPreview}
+                        />
+                    </div>
+                ))}
+            </div>
+            {/* dot indicator */}
+            {packs.length > 1 && (
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: 6,
+                        marginTop: 12,
+                    }}
+                >
+                    {packs.map((_, i) => (
+                        <button
+                            key={i}
+                            onClick={() => jumpTo(i)}
+                            aria-label={`pack ${i + 1}`}
+                            style={{
+                                width: i === currentIndex ? 18 : 6,
+                                height: 6,
+                                borderRadius: 3,
+                                border: 'none',
+                                padding: 0,
+                                background:
+                                    i === currentIndex
+                                        ? 'rgba(255,255,255,0.85)'
+                                        : 'rgba(255,255,255,0.22)',
+                                transition: 'all 220ms ease',
+                                cursor: 'pointer',
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+function MobilePackCard({
+    pack,
+    coins,
+    bagFull,
+    gold,
+    stock,
+    discount,
+    isAdmin,
+    userLevel,
+    onSelect,
+    onPreview,
+}: {
+    pack: Pack
+    coins: number
+    bagFull: boolean
+    gold?: boolean
+    stock: number
+    discount: number
+    isAdmin?: boolean
+    userLevel: number
+    onSelect: () => void
+    onPreview: (pack: Pack) => void
+}) {
+    const discountedCost = parseFloat((pack.cost * (1 - discount)).toFixed(2))
+    const canAfford = isAdmin || (coins ?? 0) >= discountedCost
+    const hasStock = isAdmin || stock > 0
+    const isLevelGated =
+        !isAdmin && !!pack.level_required && userLevel < pack.level_required
+    const disabled = bagFull || !canAfford || !hasStock || isLevelGated
+    const borderColor = gold
+        ? 'rgba(234,179,8,0.22)'
+        : 'rgba(255,255,255,0.08)'
+
+    return (
+        <div
+            style={{
+                position: 'relative',
+                opacity: disabled ? 0.55 : 1,
+                transition: 'opacity 300ms',
+            }}
+        >
+            <div
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                onClick={() => {
+                    if (!disabled) onSelect()
+                }}
+                onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && !disabled)
+                        onSelect()
+                }}
+                style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${borderColor}`,
+                    borderRadius: 18,
+                    padding: '14px 14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    transition: 'all 220ms ease',
+                    boxShadow: '0 10px 28px rgba(0,0,0,0.22)',
+                    position: 'relative',
+                }}
+            >
+                {/* large pack image — fills majority of card */}
+                <div
+                    style={{
+                        width: '100%',
+                        flex: '1 1 auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '14px 8px 10px',
+                    }}
+                >
+                    <img
+                        src={pack.image}
+                        alt={pack.name}
+                        style={{
+                            width: 'auto',
+                            maxWidth: '100%',
+                            height: 'auto',
+                            maxHeight: 'min(60vh, 460px)',
+                            objectFit: 'contain',
+                            filter: bagFull
+                                ? 'drop-shadow(0 0 6px rgba(228,228,228,0.12))'
+                                : 'drop-shadow(0 0 22px rgba(228,228,228,0.30))',
+                        }}
+                    />
+                </div>
+
+                {/* metadata stacked below */}
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 6,
+                        marginTop: 8,
+                        paddingTop: 10,
+                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                >
+                    <ThemeLabel pack={pack} />
+                    <div
+                        style={{
+                            fontSize: '1rem',
+                            fontWeight: 700,
+                            color: 'var(--app-text)',
+                            lineHeight: 1.2,
+                            textAlign: 'center',
+                        }}
+                    >
+                        {pack.name}
+                    </div>
+                    {pack.description && (
+                        <div
+                            style={{
+                                fontSize: '0.7rem',
+                                color: 'var(--app-text-muted)',
+                                lineHeight: 1.4,
+                                textAlign: 'center',
+                                maxWidth: 320,
+                            }}
+                        >
+                            {pack.description}
+                        </div>
+                    )}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            marginTop: 4,
+                            flexWrap: 'wrap',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        {discount > 0 && (
+                            <span
+                                style={{
+                                    fontSize: '0.6rem',
+                                    fontWeight: 800,
+                                    background: '#22c55e',
+                                    color: '#000',
+                                    borderRadius: 4,
+                                    padding: '2px 6px',
+                                    letterSpacing: '0.04em',
+                                }}
+                            >
+                                -{Math.round(discount * 100)}% OFF
+                            </span>
+                        )}
+                        <div
+                            style={{
+                                fontSize: '0.92rem',
+                                fontWeight: 700,
+                                color: canAfford ? '#4ade80' : '#ef4444',
+                            }}
+                        >
+                            Cost $
+                            {discountedCost.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })}
+                        </div>
+                        {discount > 0 && (
+                            <span
+                                style={{
+                                    fontSize: '0.7rem',
+                                    color: 'var(--app-text-muted)',
+                                    textDecoration: 'line-through',
+                                }}
+                            >
+                                ${Number(pack.cost).toFixed(2)}
+                            </span>
+                        )}
+                    </div>
+                    {!isAdmin && (
+                        <div
+                            style={{
+                                fontSize: isLevelGated ? '0.72rem' : '0.82rem',
+                                fontWeight: 700,
+                                color: isLevelGated
+                                    ? '#ef4444'
+                                    : stock > 0
+                                      ? '#ffffff'
+                                      : '#ef4444',
+                                marginTop: 2,
+                            }}
+                        >
+                            {isLevelGated
+                                ? `🔒 Unlocks at level ${pack.level_required}`
+                                : stock > 0
+                                  ? `x${stock} in stock`
+                                  : 'out of stock'}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* preview button — top right */}
+            <div style={{ position: 'absolute', top: 10, right: 10 }}>
+                <CardListBtn onClick={() => onPreview(pack)} />
+            </div>
+        </div>
     )
 }
 

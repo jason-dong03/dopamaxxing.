@@ -196,10 +196,13 @@ export default function PackOpening({
         key: string
     } | null>(null)
     const touchStartYRef = useRef<number | null>(null)
-    const idleDims =
-        pack.aspect === 'box'
-            ? { height: 'min(270px, 60vw)', width: 'min(360px, 78vw)' }
-            : { height: 'min(420px, 68vw)', width: 'auto' }
+    const idleDims = isMobile
+        ? pack.aspect === 'box'
+            ? { height: 'min(340px, 80vw)', width: 'min(440px, 94vw)' }
+            : { height: 'min(540px, 88vw)', width: 'auto' }
+        : pack.aspect === 'box'
+          ? { height: 'min(270px, 60vw)', width: 'min(360px, 78vw)' }
+          : { height: 'min(420px, 68vw)', width: 'auto' }
 
     useEffect(() => {
         const session = loadSession()
@@ -437,11 +440,13 @@ export default function PackOpening({
                         detail: { newBR: data.newBR },
                     }),
                 )
-            if (!free && effectiveCost > 0) {
+            // luckyFree: server granted the pack for free — no coin deduction, no stock decrement
+            const luckyFree = !!data.luckyFree
+            if (!luckyFree && !free && effectiveCost > 0) {
                 setUserCoins((prev) => (prev ?? 0) - effectiveCost)
                 triggerCoinFlash(effectiveCost, false)
             }
-            onPackOpened?.(pack.id, 1)
+            if (!luckyFree) onPackOpened?.(pack.id, 1)
             saveSession({
                 cards: openedCards,
                 addedIndices: [],
@@ -697,12 +702,14 @@ export default function PackOpening({
             clearSession()
             isAutocompleting.current = false
             setAutoRunning(false)
-            if (autoBack || wasBatchOpen.current) {
+            const outOfStock = !free && !isAdmin && stock <= 0
+            if (autoBack || outOfStock) {
                 router.refresh()
                 invalidate('profile')
                 ;(onComplete ?? onBack)()
                 return
             }
+            wasBatchOpen.current = false
             setPhase('idle')
             setCards([])
             setRevealedCount(0)
@@ -778,12 +785,14 @@ export default function PackOpening({
         clearSession()
         isAutocompleting.current = false
         setAutoRunning(false)
-        if (autoBack || wasBatchOpen.current) {
+        const outOfStock = !free && !isAdmin && stock <= 0
+        if (autoBack || outOfStock) {
             router.refresh()
             invalidate('profile')
             ;(onComplete ?? onBack)()
             return
         }
+        wasBatchOpen.current = false
         setAddedIndices(new Set(realIndices))
         setPhase('idle')
         setCards([])
@@ -973,12 +982,14 @@ export default function PackOpening({
             autocompleteQueue.current = []
             autocompleteActionMap.current = {}
             setAutoRunning(false)
-            if (autoBack || wasBatchOpen.current) {
+            const outOfStock = !free && !isAdmin && stock <= 0
+            if (autoBack || outOfStock) {
                 router.refresh()
                 invalidate('profile')
                 ;(onComplete ?? onBack)()
                 return
             }
+            wasBatchOpen.current = false
             setPhase('idle')
             setCards([])
             setRevealedCount(0)
@@ -1082,15 +1093,22 @@ export default function PackOpening({
             if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
                 e.preventDefault()
                 if (phase === 'revealing') {
-                    // Simulate a click on the top card so FlipCard's two-step flow
-                    // (flip → confirm) runs correctly instead of skipping the animation.
-                    topCardRef.current?.click()
+                    // Click events don't propagate from a parent down to children, so
+                    // we have to dispatch on FlipCard's actual clickable element.
+                    const target = topCardRef.current?.querySelector(
+                        '[data-flip-clickable]',
+                    ) as HTMLElement | null
+                    target?.click()
                 } else {
                     const allFlipped = packRevealedCount >= cardsPerPack
                     if (allFlipped) {
                         if (!packTransitioning) handleNextPack()
                     } else {
-                        handlePackReveal()
+                        const target = topCardRef.current?.querySelector(
+                            '[data-flip-clickable]',
+                        ) as HTMLElement | null
+                        if (target) target.click()
+                        else handlePackReveal()
                     }
                 }
             }
@@ -1176,7 +1194,10 @@ export default function PackOpening({
                     sparks={sparks}
                 />
                 {screenFlash && (
-                    <div className="screen-flash-overlay" style={{ zIndex: 100 }} />
+                    <div
+                        className="screen-flash-overlay"
+                        style={{ zIndex: 100 }}
+                    />
                 )}
 
                 {/* pack */}
@@ -1798,13 +1819,14 @@ export default function PackOpening({
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center',
+                                marginTop: 'min(40px, 6vh)',
                             }}
                         >
                             <div
                                 className="relative flex items-center justify-center"
                                 style={{
-                                    height: 'min(350px, 80vw)',
-                                    width: 'min(280px, 72vw)',
+                                    height: isMobile ? 'min(350px, 80vw)' : 504,
+                                    width: isMobile ? 'min(280px, 72vw)' : 360,
                                     position: 'relative',
                                 }}
                             >
@@ -1926,13 +1948,12 @@ export default function PackOpening({
                                     )
                                 })}
                             </div>
-
                         </div>
-                        {/* flip-all button — anchored at bottom so it doesn't shift card centering */}
+                        {/* flip-all button — anchored above tap-to-continue */}
                         <div
                             style={{
                                 position: 'absolute',
-                                bottom: 24,
+                                bottom: 56,
                                 left: 0,
                                 right: 0,
                                 display: 'flex',
@@ -1971,8 +1992,8 @@ export default function PackOpening({
                                             disabled={packTransitioning}
                                             style={{
                                                 position: 'fixed',
-                                                top: 58,
-                                                right: 16,
+                                                top: 12,
+                                                right: 12,
                                                 background: 'none',
                                                 border: 'none',
                                                 color: 'rgba(255,255,255,0.4)',
@@ -1988,6 +2009,26 @@ export default function PackOpening({
                                         </button>,
                                         document.body,
                                     )}
+                                {/* pack counter — top-left */}
+                                {createPortal(
+                                    <div
+                                        style={{
+                                            position: 'fixed',
+                                            top: 14,
+                                            left: 14,
+                                            fontSize: '0.68rem',
+                                            fontWeight: 700,
+                                            letterSpacing: '0.12em',
+                                            color: '#9ca3af',
+                                            textTransform: 'uppercase',
+                                            zIndex: 10002,
+                                            pointerEvents: 'none',
+                                        }}
+                                    >
+                                        Pack {multiPackIndex + 1} / {openCount}
+                                    </div>,
+                                    document.body,
+                                )}
                                 {showRarity &&
                                     rarityCard &&
                                     !allFlipped &&
@@ -2042,7 +2083,7 @@ export default function PackOpening({
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
-                                        paddingTop: 'min(10px, 8vw)',
+                                        marginTop: 'min(40px, 6vh)',
                                         position: 'relative',
                                         width: '100%',
                                     }}
@@ -2463,6 +2504,11 @@ export default function PackOpening({
                                                     return (
                                                         <div
                                                             key={`${card.id}-${packStart + i}`}
+                                                            ref={
+                                                                isTop
+                                                                    ? topCardRef
+                                                                    : undefined
+                                                            }
                                                             className={`absolute${fanVisible ? ' card-fan-fly' : ''}`}
                                                             style={
                                                                 fanVisible
@@ -2583,19 +2629,6 @@ export default function PackOpening({
                                             )}
                                         </div>
                                     </div>
-                                    {/* pack counter — bottom center */}
-                                    <div
-                                        style={{
-                                            marginTop: 20,
-                                            fontSize: '0.68rem',
-                                            fontWeight: 700,
-                                            letterSpacing: '0.12em',
-                                            color: '#6b7280',
-                                            textTransform: 'uppercase',
-                                        }}
-                                    >
-                                        Pack {multiPackIndex + 1} / {openCount}
-                                    </div>
                                 </div>
                             </>
                         )
@@ -2644,51 +2677,73 @@ export default function PackOpening({
                                             />
                                         </div>
                                     )}
-                                {/* Rarity + NEW tags */}
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        top: 8,
-                                        right: 8,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 4,
-                                    }}
-                                >
-                                    <span
-                                        className={rarityTextClass(
-                                            currentCard.rarity,
-                                        )}
+                                {/* Rarity + NEW tags — desktop only; mobile shows rarity above card and NEW inside card */}
+                                {!isMobile && (
+                                    <div
                                         style={{
-                                            fontSize: '0.55rem',
-                                            fontWeight: 700,
-                                            padding: '2px 6px',
-                                            lineHeight: 1.4,
-                                            borderRadius: 9999,
-                                            background: 'rgba(10,10,15,0.82)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
-                                            letterSpacing: '0.03em',
-                                            textTransform: 'uppercase',
-                                            ...rarityTextStyle(
-                                                currentCard.rarity,
-                                            ),
+                                            position: 'absolute',
+                                            top: 8,
+                                            right: 8,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 4,
                                         }}
                                     >
-                                        {currentCard.rarity}
-                                    </span>
-                                    {currentCardIsNew && (
                                         <span
-                                            className="bg-green-950 text-green-400 border border-green-700/50 rounded-full"
+                                            className={rarityTextClass(
+                                                currentCard.rarity,
+                                            )}
                                             style={{
-                                                fontSize: '0.6rem',
-                                                padding: '2px 7px',
+                                                fontSize: '0.55rem',
+                                                fontWeight: 700,
+                                                padding: '2px 6px',
                                                 lineHeight: 1.4,
+                                                borderRadius: 9999,
+                                                background:
+                                                    'rgba(10,10,15,0.82)',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                letterSpacing: '0.03em',
+                                                textTransform: 'uppercase',
+                                                ...rarityTextStyle(
+                                                    currentCard.rarity,
+                                                ),
                                             }}
                                         >
-                                            NEW
+                                            {currentCard.rarity}
                                         </span>
-                                    )}
-                                </div>
+                                        {currentCardIsNew && (
+                                            <span
+                                                className="bg-green-950 text-green-400 border border-green-700/50 rounded-full"
+                                                style={{
+                                                    fontSize: '0.6rem',
+                                                    padding: '2px 7px',
+                                                    lineHeight: 1.4,
+                                                }}
+                                            >
+                                                NEW
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                                {/* Mobile: NEW badge inside card image, top-right */}
+                                {isMobile && currentCardIsNew && (
+                                    <span
+                                        className="bg-green-950 text-green-400 border border-green-700/50 rounded-full"
+                                        style={{
+                                            position: 'absolute',
+                                            top: 8,
+                                            right: 8,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 700,
+                                            padding: '2px 7px',
+                                            lineHeight: 1.4,
+                                            letterSpacing: '0.04em',
+                                            zIndex: 6,
+                                        }}
+                                    >
+                                        NEW
+                                    </span>
+                                )}
                                 {shattering && (
                                     <ShatterEffect
                                         rarity={currentCard.rarity}
@@ -2713,64 +2768,6 @@ export default function PackOpening({
                                         variant="detail"
                                         side="right"
                                     />
-                                )}
-                                {/* Mobile overlays: name top-left, Details top-right */}
-                                {isMobile && (
-                                    <>
-                                        <div
-                                            style={{
-                                                position: 'absolute',
-                                                top: 10,
-                                                left: 14,
-                                                zIndex: 20,
-                                                pointerEvents: 'none',
-                                                maxWidth: '55%',
-                                            }}
-                                        >
-                                            <span
-                                                style={{
-                                                    fontSize: '0.72rem',
-                                                    fontWeight: 700,
-                                                    color: '#fff',
-                                                    textShadow:
-                                                        '0 1px 4px rgba(0,0,0,0.9)',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap',
-                                                    display: 'block',
-                                                }}
-                                            >
-                                                {currentCard.name}
-                                            </span>
-                                            <span
-                                                style={{
-                                                    fontSize: '0.6rem',
-                                                    color: 'rgba(255,255,255,0.55)',
-                                                    fontFamily: 'monospace',
-                                                    textShadow:
-                                                        '0 1px 3px rgba(0,0,0,0.8)',
-                                                }}
-                                            >
-                                                #
-                                                {String(
-                                                    currentCard.national_pokedex_number ??
-                                                        0,
-                                                ).padStart(3, '0')}
-                                            </span>
-                                        </div>
-                                        <button
-                                            onClick={() => setShowDetails(true)}
-                                            className="btn-details-glow"
-                                            style={{
-                                                position: 'absolute',
-                                                top: 10,
-                                                right: 14,
-                                                zIndex: 20,
-                                            }}
-                                        >
-                                            Details
-                                        </button>
-                                    </>
                                 )}
                             </div>
                         )
@@ -2858,32 +2855,106 @@ export default function PackOpening({
                                     }}
                                 >
                                     {isMobile ? (
-                                        /* ── Mobile: counter → card with arrows → name+details ── */
+                                        /* ── Mobile: rarity → name+details → card → counter+arrows ── */
                                         <div
                                             style={{
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 alignItems: 'center',
-                                                gap: 6,
+                                                gap: 8,
                                                 width: '100%',
                                             }}
                                         >
-                                            {/* card counter — top center */}
-                                            <span
-                                                style={{
-                                                    fontSize: '0.72rem',
-                                                    color: 'var(--app-text-muted)',
-                                                }}
-                                            >
-                                                {doneIndex + 1} /{' '}
-                                                {remainingCards.length}
-                                            </span>
-                                            {/* card with arrows flanking */}
+                                            {/* rarity (above card, centered) — NEW badge sits on the card image */}
                                             <div
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 6,
+                                                }}
+                                            >
+                                                <span
+                                                    className={rarityTextClass(
+                                                        currentCard.rarity,
+                                                    )}
+                                                    style={{
+                                                        fontSize: '0.6rem',
+                                                        fontWeight: 700,
+                                                        padding: '3px 10px',
+                                                        lineHeight: 1.4,
+                                                        borderRadius: 9999,
+                                                        background:
+                                                            'rgba(10,10,15,0.82)',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        letterSpacing: '0.06em',
+                                                        textTransform:
+                                                            'uppercase',
+                                                        ...rarityTextStyle(
+                                                            currentCard.rarity,
+                                                        ),
+                                                    }}
+                                                >
+                                                    {currentCard.rarity}
+                                                </span>
+                                            </div>
+                                            {/* name + dex + Details (above card, centered) */}
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
                                                     gap: 8,
+                                                    maxWidth: '100%',
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: 700,
+                                                        color: '#fff',
+                                                        overflow: 'hidden',
+                                                        textOverflow:
+                                                            'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        maxWidth: '50vw',
+                                                    }}
+                                                >
+                                                    {currentCard.name}
+                                                </span>
+                                                <span
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        color: 'rgba(255,255,255,0.55)',
+                                                        fontFamily: 'monospace',
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    #
+                                                    {String(
+                                                        currentCard.national_pokedex_number ??
+                                                            0,
+                                                    ).padStart(3, '0')}
+                                                </span>
+                                                <button
+                                                    onClick={() =>
+                                                        setShowDetails(true)
+                                                    }
+                                                    className="btn-details-glow"
+                                                    style={{ flexShrink: 0 }}
+                                                >
+                                                    Details
+                                                </button>
+                                            </div>
+                                            {/* card image (clean) */}
+                                            {cardNode}
+                                            {/* arrows + counter (below card, centered) */}
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 16,
                                                 }}
                                             >
                                                 <button
@@ -2899,7 +2970,7 @@ export default function PackOpening({
                                                     style={{
                                                         border: 'none',
                                                         color: 'var(--app-text-secondary)',
-                                                        padding: '8px 14px',
+                                                        padding: '6px 14px',
                                                         borderRadius: 8,
                                                         fontSize: '1rem',
                                                         background:
@@ -2910,7 +2981,18 @@ export default function PackOpening({
                                                 >
                                                     ←
                                                 </button>
-                                                {cardNode}
+                                                <span
+                                                    style={{
+                                                        fontSize: '0.75rem',
+                                                        color: 'var(--app-text-muted)',
+                                                        fontFamily: 'monospace',
+                                                        minWidth: 50,
+                                                        textAlign: 'center',
+                                                    }}
+                                                >
+                                                    {doneIndex + 1} /{' '}
+                                                    {remainingCards.length}
+                                                </span>
                                                 <button
                                                     onClick={() =>
                                                         setDoneIndex(
@@ -2922,7 +3004,7 @@ export default function PackOpening({
                                                     style={{
                                                         border: 'none',
                                                         color: 'var(--app-text-secondary)',
-                                                        padding: '8px 14px',
+                                                        padding: '6px 14px',
                                                         borderRadius: 8,
                                                         fontSize: '1rem',
                                                         background:

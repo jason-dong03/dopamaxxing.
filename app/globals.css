@@ -571,19 +571,17 @@ body {
 }
 
 /* ── Legendary+ 3D rotateY spin after reveal ──────────────────────────────
-   3 consecutive smooth spins, each pulse bigger than the last. Ends at
-   rotateY(1080deg) (= 0deg visually) so the card art faces forward. */
+   2 consecutive smooth spins; second pulse bigger. Ends at rotateY(720deg)
+   (= 0deg visually) so the card art faces forward. */
 @keyframes legendary3DSpin {
-    0%   { transform: rotateY(0deg)    scale(1); }
-    16%  { transform: rotateY(180deg)  scale(1.06); }
-    33%  { transform: rotateY(360deg)  scale(0.98); }
-    50%  { transform: rotateY(540deg)  scale(1.15); }
-    66%  { transform: rotateY(720deg)  scale(1); }
-    83%  { transform: rotateY(900deg)  scale(1.26); }
-    100% { transform: rotateY(1080deg) scale(1); }
+    0%   { transform: rotateY(0deg)   scale(1); }
+    25%  { transform: rotateY(180deg) scale(1.08); }
+    50%  { transform: rotateY(360deg) scale(0.98); }
+    75%  { transform: rotateY(540deg) scale(1.22); }
+    100% { transform: rotateY(720deg) scale(1); }
 }
 .animate-legendary-3d-spin {
-    animation: legendary3DSpin 1500ms cubic-bezier(0.45, 0, 0.55, 1) forwards;
+    animation: legendary3DSpin 1100ms cubic-bezier(0.45, 0, 0.55, 1) forwards;
 }
 
 /* ── Sparks bursting from card center after legendary spin ──────────────── */
@@ -2246,4 +2244,23 @@ body {
 }
 .animate-dashboard-fade-in {
     animation: dashboardFadeIn 450ms ease-out;
+}
+
+/* ── Black market panel: pulsing white glow border ─────────────────────── */
+@keyframes bmPanelGlow {
+    0%, 100% {
+        box-shadow:
+            0 8px 40px rgba(0, 0, 0, 0.7),
+            0 0 8px 1px rgba(255, 255, 255, 0.35),
+            0 0 18px 2px rgba(255, 255, 255, 0.18);
+    }
+    50% {
+        box-shadow:
+            0 8px 40px rgba(0, 0, 0, 0.7),
+            0 0 16px 3px rgba(255, 255, 255, 0.7),
+            0 0 32px 8px rgba(255, 255, 255, 0.32);
+    }
+}
+.bm-panel-glow {
+    animation: bmPanelGlow 2.4s ease-in-out infinite;
 }
