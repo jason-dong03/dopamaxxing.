@@ -713,11 +713,16 @@ function MobilePackCarousel({
 }) {
     const containerRef = useRef<HTMLDivElement>(null)
     const storageKey = `pack-carousel-idx:${tabKey}`
+    const hadSavedIndex = useRef(false)
     const [currentIndex, setCurrentIndex] = useState(() => {
         if (typeof window === 'undefined') return 0
         const saved = sessionStorage.getItem(storageKey)
-        const n = saved ? parseInt(saved, 10) : 0
-        return Number.isFinite(n) && n >= 0 ? Math.min(n, Math.max(0, packs.length - 1)) : 0
+        const n = saved ? parseInt(saved, 10) : NaN
+        if (Number.isFinite(n) && n >= 0) {
+            hadSavedIndex.current = true
+            return Math.min(n, Math.max(0, packs.length - 1))
+        }
+        return 0
     })
 
     // restore scroll position on mount / when pack count changes
@@ -730,6 +735,27 @@ function MobilePackCarousel({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [packs.length])
+
+    // First-time auto-select: jump to the first in-stock, level-unlocked pack
+    // once stock data arrives. Skipped if the user already has a saved position
+    // for this tab (so navigating back doesn't yank them).
+    const autoSelectedRef = useRef(false)
+    useEffect(() => {
+        if (autoSelectedRef.current || hadSavedIndex.current) return
+        if (isAdmin) { autoSelectedRef.current = true; return }
+        if (Object.keys(stock).length === 0) return
+        const idx = packs.findIndex((p) => {
+            const levelOk = !p.level_required || userLevel >= p.level_required
+            return levelOk && (stock[p.id] ?? 0) > 0
+        })
+        if (idx <= 0) { autoSelectedRef.current = true; return }
+        autoSelectedRef.current = true
+        setCurrentIndex(idx)
+        sessionStorage.setItem(storageKey, String(idx))
+        const el = containerRef.current
+        const child = el?.children[idx] as HTMLElement | undefined
+        if (el && child) el.scrollTo({ left: child.offsetLeft, behavior: 'auto' })
+    }, [stock, packs, isAdmin, userLevel, storageKey])
 
     function handleScroll() {
         const el = containerRef.current

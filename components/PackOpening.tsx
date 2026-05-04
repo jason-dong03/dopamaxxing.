@@ -264,17 +264,6 @@ export default function PackOpening({
                         setUserLevel(lvl)
                         // XP per pack = 15 * sqrt(level), same formula as server
                         setXpGainPerPack(Math.round(15 * Math.sqrt(lvl)))
-                        // auto-select highest affordable batch count
-                        if (!free && effectiveCost > 0 && stock > 1) {
-                            const maxAffordable = Math.max(
-                                1,
-                                Math.min(
-                                    stock,
-                                    Math.floor(coins / effectiveCost),
-                                ),
-                            )
-                            setSelectedCount(maxAffordable)
-                        }
                     }
                 })
         })
@@ -1598,49 +1587,52 @@ export default function PackOpening({
                                     marginTop: 4,
                                 }}
                             >
-                                {!isAdmin && stock > 1 && (
-                                    <button
-                                        onClick={() =>
-                                            setSelectedCount((n) =>
-                                                n >= stock ? 1 : n + 1,
-                                            )
-                                        }
-                                        disabled={
-                                            spinning || exiting || ripping
-                                        }
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 6,
-                                            background:
-                                                selectedCount > 1
+                                {!isAdmin && stock > 1 && (() => {
+                                    const batchTarget = stock >= 10 ? 10 : stock
+                                    const isAll = batchTarget < 10
+                                    const active = selectedCount > 1
+                                    return (
+                                        <button
+                                            onClick={() =>
+                                                setSelectedCount((n) =>
+                                                    n > 1 ? 1 : batchTarget,
+                                                )
+                                            }
+                                            disabled={
+                                                spinning || exiting || ripping
+                                            }
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                background: active
                                                     ? 'rgba(96,165,250,0.22)'
                                                     : 'rgba(96,165,250,0.08)',
-                                            border:
-                                                selectedCount > 1
+                                                border: active
                                                     ? '1px solid rgba(96,165,250,0.7)'
                                                     : '1px solid rgba(96,165,250,0.25)',
-                                            borderRadius: 20,
-                                            padding: '6px 18px',
-                                            color:
-                                                selectedCount > 1
+                                                borderRadius: 20,
+                                                padding: '6px 18px',
+                                                color: active
                                                     ? '#bfdbfe'
                                                     : '#60a5fa',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            letterSpacing: '-0.01em',
-                                            transition:
-                                                'background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
-                                            boxShadow:
-                                                selectedCount > 1
+                                                fontSize: '0.72rem',
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                                letterSpacing: '-0.01em',
+                                                transition:
+                                                    'background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
+                                                boxShadow: active
                                                     ? '0 0 14px rgba(96,165,250,0.3)'
                                                     : 'none',
-                                        }}
-                                    >
-                                        {selectedCount}x
-                                    </button>
-                                )}
+                                            }}
+                                        >
+                                            {isAll
+                                                ? `Open all (${batchTarget}x)`
+                                                : '10x'}
+                                        </button>
+                                    )
+                                })()}
                                 {isAdmin &&
                                     ([10] as const).map((n) => (
                                         <button
