@@ -21,9 +21,7 @@ import {
 const _cache: {
     stock: Record<string, number>
     discounts: Record<string, number>
-    nextRefreshStandard: string | null
-    nextRefreshSpecial: string | null
-    nextRefreshBox: string | null
+    nextRefreshAt: string | null
     allPacks: Pack[]
     bagCount: number | null
     bagCapacity: number
@@ -32,9 +30,7 @@ const _cache: {
 } = {
     stock: {},
     discounts: {},
-    nextRefreshStandard: null,
-    nextRefreshSpecial: null,
-    nextRefreshBox: null,
+    nextRefreshAt: null,
     allPacks: PACKS,
     bagCount: null,
     bagCapacity: 50,
@@ -42,7 +38,26 @@ const _cache: {
     isAdmin: false,
 }
 
-export default function PackSelector({ coins: _unusedCoins }: { coins?: number }) {
+export type InitialStock = {
+    stock: Record<string, number>
+    discounts: Record<string, number>
+    nextRefreshAt: string | null
+}
+
+export default function PackSelector({
+    coins: _unusedCoins,
+    initialStock,
+}: {
+    coins?: number
+    initialStock?: InitialStock
+}) {
+    // Seed module cache once with server-fetched stock so subsequent tab
+    // switches reuse it without a re-fetch flash.
+    if (initialStock && _cache.nextRefreshAt === null) {
+        _cache.stock = initialStock.stock
+        _cache.discounts = initialStock.discounts
+        _cache.nextRefreshAt = initialStock.nextRefreshAt
+    }
     const { profile } = useProfile()
     // null = not yet initialized. Once profile loads we set it once and own it locally.
     const [coins, setCoins] = useState<number | null>(null)
@@ -94,11 +109,17 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
     const [activeTab, setActiveTab] = useState<
         'classic' | 'special' | 'crates' | 'test'
     >('classic')
-    const [stock, setStock] = useState<Record<string, number>>(() => _cache.stock)
-    const [discounts, setDiscounts] = useState<Record<string, number>>(() => _cache.discounts)
-    const [nextRefreshStandard, setNextRefreshStandard] = useState<string | null>(() => _cache.nextRefreshStandard)
-    const [nextRefreshSpecial, setNextRefreshSpecial] = useState<string | null>(() => _cache.nextRefreshSpecial)
-    const [nextRefreshBox, setNextRefreshBox] = useState<string | null>(() => _cache.nextRefreshBox)
+    // Prefer the server-fetched initial stock for the very first render so
+    // packs never paint as "out of stock" while a client fetch is in flight.
+    const [stock, setStock] = useState<Record<string, number>>(
+        () => initialStock?.stock ?? _cache.stock,
+    )
+    const [discounts, setDiscounts] = useState<Record<string, number>>(
+        () => initialStock?.discounts ?? _cache.discounts,
+    )
+    const [nextRefreshAt, setNextRefreshAt] = useState<string | null>(
+        () => initialStock?.nextRefreshAt ?? _cache.nextRefreshAt,
+    )
 
     const refreshStock = useCallback(() => {
         fetch('/api/shop/stock')
@@ -108,9 +129,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                 setStock(json.stock)
                 _cache.stock = json.stock
                 if (json.discounts) { setDiscounts(json.discounts); _cache.discounts = json.discounts }
-                if (json.next_refresh_standard) { setNextRefreshStandard(json.next_refresh_standard); _cache.nextRefreshStandard = json.next_refresh_standard }
-                if (json.next_refresh_special) { setNextRefreshSpecial(json.next_refresh_special); _cache.nextRefreshSpecial = json.next_refresh_special }
-                if (json.next_refresh_box) { setNextRefreshBox(json.next_refresh_box); _cache.nextRefreshBox = json.next_refresh_box }
+                if (json.next_refresh_at) { setNextRefreshAt(json.next_refresh_at); _cache.nextRefreshAt = json.next_refresh_at }
             })
             .catch(() => {})
     }, [])
@@ -158,56 +177,24 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                 _cache.bagCapacity = capacity
                 _cache.userLevel = level
                 _cache.isAdmin = admin
-                if (!admin) refreshStock()
+                // Skip initial fetch if server-rendered initial stock was provided
+                if (!admin && !initialStock) refreshStock()
             })
         })
-    }, [refreshStock])
+    }, [refreshStock, initialStock])
 
-    // Independent auto-refresh timers per group
+    // Single auto-refresh timer for all packs
     useEffect(() => {
-        if (!nextRefreshStandard) return
-        const diff = Math.max(
-            0,
-            new Date(nextRefreshStandard).getTime() - Date.now(),
-        )
+        if (!nextRefreshAt) return
+        const diff = Math.max(0, new Date(nextRefreshAt).getTime() - Date.now())
         const id = setTimeout(() => {
-            setNextRefreshStandard(
+            setNextRefreshAt(
                 new Date(Date.now() + 5 * 60 * 1000).toISOString(),
             )
             refreshStock()
         }, diff)
         return () => clearTimeout(id)
-    }, [nextRefreshStandard, refreshStock])
-
-    useEffect(() => {
-        if (!nextRefreshSpecial) return
-        const diff = Math.max(
-            0,
-            new Date(nextRefreshSpecial).getTime() - Date.now(),
-        )
-        const id = setTimeout(() => {
-            setNextRefreshSpecial(
-                new Date(Date.now() + 8 * 60 * 1000).toISOString(),
-            )
-            refreshStock()
-        }, diff)
-        return () => clearTimeout(id)
-    }, [nextRefreshSpecial, refreshStock])
-
-    useEffect(() => {
-        if (!nextRefreshBox) return
-        const diff = Math.max(
-            0,
-            new Date(nextRefreshBox).getTime() - Date.now(),
-        )
-        const id = setTimeout(() => {
-            setNextRefreshBox(
-                new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-            )
-            refreshStock()
-        }, diff)
-        return () => clearTimeout(id)
-    }, [nextRefreshBox, refreshStock])
+    }, [nextRefreshAt, refreshStock])
 
     if (selectedPack) {
         const usePackOpening =
@@ -280,7 +267,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             {/* ── fixed header: bag warning + black market + tabs ── */}
-            <div style={{ flexShrink: 0, width: '100%', maxWidth: 700, margin: '0 auto', padding: '14px 16px 0' }}>
+            <div style={{ flexShrink: 0, width: '100%', maxWidth: 700, margin: '0 auto', padding: 'clamp(6px, 1.6vw, 14px) 16px 0' }}>
                 {bagFull && (
                     <div
                         style={{
@@ -326,7 +313,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
             {/* ── scrollable pack list ── */}
             <div
                 ref={scrollContainerRef}
-                style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 24px' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px clamp(10px, 2vw, 24px)' }}
             >
                 <div style={{ width: '100%', maxWidth: 700, margin: '0 auto' }}>
                     {activeTab === 'classic' && packs.length > 0 && (
@@ -340,7 +327,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                             discounts={discounts}
                             isAdmin={isAdmin}
                             userLevel={userLevel}
-                            nextRefreshAt={isAdmin ? null : nextRefreshStandard}
+                            nextRefreshAt={isAdmin ? null : nextRefreshAt}
                             onStockExpired={refreshStock}
                             hoveredId={hoveredId}
                             onHover={setHoveredId}
@@ -365,7 +352,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                             discounts={discounts}
                             isAdmin={isAdmin}
                             userLevel={userLevel}
-                            nextRefreshAt={isAdmin ? null : nextRefreshSpecial}
+                            nextRefreshAt={isAdmin ? null : nextRefreshAt}
                             onStockExpired={refreshStock}
                             hoveredId={hoveredId}
                             onHover={setHoveredId}
@@ -390,7 +377,7 @@ export default function PackSelector({ coins: _unusedCoins }: { coins?: number }
                             discounts={discounts}
                             isAdmin={isAdmin}
                             userLevel={userLevel}
-                            nextRefreshAt={isAdmin ? null : nextRefreshBox}
+                            nextRefreshAt={isAdmin ? null : nextRefreshAt}
                             onStockExpired={refreshStock}
                             hoveredId={hoveredId}
                             onHover={setHoveredId}
@@ -462,7 +449,7 @@ function PackTabs({
             style={{
                 width: '100%',
                 maxWidth: 660,
-                margin: '0 auto 18px',
+                margin: '0 auto clamp(6px, 1.6vw, 18px)',
                 display: 'flex',
                 justifyContent: 'center',
             }}
@@ -947,7 +934,7 @@ function MobilePackCard({
                             width: 'auto',
                             maxWidth: '100%',
                             height: 'auto',
-                            maxHeight: 'min(46vh, 400px)',
+                            maxHeight: 'min(54vh, 460px)',
                             objectFit: 'contain',
                             filter: bagFull
                                 ? 'drop-shadow(0 0 6px rgba(228,228,228,0.12))'

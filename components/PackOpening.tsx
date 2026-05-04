@@ -1828,8 +1828,8 @@ export default function PackOpening({
                             <div
                                 className="relative flex items-center justify-center"
                                 style={{
-                                    height: isMobile ? 'min(350px, 80vw)' : 504,
-                                    width: isMobile ? 'min(280px, 72vw)' : 360,
+                                    height: isMobile ? 'min(440px, 92vw)' : 504,
+                                    width: isMobile ? 'min(320px, 82vw)' : 360,
                                     position: 'relative',
                                 }}
                             >
@@ -1946,6 +1946,8 @@ export default function PackOpening({
                                                     setSpecialActive(active)
                                                     setSpecialGlow(glow)
                                                 }}
+                                                cardWidth={isMobile ? 300 : 260}
+                                                cardHeight={isMobile ? 420 : 364}
                                             />
                                         </div>
                                     )
@@ -2209,7 +2211,7 @@ export default function PackOpening({
                                                                         )
                                                                 }}
                                                                 style={{
-                                                                    height: 'min(300px, 68vw)',
+                                                                    height: 'min(380px, 84vw)',
                                                                     width: 'auto',
                                                                     flexShrink: 0,
                                                                     touchAction:
@@ -2221,7 +2223,7 @@ export default function PackOpening({
                                                                     alt={bc.name}
                                                                     className="rounded-xl"
                                                                     style={{
-                                                                        height: 'min(300px, 68vw)',
+                                                                        height: 'min(380px, 84vw)',
                                                                         width: 'auto',
                                                                         boxShadow: `0 0 20px 6px rgba(${rarityGlowRgb(bc.rarity)}, 0.65)`,
                                                                         pointerEvents:
@@ -2415,8 +2417,8 @@ export default function PackOpening({
                                             <div
                                                 className="relative flex items-center justify-center"
                                                 style={{
-                                                    height: 'min(350px, 80vw)',
-                                                    width: 'min(280px, 72vw)',
+                                                    height: 'min(440px, 92vw)',
+                                                    width: 'min(320px, 82vw)',
                                                 }}
                                             >
                                                 {/* rarity glow */}
@@ -2557,6 +2559,8 @@ export default function PackOpening({
                                                                         glow,
                                                                     )
                                                                 }}
+                                                                cardWidth={isMobile ? 300 : 260}
+                                                                cardHeight={isMobile ? 420 : 364}
                                                             />
                                                         </div>
                                                     )
@@ -2618,7 +2622,7 @@ export default function PackOpening({
                                     className={`rounded-xl${currentIsRainbow ? ' glow-rainbow' : ''}`}
                                     style={{
                                         height: isMobile
-                                            ? 'min(360px, 76vw)'
+                                            ? 'min(440px, 88vw)'
                                             : '420px',
                                         width: 'auto',
                                         opacity: shattering ? 0 : 1,

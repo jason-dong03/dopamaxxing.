@@ -1,13 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { PACKS } from '@/lib/packs'
+import { PACKS, type Pack } from '@/lib/packs'
 import { getEventMagnitude } from '@/lib/dailyEvents'
 
-// Each group refreshes on its own independent timer
-export const REFRESH_MS = {
-    standard: 5  * 60 * 1000,  // 5 min
-    special:  8  * 60 * 1000,  // 8 min
-    box:      15 * 60 * 1000,  // 15 min
-}
+// Single unified refresh window for all unlocked packs
+export const REFRESH_MS = 5 * 60 * 1000  // 5 min
 
 const PACK_UNLOCK_LEVEL: Record<string, number> = {
     'sv02':            1,
@@ -35,69 +31,78 @@ const PACK_UNLOCK_LEVEL: Record<string, number> = {
     'xy-p-poncho':     50,
 }
 
-type Group = 'standard' | 'special' | 'box'
+/** Per-pack hard ceiling so a single "winning" pack can't dominate too hard */
+const PER_PACK_CAP = 50
 
-function getGroup(pack: { aspect?: string; special?: boolean; theme_pokedex_ids?: number[] }): Group {
-    if (pack.aspect === 'box') return 'box'
-    if (pack.special || pack.theme_pokedex_ids?.length) return 'special'
-    return 'standard'
+/** Total stock cap across all unlocked packs — grows with level */
+export function computeStockCap(level: number): number {
+    // L1 → 25, L10 → 35, L25 → 50, L50 → 75, capped at 80
+    return Math.min(24 + level, 80)
 }
 
-/** Random stock roll per pack — up to 8 for standard, scarcer for rarer types */
-function rollStock(packId: string, surgeMult: number = 1): number {
-    const pack = PACKS.find(p => p.id === packId)
-    if (!pack) return 0
+/**
+ * "All-or-nothing" distribution:
+ *   • Pick a small number of "winner" packs (1–4, biased low).
+ *   • Pour the cap into them with heavy weighting toward the first winner.
+ *   • Everyone else gets 0.
+ *
+ * Result feels like: "30 of pack A, 12 of pack B, 0 for the rest."
+ */
+function distributeStock(
+    unlockedPacks: Pack[],
+    cap: number,
+    surgeMult: number,
+): Record<string, number> {
+    const stock: Record<string, number> = {}
+    for (const p of unlockedPacks) stock[p.id] = 0
+    if (unlockedPacks.length === 0 || cap <= 0) return stock
 
     const r = Math.random()
-    let qty: number
+    let numWinners: number
+    if (r < 0.40)      numWinners = 1
+    else if (r < 0.75) numWinners = 2
+    else if (r < 0.92) numWinners = 3
+    else               numWinners = 4
+    numWinners = Math.min(numWinners, unlockedPacks.length)
 
-    // Crates/boxes: extremely rare — 90% chance of 0, 10% chance of 1
-    if (pack.aspect === 'box') {
-        qty = r < 0.90 ? 0 : 1
-    } else if (packId.includes('base')) {
-        // Base sets: rare
-        if (r < 0.25) qty = 0
-        else if (r < 0.55) qty = 1
-        else if (r < 0.80) qty = 2
-        else if (r < 0.95) qty = 3
-        else qty = 4
-    } else if (pack.special || pack.theme_pokedex_ids?.length) {
-        // Special / themed packs: moderate scarcity
-        if (r < 0.12) qty = 0
-        else if (r < 0.35) qty = 1
-        else if (r < 0.60) qty = 2
-        else if (r < 0.80) qty = 3
-        else if (r < 0.93) qty = 4
-        else qty = 5
-    } else {
-        // Standard packs: dramatic variance, up to 8
-        if (r < 0.05) qty = 1
-        else if (r < 0.15) qty = 2
-        else if (r < 0.35) qty = 3
-        else if (r < 0.55) qty = 4
-        else if (r < 0.72) qty = 5
-        else if (r < 0.85) qty = 6
-        else if (r < 0.94) qty = 7
-        else qty = 8
+    // Shuffle so picks are random
+    const shuffled = [...unlockedPacks]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    const winners = shuffled.slice(0, numWinners)
+
+    // Heavy bias to first winner: weight i = 0.55^i * (0.7 + rand*0.6)
+    const weights = winners.map((_, i) => Math.pow(0.55, i) * (0.7 + Math.random() * 0.6))
+    const wSum = weights.reduce((a, b) => a + b, 0)
+
+    const effectiveCap = Math.round(cap * (surgeMult > 1 ? surgeMult : 1))
+    let remaining = Math.min(effectiveCap, PER_PACK_CAP * winners.length)
+
+    for (let i = 0; i < winners.length; i++) {
+        const isLast = i === winners.length - 1
+        const portion = isLast
+            ? remaining
+            : Math.round((weights[i] / wSum) * effectiveCap)
+        const qty = Math.max(1, Math.min(portion, remaining, PER_PACK_CAP))
+        stock[winners[i].id] = qty
+        remaining -= qty
+        if (remaining <= 0) break
     }
 
-    if (surgeMult > 1 && qty > 0) {
-        qty = Math.min(Math.round(qty * surgeMult), 50)
-    }
-    return qty
+    return stock
 }
 
 export type StockResult = {
     stock: Record<string, number>
     discounts: Record<string, number>
-    nextRefreshAt: { standard: string; special: string; box: string }
+    nextRefreshAt: string
+    cap: number
 }
 
 /**
  * Deterministically compute a per-pack discount for the current refresh cycle.
- * Uses a hash of (packId + refreshedAt) so the same pack/refresh always returns
- * the same value — consistent across server and client without a DB column.
- * Returns 0 (no discount) ~65% of the time, otherwise 5/10/15/20%.
  */
 export function computePackDiscount(packId: string, refreshedAt: string): number {
     let h = 0x811c9dc5
@@ -107,16 +112,17 @@ export function computePackDiscount(packId: string, refreshedAt: string): number
         h = (h * 0x01000193) & 0xffffffff
     }
     const roll = Math.abs(h) % 100
-    if (roll < 5)  return 0.20   // 5% chance of 20% off
-    if (roll < 12) return 0.15   // 7% chance of 15% off
-    if (roll < 22) return 0.10   // 10% chance of 10% off
-    if (roll < 35) return 0.05   // 13% chance of 5% off
-    return 0                     // 65% no discount
+    if (roll < 5)  return 0.20
+    if (roll < 12) return 0.15
+    if (roll < 22) return 0.10
+    if (roll < 35) return 0.05
+    return 0
 }
 
 /**
- * Returns current stock, regenerating each group independently when expired.
- * Never bypasses the stock cap — expired stock is always regenerated before use.
+ * Returns current stock, regenerating when expired.
+ * All unlocked non-test packs share a single refresh window and a single
+ * pooled cap that's distributed all-or-nothing across them.
  */
 export async function getOrRefreshStock(
     supabase: SupabaseClient,
@@ -136,70 +142,58 @@ export async function getOrRefreshStock(
         .filter(p => userLevel >= (PACK_UNLOCK_LEVEL[p.id] ?? 1))
 
     const now = Date.now()
-    const newRefreshedAt = new Date().toISOString()
+    const cap = computeStockCap(userLevel)
 
-    const stock: Record<string, number> = {}
-    const packRefreshedAt: Record<string, string> = {}
-    const upsertRows: { user_id: string; pack_id: string; quantity: number; refreshed_at: string }[] = []
-
-    // Track the oldest refreshed_at per group (to determine next refresh time)
-    const groupRefreshed: Record<Group, number> = { standard: 0, special: 0, box: 0 }
-    const groupExpired: Record<Group, boolean> = { standard: false, special: false, box: false }
-
-    // Determine which groups are expired based on existing rows
+    // Determine the pool's "refreshed_at": newest existing row across unlocked packs
+    let poolRefreshed = 0
     for (const pack of unlockedPacks) {
-        const group = getGroup(pack)
         const row = rowMap.get(pack.id)
-        const refreshedAt = row ? new Date(row.refreshed_at).getTime() : 0
-        if (refreshedAt > groupRefreshed[group]) groupRefreshed[group] = refreshedAt
-    }
-    for (const g of ['standard', 'special', 'box'] as Group[]) {
-        groupExpired[g] = now - groupRefreshed[g] >= REFRESH_MS[g]
-    }
-
-    // Check for active stock surge event (only when regenerating)
-    const anyExpired = Object.values(groupExpired).some(Boolean)
-    const surgeMult = anyExpired ? await getEventMagnitude('stock_surge') : 1
-
-    // Build stock: use existing for fresh groups, regenerate for expired groups
-    for (const pack of unlockedPacks) {
-        const group = getGroup(pack)
-        if (groupExpired[group]) {
-            const qty = rollStock(pack.id, surgeMult)
-            stock[pack.id] = qty
-            packRefreshedAt[pack.id] = newRefreshedAt
-            upsertRows.push({ user_id: userId, pack_id: pack.id, quantity: qty, refreshed_at: newRefreshedAt })
-        } else {
-            const row = rowMap.get(pack.id)
-            stock[pack.id] = row ? Number(row.quantity) : 0
-            packRefreshedAt[pack.id] = row?.refreshed_at ?? newRefreshedAt
+        if (row) {
+            const t = new Date(row.refreshed_at).getTime()
+            if (t > poolRefreshed) poolRefreshed = t
         }
     }
+    const expired = poolRefreshed === 0 || now - poolRefreshed >= REFRESH_MS
 
-    // Persist regenerated rows
-    if (upsertRows.length > 0) {
+    let stock: Record<string, number>
+    let refreshedAtIso: string
+
+    if (expired) {
+        const surgeMult = await getEventMagnitude('stock_surge')
+        stock = distributeStock(unlockedPacks, cap, surgeMult)
+        refreshedAtIso = new Date().toISOString()
+
+        const upsertRows = unlockedPacks.map(p => ({
+            user_id: userId,
+            pack_id: p.id,
+            quantity: stock[p.id] ?? 0,
+            refreshed_at: refreshedAtIso,
+        }))
         await supabase.from('pack_stock').upsert(upsertRows, { onConflict: 'user_id,pack_id' })
+
         // Remove stale rows for packs no longer unlocked
         const unlockedIds = new Set(unlockedPacks.map(p => p.id))
         const oldIds = rows.map(r => r.pack_id as string).filter(id => !unlockedIds.has(id))
         if (oldIds.length > 0) {
             await supabase.from('pack_stock').delete().eq('user_id', userId).in('pack_id', oldIds)
         }
+    } else {
+        stock = {}
+        for (const pack of unlockedPacks) {
+            const row = rowMap.get(pack.id)
+            stock[pack.id] = row ? Number(row.quantity) : 0
+        }
+        refreshedAtIso = new Date(poolRefreshed).toISOString()
     }
 
-    // Compute next refresh time for each group
-    const nextRefreshAt = {
-        standard: new Date((groupExpired.standard ? now : groupRefreshed.standard) + REFRESH_MS.standard).toISOString(),
-        special:  new Date((groupExpired.special  ? now : groupRefreshed.special)  + REFRESH_MS.special).toISOString(),
-        box:      new Date((groupExpired.box      ? now : groupRefreshed.box)      + REFRESH_MS.box).toISOString(),
-    }
+    const nextRefreshAt = new Date(
+        (expired ? now : poolRefreshed) + REFRESH_MS,
+    ).toISOString()
 
-    // Compute per-pack discounts from the deterministic hash
     const discounts: Record<string, number> = {}
     for (const pack of unlockedPacks) {
-        const ra = packRefreshedAt[pack.id]
-        if (ra) discounts[pack.id] = computePackDiscount(pack.id, ra)
+        discounts[pack.id] = computePackDiscount(pack.id, refreshedAtIso)
     }
 
-    return { stock, discounts, nextRefreshAt }
+    return { stock, discounts, nextRefreshAt, cap }
 }
