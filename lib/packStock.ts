@@ -40,13 +40,97 @@ export function computeStockCap(level: number): number {
     return Math.min(24 + level, 80)
 }
 
+type PackGroup = 'classic' | 'special' | 'box'
+
+function groupOf(pack: Pack): PackGroup {
+    if (pack.aspect === 'box') return 'box'
+    if (pack.special || (pack.theme_pokedex_ids && pack.theme_pokedex_ids.length))
+        return 'special'
+    return 'classic'
+}
+
+/** Allocate the total cap proportionally across groups (skipping empty ones). */
+function splitCapAcrossGroups(
+    cap: number,
+    counts: Record<PackGroup, number>,
+): Record<PackGroup, number> {
+    const desired: Record<PackGroup, number> = {
+        classic: 0.6,
+        special: 0.3,
+        box: 0.1,
+    }
+    let active: PackGroup[] = (Object.keys(desired) as PackGroup[]).filter(
+        (g) => counts[g] > 0,
+    )
+    if (active.length === 0) return { classic: 0, special: 0, box: 0 }
+    // Box group: 50% chance to skip entirely (boxes are rare on purpose)
+    if (active.includes('box') && Math.random() < 0.5) {
+        active = active.filter((g) => g !== 'box')
+    }
+    const totalShare = active.reduce((s, g) => s + desired[g], 0)
+    const out: Record<PackGroup, number> = { classic: 0, special: 0, box: 0 }
+    let remaining = cap
+    active.forEach((g, i) => {
+        const isLast = i === active.length - 1
+        const slice = isLast
+            ? remaining
+            : Math.round((desired[g] / totalShare) * cap)
+        out[g] = Math.max(1, Math.min(slice, remaining))
+        remaining -= out[g]
+    })
+    return out
+}
+
 /**
- * "All-or-nothing" distribution:
- *   • Pick a small number of "winner" packs (1–4, biased low).
- *   • Pour the cap into them with heavy weighting toward the first winner.
- *   • Everyone else gets 0.
+ * Distribute a per-group budget all-or-nothing across the group's packs.
+ * Picks 1-2 winners (biased to 1) and pours the budget in.
+ */
+function distributeWithinGroup(
+    packs: Pack[],
+    budget: number,
+): Record<string, number> {
+    const out: Record<string, number> = {}
+    if (packs.length === 0 || budget <= 0) return out
+
+    const numWinners = Math.min(
+        packs.length,
+        Math.random() < 0.65 ? 1 : 2, // 65% one winner, 35% two
+    )
+    const shuffled = [...packs]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    const winners = shuffled.slice(0, numWinners)
+
+    const weights = winners.map(
+        (_, i) => Math.pow(0.55, i) * (0.7 + Math.random() * 0.6),
+    )
+    const wSum = weights.reduce((a, b) => a + b, 0)
+
+    let remaining = Math.min(budget, PER_PACK_CAP * winners.length)
+    for (let i = 0; i < winners.length; i++) {
+        const isLast = i === winners.length - 1
+        const portion = isLast
+            ? remaining
+            : Math.round((weights[i] / wSum) * budget)
+        const qty = Math.max(1, Math.min(portion, remaining, PER_PACK_CAP))
+        out[winners[i].id] = qty
+        remaining -= qty
+        if (remaining <= 0) break
+    }
+    return out
+}
+
+/**
+ * Tab-aware all-or-nothing distribution:
+ *   • Classic tab gets ~60% of the cap, Special ~30%, Crates ~10% (and 50% of
+ *     the time crates are skipped entirely so they stay rare).
+ *   • Within each group: pick 1-2 winners (biased to 1) and pour the budget
+ *     in. Other packs in the group → 0.
  *
- * Result feels like: "30 of pack A, 12 of pack B, 0 for the rest."
+ * Result: most tabs have at least one stocked pack each cycle so the user
+ * never lands on a completely empty shop.
  */
 function distributeStock(
     unlockedPacks: Pack[],
@@ -57,38 +141,24 @@ function distributeStock(
     for (const p of unlockedPacks) stock[p.id] = 0
     if (unlockedPacks.length === 0 || cap <= 0) return stock
 
-    const r = Math.random()
-    let numWinners: number
-    if (r < 0.40)      numWinners = 1
-    else if (r < 0.75) numWinners = 2
-    else if (r < 0.92) numWinners = 3
-    else               numWinners = 4
-    numWinners = Math.min(numWinners, unlockedPacks.length)
-
-    // Shuffle so picks are random
-    const shuffled = [...unlockedPacks]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    const groups: Record<PackGroup, Pack[]> = {
+        classic: [],
+        special: [],
+        box: [],
     }
-    const winners = shuffled.slice(0, numWinners)
-
-    // Heavy bias to first winner: weight i = 0.55^i * (0.7 + rand*0.6)
-    const weights = winners.map((_, i) => Math.pow(0.55, i) * (0.7 + Math.random() * 0.6))
-    const wSum = weights.reduce((a, b) => a + b, 0)
+    for (const p of unlockedPacks) groups[groupOf(p)].push(p)
+    const counts: Record<PackGroup, number> = {
+        classic: groups.classic.length,
+        special: groups.special.length,
+        box: groups.box.length,
+    }
 
     const effectiveCap = Math.round(cap * (surgeMult > 1 ? surgeMult : 1))
-    let remaining = Math.min(effectiveCap, PER_PACK_CAP * winners.length)
+    const budgets = splitCapAcrossGroups(effectiveCap, counts)
 
-    for (let i = 0; i < winners.length; i++) {
-        const isLast = i === winners.length - 1
-        const portion = isLast
-            ? remaining
-            : Math.round((weights[i] / wSum) * effectiveCap)
-        const qty = Math.max(1, Math.min(portion, remaining, PER_PACK_CAP))
-        stock[winners[i].id] = qty
-        remaining -= qty
-        if (remaining <= 0) break
+    for (const g of ['classic', 'special', 'box'] as PackGroup[]) {
+        const groupStock = distributeWithinGroup(groups[g], budgets[g])
+        Object.assign(stock, groupStock)
     }
 
     return stock
@@ -146,14 +216,22 @@ export async function getOrRefreshStock(
 
     // Determine the pool's "refreshed_at": newest existing row across unlocked packs
     let poolRefreshed = 0
+    let totalQty = 0
     for (const pack of unlockedPacks) {
         const row = rowMap.get(pack.id)
         if (row) {
             const t = new Date(row.refreshed_at).getTime()
             if (t > poolRefreshed) poolRefreshed = t
+            totalQty += Number(row.quantity) || 0
         }
     }
-    const expired = poolRefreshed === 0 || now - poolRefreshed >= REFRESH_MS
+    // Force regenerate if the user has consumed everything — they shouldn't
+    // be locked out for the full 5-min cooldown if there's nothing left to buy.
+    const exhausted = poolRefreshed > 0 && totalQty === 0
+    const expired =
+        poolRefreshed === 0 ||
+        now - poolRefreshed >= REFRESH_MS ||
+        exhausted
 
     let stock: Record<string, number>
     let refreshedAtIso: string
