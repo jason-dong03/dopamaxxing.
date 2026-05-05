@@ -96,61 +96,102 @@ export default function BootIntro() {
         >
             {/* ── Phase 2: loading screen — mounted as soon as we leave logo ── */}
             {phase !== 'logo' && (
-                <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src="/assets/loading-screen.png"
-                        alt=""
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#000',
+                    }}
+                >
+                    {/* Image wrapper preserves the full image (no crop) and
+                        anchors the progress bar to the image's bottom edge */}
+                    <div
                         style={{
-                            position: 'absolute',
-                            inset: 0,
-                            width: '100%',
+                            position: 'relative',
                             height: '100%',
-                            objectFit: 'cover',
-                            objectPosition: 'center',
+                            aspectRatio: '941 / 1672',
+                            maxWidth: '100%',
+                            maxHeight: '100vh',
                         }}
-                    />
-                    <div style={{
-                        position: 'absolute', bottom: 0, left: 0, right: 0, height: 220,
-                        background: 'linear-gradient(0deg, rgba(0,0,0,0.85), transparent)',
-                        pointerEvents: 'none',
-                    }} />
-                    <div style={{
-                        position: 'absolute', bottom: 0, left: 0, right: 0,
-                        padding: '20px 24px 32px',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-                        pointerEvents: 'none',
-                    }}>
-                        <span
-                            key={labelFor(progress)}
+                    >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src="/assets/loading-screen.png"
+                            alt=""
                             style={{
-                                fontSize: '0.72rem',
-                                color: 'rgba(255,255,255,0.72)',
-                                letterSpacing: '0.07em',
-                                fontFamily: 'monospace',
-                                animation: 'bootLabelIn 0.28s ease',
-                                textShadow: '0 1px 4px rgba(0,0,0,0.85)',
+                                width: '100%',
+                                height: '100%',
+                                display: 'block',
+                                objectFit: 'contain',
+                            }}
+                        />
+                        {/* gradient sits inside the image area */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: '22%',
+                                background: 'linear-gradient(0deg, rgba(0,0,0,0.78), transparent)',
+                                pointerEvents: 'none',
+                            }}
+                        />
+                        {/* progress bar — pinned to the bottom of the image */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                padding: '16px 20px 24px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 10,
+                                pointerEvents: 'none',
                             }}
                         >
-                            {labelFor(progress)}
-                        </span>
-                        <div style={{
-                            width: '100%', maxWidth: 320, height: 4,
-                            borderRadius: 4,
-                            background: 'rgba(255,255,255,0.14)',
-                            overflow: 'hidden',
-                            boxShadow: '0 0 12px rgba(0,0,0,0.6)',
-                        }}>
-                            <div style={{
-                                height: '100%',
-                                width: `${progress}%`,
-                                borderRadius: 4,
-                                background: 'linear-gradient(90deg, #16a34a, #4ade80)',
-                                boxShadow: '0 0 14px rgba(74,222,128,0.7)',
-                            }} />
+                            <span
+                                key={labelFor(progress)}
+                                style={{
+                                    fontSize: '0.72rem',
+                                    color: 'rgba(255,255,255,0.78)',
+                                    letterSpacing: '0.07em',
+                                    fontFamily: 'monospace',
+                                    animation: 'bootLabelIn 0.28s ease',
+                                    textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+                                }}
+                            >
+                                {labelFor(progress)}
+                            </span>
+                            <div
+                                style={{
+                                    width: '100%',
+                                    maxWidth: 320,
+                                    height: 4,
+                                    borderRadius: 4,
+                                    background: 'rgba(255,255,255,0.16)',
+                                    overflow: 'hidden',
+                                    boxShadow: '0 0 12px rgba(0,0,0,0.7)',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        height: '100%',
+                                        width: `${progress}%`,
+                                        borderRadius: 4,
+                                        background: 'linear-gradient(90deg, #16a34a, #4ade80)',
+                                        boxShadow: '0 0 14px rgba(74,222,128,0.7)',
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
-                </>
+                </div>
             )}
 
             {/* ── Phase 1: logo — sits above loading screen until we transition ── */}
