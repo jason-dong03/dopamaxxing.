@@ -164,10 +164,12 @@ export default function BootIntro() {
                     pointerEvents: 'none',
                 }}
             >
+                {/* Mobile: stacked 3-chars-per-row, fills the screen */}
                 <div
+                    className="boot-logo-mobile"
                     style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center',
-                        gap: 'clamp(2px, 0.6vw, 4px)',
+                        gap: 0,
                         opacity: logoVisible ? 1 : 0,
                         transition: 'opacity 380ms ease',
                     }}
@@ -176,11 +178,11 @@ export default function BootIntro() {
                         <span
                             key={i}
                             style={{
-                                fontSize: 'clamp(2.6rem, 11vw, 4.4rem)',
+                                fontSize: 'clamp(4.5rem, 28vw, 12rem)',
                                 fontWeight: 900,
                                 color: '#fff',
-                                letterSpacing: '-0.04em',
-                                lineHeight: 0.95,
+                                letterSpacing: '-0.06em',
+                                lineHeight: 0.88,
                                 fontFamily: 'inherit',
                                 animation: `bootLogoRise 720ms cubic-bezier(0.22,1,0.36,1) ${i * 80}ms backwards`,
                             }}
@@ -188,6 +190,29 @@ export default function BootIntro() {
                             {line}
                         </span>
                     ))}
+                </div>
+
+                {/* Desktop: single horizontal "Dopamaxxing" */}
+                <div
+                    className="boot-logo-desktop"
+                    style={{
+                        opacity: logoVisible ? 1 : 0,
+                        transition: 'opacity 380ms ease',
+                    }}
+                >
+                    <span
+                        style={{
+                            fontSize: 'clamp(3rem, 9vw, 7rem)',
+                            fontWeight: 900,
+                            color: '#fff',
+                            letterSpacing: '-0.04em',
+                            lineHeight: 1,
+                            fontFamily: 'inherit',
+                            animation: 'bootLogoRise 720ms cubic-bezier(0.22,1,0.36,1) backwards',
+                        }}
+                    >
+                        Dopamaxxing.
+                    </span>
                 </div>
             </div>
 
@@ -199,6 +224,12 @@ export default function BootIntro() {
                 @keyframes bootLabelIn {
                     from { opacity: 0; transform: translateY(3px); }
                     to   { opacity: 1; transform: translateY(0); }
+                }
+                @media (min-width: 640px) {
+                    .boot-logo-mobile { display: none !important; }
+                }
+                @media (max-width: 639px) {
+                    .boot-logo-desktop { display: none !important; }
                 }
             `}</style>
         </div>
