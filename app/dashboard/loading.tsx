@@ -1,98 +1,100 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { markIntroShown } from '@/lib/introState'
 
 /**
- * Three-phase boot sequence (Clash Royale style):
- *   1. Logo flash       — "dopamaxxing." for ~900ms (first dashboard visit per session)
- *   2. Progress bar     — indeterminate slider while the dashboard SSRs
- *   3. Dashboard fades in — handled by <DashboardEntrance/> after this unmounts
+ * Phase 2 of the boot sequence — shown on every dashboard navigation while
+ * the dashboard server component renders. Phase 1 (logo flash) is handled
+ * globally by <BootIntro/> in the root layout. Phase 3 (cloud entrance) is
+ * <DashboardEntrance/>, played once after the dashboard mounts.
  *
- * Subsequent visits within the same session skip the logo and show only the
- * progress bar (Next.js auto-unmounts loading.tsx when page.tsx returns).
+ * Loading screen layout: full-bleed /assets/loading-screen.png with a
+ * progress bar pinned to the bottom and rotating progress labels above it.
  */
+
+const PROGRESS_STAGES = [
+    { ms: 0,    pct: 8,  label: 'Connecting…' },
+    { ms: 320,  pct: 24, label: 'Authenticating…' },
+    { ms: 700,  pct: 42, label: 'Loading user data…' },
+    { ms: 1080, pct: 58, label: 'Loading collection…' },
+    { ms: 1460, pct: 74, label: 'Preparing the shop…' },
+    { ms: 1840, pct: 88, label: 'Syncing quests…' },
+    { ms: 2280, pct: 96, label: 'Almost ready…' },
+] as const
+
 export default function DashboardLoading() {
-    const [mode, setMode] = useState<'check' | 'intro' | 'simple'>('check')
-    const [phase, setPhase] = useState<'logo' | 'bar'>('logo')
+    const [stageIdx, setStageIdx] = useState(0)
 
     useEffect(() => {
-        const seen = sessionStorage.getItem('intro_done')
-
-        if (!seen) {
-            sessionStorage.setItem('intro_done', '1')
-            markIntroShown()
-            setMode('intro')
-            const t = setTimeout(() => setPhase('bar'), 900)
-            return () => clearTimeout(t)
-        }
-
-        setMode('simple')
-        setPhase('bar')
+        const timers = PROGRESS_STAGES.slice(1).map(({ ms }, i) =>
+            setTimeout(() => setStageIdx(i + 1), ms),
+        )
+        return () => timers.forEach(clearTimeout)
     }, [])
 
-    if (mode === 'check') {
-        return <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9999 }} />
-    }
-
-    const ProgressBar = (
-        <div style={{ width: '100%', maxWidth: 280, height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.07)', overflow: 'hidden', position: 'relative' }}>
-            <div style={{
-                position: 'absolute',
-                top: 0, bottom: 0,
-                width: '40%',
-                borderRadius: 3,
-                background: 'linear-gradient(90deg, transparent, #4ade80, transparent)',
-                boxShadow: '0 0 10px rgba(74,222,128,0.5)',
-                animation: 'loadingSlide 1.4s ease-in-out infinite',
-            }} />
-        </div>
-    )
+    const { pct, label } = PROGRESS_STAGES[stageIdx]
 
     return (
         <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9999, overflow: 'hidden' }}>
-            {/* Logo flash — only on first visit per session */}
-            {mode === 'intro' && (
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    opacity: phase === 'logo' ? 1 : 0,
-                    transition: 'opacity 380ms ease',
-                    pointerEvents: 'none',
-                }}>
-                    <span style={{
-                        fontSize: 'clamp(1.6rem, 5vw, 2.4rem)',
-                        fontWeight: 800,
-                        color: '#fff',
-                        letterSpacing: '-0.03em',
-                        animation: 'logoBreath 900ms ease-out',
-                    }}>
-                        dopamaxxing.
-                    </span>
-                </div>
-            )}
-
-            {/* Progress bar — fades in once logo is gone (or immediately for 'simple') */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src="/assets/loading-screen.png"
+                alt=""
+                style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                }}
+            />
+            {/* bottom darken so text reads */}
             <div style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0,
-                padding: '20px 24px 28px',
-                background: 'linear-gradient(0deg, rgba(0,0,0,0.99) 0%, transparent 100%)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: 220,
+                background: 'linear-gradient(0deg, rgba(0,0,0,0.85), transparent)',
                 pointerEvents: 'none',
-                opacity: mode === 'simple' || phase === 'bar' ? 1 : 0,
-                transition: 'opacity 500ms ease 120ms',
+            }} />
+
+            {/* progress bar + label, pinned to the bottom */}
+            <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                padding: '20px 24px 32px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                pointerEvents: 'none',
             }}>
-                {ProgressBar}
+                <span
+                    key={label}
+                    style={{
+                        fontSize: '0.72rem',
+                        color: 'rgba(255,255,255,0.7)',
+                        letterSpacing: '0.07em',
+                        fontFamily: 'monospace',
+                        animation: 'fadeInLabel 0.28s ease',
+                        textShadow: '0 1px 4px rgba(0,0,0,0.85)',
+                    }}
+                >
+                    {label}
+                </span>
+                <div style={{
+                    width: '100%', maxWidth: 320, height: 4,
+                    borderRadius: 4,
+                    background: 'rgba(255,255,255,0.14)',
+                    overflow: 'hidden',
+                    boxShadow: '0 0 12px rgba(0,0,0,0.6)',
+                }}>
+                    <div style={{
+                        height: '100%', width: `${pct}%`, borderRadius: 4,
+                        background: 'linear-gradient(90deg, #16a34a, #4ade80)',
+                        transition: 'width 360ms ease-out',
+                        boxShadow: '0 0 14px rgba(74,222,128,0.7)',
+                    }} />
+                </div>
             </div>
 
             <style>{`
-                @keyframes loadingSlide {
-                    0%   { transform: translateX(-100%); }
-                    100% { transform: translateX(350%); }
-                }
-                @keyframes logoBreath {
-                    0%   { opacity: 0; transform: scale(0.96); }
-                    25%  { opacity: 1; transform: scale(1); }
-                    100% { opacity: 1; transform: scale(1); }
+                @keyframes fadeInLabel {
+                    from { opacity: 0; transform: translateY(3px); }
+                    to   { opacity: 1; transform: translateY(0); }
                 }
             `}</style>
         </div>

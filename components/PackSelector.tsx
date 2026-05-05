@@ -713,16 +713,11 @@ function MobilePackCarousel({
 }) {
     const containerRef = useRef<HTMLDivElement>(null)
     const storageKey = `pack-carousel-idx:${tabKey}`
-    // Remember whether the user has a previously-saved position for this tab.
-    // If they do, we restore it; if not, we auto-pick the first stocked pack
-    // once stock data arrives.
-    const hadSavedIndex = useRef(false)
     const [currentIndex, setCurrentIndex] = useState(() => {
         if (typeof window === 'undefined') return 0
         const saved = sessionStorage.getItem(storageKey)
         const n = saved ? parseInt(saved, 10) : NaN
         if (Number.isFinite(n) && n >= 0) {
-            hadSavedIndex.current = true
             return Math.min(n, Math.max(0, packs.length - 1))
         }
         return 0
@@ -737,34 +732,39 @@ function MobilePackCarousel({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [packs.length])
 
-    // First-time auto-pick: jump to the first level-unlocked pack with stock,
-    // but only when there's no saved position from a previous mount.
+    // Once stock loads on this mount: keep the user's saved position if its
+    // pack still has stock, otherwise jump to the first stocked level-unlocked
+    // pack. Only runs once per mount.
     const autoSelectedRef = useRef(false)
     useEffect(() => {
-        if (autoSelectedRef.current || hadSavedIndex.current) return
+        if (autoSelectedRef.current) return
         if (packs.length === 0) return
         if (!isAdmin && Object.keys(stock).length === 0) return
 
-        let targetIdx = 0
-        if (!isAdmin) {
-            const found = packs.findIndex((p) => {
-                const levelOk = !p.level_required || userLevel >= p.level_required
-                return levelOk && (stock[p.id] ?? 0) > 0
-            })
-            if (found > 0) targetIdx = found
-        }
-
         autoSelectedRef.current = true
-        if (targetIdx === 0) return
+        if (isAdmin) return
 
-        setCurrentIndex(targetIdx)
-        sessionStorage.setItem(storageKey, String(targetIdx))
+        const cur = packs[currentIndex]
+        const curHasStock =
+            !!cur &&
+            (!cur.level_required || userLevel >= cur.level_required) &&
+            (stock[cur.id] ?? 0) > 0
+        if (curHasStock) return
+
+        const found = packs.findIndex((p) => {
+            const levelOk = !p.level_required || userLevel >= p.level_required
+            return levelOk && (stock[p.id] ?? 0) > 0
+        })
+        if (found < 0 || found === currentIndex) return
+
+        setCurrentIndex(found)
+        sessionStorage.setItem(storageKey, String(found))
         requestAnimationFrame(() => {
             const el = containerRef.current
-            const child = el?.children[targetIdx] as HTMLElement | undefined
+            const child = el?.children[found] as HTMLElement | undefined
             if (el && child) el.scrollTo({ left: child.offsetLeft, behavior: 'auto' })
         })
-    }, [stock, packs, isAdmin, userLevel, storageKey])
+    }, [stock, packs, isAdmin, userLevel, storageKey, currentIndex])
 
     function handleScroll() {
         const el = containerRef.current

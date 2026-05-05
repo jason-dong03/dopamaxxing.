@@ -77,17 +77,12 @@ const FEATURES = [
     },
 ]
 
-const MOBILE_LOAD_TOTAL = 24
-
 export default function LandingPage() {
     const supabase = useMemo(() => createClient(), [])
     const router = useRouter()
 
     const [loading, setLoading] = useState<'google' | 'discord' | null>(null)
     const [checking, setChecking] = useState(true)
-    const [showAuthLoader, setShowAuthLoader] = useState(false)
-    const [progressValue, setProgressValue] = useState(0)
-
     const hasNavigatedRef = useRef(false)
 
     // Reset OAuth loading state if user cancels and the browser restores
@@ -107,199 +102,27 @@ export default function LandingPage() {
         let cancelled = false
 
         async function checkSession() {
-            setShowAuthLoader(true)
+            const {
+                data: { session },
+            } = await supabase.auth.getSession()
+            if (cancelled) return
 
-            const progressInterval = window.setInterval(() => {
-                setProgressValue((prev) => {
-                    if (prev >= MOBILE_LOAD_TOTAL - 2) return prev
-                    const step = prev < 8 ? 2 : 1
-                    return Math.min(prev + step, MOBILE_LOAD_TOTAL - 2)
-                })
-            }, 70)
-
-            try {
-                const {
-                    data: { session },
-                } = await supabase.auth.getSession()
-
-                if (cancelled) return
-
-                if (session) {
-                    setProgressValue(MOBILE_LOAD_TOTAL)
-                    if (!hasNavigatedRef.current) {
-                        hasNavigatedRef.current = true
-                        router.prefetch('/dashboard')
-                        router.replace('/dashboard')
-                    }
-                } else {
-                    window.clearInterval(progressInterval)
-                    setShowAuthLoader(false)
-                    setChecking(false)
+            if (session) {
+                if (!hasNavigatedRef.current) {
+                    hasNavigatedRef.current = true
+                    router.prefetch('/dashboard')
+                    router.replace('/dashboard')
                 }
-            } finally {
-                window.clearInterval(progressInterval)
+            } else {
+                setChecking(false)
             }
         }
 
         checkSession()
-
         return () => {
             cancelled = true
         }
     }, [router, supabase])
-
-    if (showAuthLoader) {
-        const percent = Math.round((progressValue / MOBILE_LOAD_TOTAL) * 100)
-
-        return (
-            <div
-                style={{
-                    minHeight: '100vh',
-                    background:
-                        'linear-gradient(160deg, #08080f 0%, #0c0b14 40%, #070709 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
-                }}
-            >
-                <div
-                    style={{
-                        position: 'absolute',
-                        inset: 0,
-                        pointerEvents: 'none',
-                    }}
-                >
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: '-10%',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            width: 700,
-                            height: 500,
-                            background:
-                                'radial-gradient(ellipse, rgba(109,40,217,0.10) 0%, transparent 65%)',
-                        }}
-                    />
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: '5%',
-                            left: '30%',
-                            width: 400,
-                            height: 300,
-                            background:
-                                'radial-gradient(ellipse, rgba(99,102,241,0.07) 0%, transparent 70%)',
-                        }}
-                    />
-                </div>
-
-                <div
-                    style={{
-                        position: 'absolute',
-                        inset: 0,
-                        pointerEvents: 'none',
-                        backgroundImage: `
-                            linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)
-                        `,
-                        backgroundSize: '64px 64px',
-                    }}
-                />
-
-                <div
-                    style={{
-                        position: 'relative',
-                        zIndex: 1,
-                        width: '100%',
-                        maxWidth: 340,
-                        padding: '0 24px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                    }}
-                >
-                    <h1
-                        style={{
-                            fontSize: 'clamp(2rem, 8vw, 2.8rem)',
-                            fontWeight: 800,
-                            letterSpacing: '-0.04em',
-                            color: '#fff',
-                            margin: '0 0 10px',
-                            lineHeight: 1,
-                        }}
-                    >
-                        Dopamaxxing
-                    </h1>
-
-                    <p
-                        style={{
-                            fontSize: '0.78rem',
-                            color: '#6b7280',
-                            margin: '0 0 28px',
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        Loading your dashboard
-                    </p>
-
-                    <div
-                        style={{
-                            width: '100%',
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: 999,
-                            height: 12,
-                            overflow: 'hidden',
-                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: `${percent}%`,
-                                height: '100%',
-                                borderRadius: 999,
-                                background:
-                                    'linear-gradient(90deg, rgba(99,102,241,0.9) 0%, rgba(168,85,247,0.9) 100%)',
-                                boxShadow:
-                                    '0 0 18px rgba(99,102,241,0.28), 0 0 24px rgba(168,85,247,0.18)',
-                                transition: 'width 160ms ease',
-                            }}
-                        />
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: 10,
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            color: '#e5e7eb',
-                            letterSpacing: '-0.01em',
-                        }}
-                    >
-                        {progressValue}/{MOBILE_LOAD_TOTAL}
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: 6,
-                            fontSize: '0.68rem',
-                            color: '#6b7280',
-                        }}
-                    >
-                        {percent}%
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    if (checking) return null
 
     async function signInWithGoogle() {
         setLoading('google')
@@ -327,94 +150,83 @@ export default function LandingPage() {
         <div
             style={{
                 minHeight: '100vh',
-                background:
-                    'linear-gradient(160deg, #08080f 0%, #0c0b14 40%, #070709 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 position: 'relative',
                 overflow: 'hidden',
                 fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px 16px',
             }}
         >
-            <div
+            {/* Loading-screen image as full-bleed backdrop */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src="/assets/loading-screen.png"
+                alt=""
                 style={{
                     position: 'absolute',
                     inset: 0,
-                    pointerEvents: 'none',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    zIndex: 0,
                 }}
-            >
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '-10%',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: 700,
-                        height: 500,
-                        background:
-                            'radial-gradient(ellipse, rgba(109,40,217,0.08) 0%, transparent 65%)',
-                    }}
-                />
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: '5%',
-                        left: '30%',
-                        width: 400,
-                        height: 300,
-                        background:
-                            'radial-gradient(ellipse, rgba(99,102,241,0.05) 0%, transparent 70%)',
-                    }}
-                />
-            </div>
-
+            />
+            {/* dark vignette so the glass card pops */}
             <div
                 style={{
                     position: 'absolute',
                     inset: 0,
+                    background:
+                        'radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.7) 100%)',
+                    zIndex: 0,
                     pointerEvents: 'none',
-                    backgroundImage: `
-                    linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)
-                `,
-                    backgroundSize: '64px 64px',
                 }}
             />
 
+            {/* Glass-morphism container */}
             <div
                 style={{
                     position: 'relative',
                     zIndex: 1,
+                    width: '100%',
+                    maxWidth: 420,
+                    padding: '32px 28px 24px',
+                    borderRadius: 22,
+                    background: 'rgba(15, 15, 22, 0.45)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    boxShadow:
+                        '0 24px 70px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.05) inset',
+                    backdropFilter: 'blur(22px) saturate(1.2)',
+                    WebkitBackdropFilter: 'blur(22px) saturate(1.2)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     textAlign: 'center',
-                    padding: '0 24px',
-                    maxWidth: 480,
-                    width: '100%',
                 }}
             >
                 <h1
                     style={{
-                        fontSize: 'clamp(2.2rem, 7vw, 3.4rem)',
+                        fontSize: 'clamp(1.9rem, 6vw, 2.6rem)',
                         fontWeight: 800,
                         letterSpacing: '-0.04em',
                         color: '#fff',
-                        margin: '0 0 12px',
+                        margin: '0 0 8px',
                         lineHeight: 1,
+                        textShadow: '0 2px 18px rgba(0,0,0,0.4)',
                     }}
                 >
                     Dopamaxxing
                 </h1>
-
                 <p
                     style={{
-                        fontSize: '0.88rem',
-                        color: '#4b5563',
-                        margin: '0 0 40px',
-                        lineHeight: 1.6,
-                        maxWidth: 260,
+                        fontSize: '0.82rem',
+                        color: 'rgba(229,231,235,0.75)',
+                        margin: '0 0 26px',
+                        lineHeight: 1.55,
+                        maxWidth: 280,
                     }}
                 >
                     Collect Pokémon cards. Chase the dopamine.
@@ -423,16 +235,13 @@ export default function LandingPage() {
                 <div
                     style={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: 0,
-                        marginBottom: 44,
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: 14,
+                        alignItems: 'stretch',
+                        marginBottom: 28,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 12,
                         overflow: 'hidden',
-                        backdropFilter: 'blur(8px)',
                         width: '100%',
-                        maxWidth: 420,
                     }}
                 >
                     {FEATURES.map((f, i) => (
@@ -444,21 +253,22 @@ export default function LandingPage() {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 gap: 6,
-                                padding: '14px 8px',
+                                padding: '12px 6px',
                                 borderRight:
                                     i < FEATURES.length - 1
-                                        ? '1px solid rgba(255,255,255,0.06)'
+                                        ? '1px solid rgba(255,255,255,0.08)'
                                         : 'none',
-                                color: '#4b5563',
                             }}
                         >
-                            <div style={{ color: '#6b7280' }}>{f.icon}</div>
+                            <div style={{ color: 'rgba(229,231,235,0.85)' }}>
+                                {f.icon}
+                            </div>
                             <span
                                 style={{
-                                    fontSize: '0.58rem',
-                                    fontWeight: 500,
-                                    color: '#4b5563',
-                                    letterSpacing: '0.04em',
+                                    fontSize: '0.56rem',
+                                    fontWeight: 600,
+                                    color: 'rgba(229,231,235,0.6)',
+                                    letterSpacing: '0.05em',
                                     textTransform: 'uppercase',
                                     whiteSpace: 'nowrap',
                                 }}
@@ -469,165 +279,186 @@ export default function LandingPage() {
                     ))}
                 </div>
 
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 10,
-                        width: '100%',
-                        maxWidth: 300,
-                    }}
-                >
-                    <button
-                        onClick={signInWithGoogle}
-                        disabled={loading !== null}
+                {checking ? (
+                    <div
                         style={{
-                            width: '100%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            height: 100,
                             gap: 10,
-                            padding: '13px 20px',
-                            borderRadius: 12,
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            background:
-                                loading !== null
-                                    ? 'rgba(255,255,255,0.03)'
-                                    : 'rgba(255,255,255,0.06)',
-                            color: loading !== null ? '#374151' : '#e5e7eb',
-                            fontSize: '0.88rem',
-                            fontWeight: 600,
-                            cursor:
-                                loading !== null ? 'not-allowed' : 'pointer',
-                            backdropFilter: 'blur(12px)',
-                            letterSpacing: '-0.01em',
-                            transition:
-                                'background 200ms ease, border-color 200ms ease, transform 200ms ease',
+                            color: 'rgba(229,231,235,0.6)',
+                            fontSize: '0.78rem',
+                            letterSpacing: '0.04em',
                         }}
-                        onMouseEnter={(e) => {
-                            if (!loading) {
+                    >
+                        <span
+                            style={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: '50%',
+                                border: '2px solid rgba(255,255,255,0.18)',
+                                borderTopColor: 'rgba(255,255,255,0.7)',
+                                animation: 'landing-spin 0.9s linear infinite',
+                            }}
+                        />
+                        Checking session…
+                    </div>
+                ) : (
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10,
+                            width: '100%',
+                        }}
+                    >
+                        <button
+                            onClick={signInWithGoogle}
+                            disabled={loading !== null}
+                            style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 10,
+                                padding: '12px 20px',
+                                borderRadius: 12,
+                                border: '1px solid rgba(255,255,255,0.16)',
+                                background:
+                                    loading !== null
+                                        ? 'rgba(255,255,255,0.04)'
+                                        : 'rgba(255,255,255,0.1)',
+                                color:
+                                    loading !== null ? '#4b5563' : '#f1f5f9',
+                                fontSize: '0.86rem',
+                                fontWeight: 600,
+                                cursor:
+                                    loading !== null
+                                        ? 'not-allowed'
+                                        : 'pointer',
+                                backdropFilter: 'blur(8px)',
+                                letterSpacing: '-0.01em',
+                                transition:
+                                    'background 200ms ease, border-color 200ms ease, transform 200ms ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!loading) {
+                                    e.currentTarget.style.background =
+                                        'rgba(255,255,255,0.16)'
+                                    e.currentTarget.style.borderColor =
+                                        'rgba(255,255,255,0.25)'
+                                    e.currentTarget.style.transform =
+                                        'translateY(-1px)'
+                                }
+                            }}
+                            onMouseLeave={(e) => {
                                 e.currentTarget.style.background =
-                                    'rgba(255,255,255,0.09)'
+                                    loading !== null
+                                        ? 'rgba(255,255,255,0.04)'
+                                        : 'rgba(255,255,255,0.1)'
                                 e.currentTarget.style.borderColor =
                                     'rgba(255,255,255,0.16)'
-                                e.currentTarget.style.transform =
-                                    'translateY(-1px)'
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background =
-                                loading !== null
-                                    ? 'rgba(255,255,255,0.03)'
-                                    : 'rgba(255,255,255,0.06)'
-                            e.currentTarget.style.borderColor =
-                                'rgba(255,255,255,0.1)'
-                            e.currentTarget.style.transform = 'translateY(0)'
-                        }}
-                    >
-                        {loading === 'google' ? (
-                            <svg
-                                width={17}
-                                height={17}
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                style={{
-                                    animation:
-                                        'landing-spin 1s linear infinite',
-                                }}
-                            >
-                                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                            </svg>
-                        ) : (
-                            <GoogleIcon />
-                        )}
-                        {loading === 'google'
-                            ? 'Signing in…'
-                            : 'Continue with Google'}
-                    </button>
+                                e.currentTarget.style.transform = 'translateY(0)'
+                            }}
+                        >
+                            {loading === 'google' ? <Spinner /> : <GoogleIcon />}
+                            {loading === 'google'
+                                ? 'Signing in…'
+                                : 'Continue with Google'}
+                        </button>
 
-                    <button
-                        onClick={signInWithDiscord}
-                        disabled={loading !== null}
-                        style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 10,
-                            padding: '13px 20px',
-                            borderRadius: 12,
-                            border: '1px solid rgba(88,101,242,0.3)',
-                            background:
-                                loading !== null
-                                    ? 'rgba(88,101,242,0.04)'
-                                    : 'rgba(88,101,242,0.12)',
-                            color: loading !== null ? '#374151' : '#e5e7eb',
-                            fontSize: '0.88rem',
-                            fontWeight: 600,
-                            cursor:
-                                loading !== null ? 'not-allowed' : 'pointer',
-                            backdropFilter: 'blur(12px)',
-                            letterSpacing: '-0.01em',
-                            transition:
-                                'background 200ms ease, border-color 200ms ease, transform 200ms ease',
-                        }}
-                        onMouseEnter={(e) => {
-                            if (!loading) {
+                        <button
+                            onClick={signInWithDiscord}
+                            disabled={loading !== null}
+                            style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 10,
+                                padding: '12px 20px',
+                                borderRadius: 12,
+                                border: '1px solid rgba(88,101,242,0.45)',
+                                background:
+                                    loading !== null
+                                        ? 'rgba(88,101,242,0.08)'
+                                        : 'rgba(88,101,242,0.22)',
+                                color:
+                                    loading !== null ? '#4b5563' : '#f1f5f9',
+                                fontSize: '0.86rem',
+                                fontWeight: 600,
+                                cursor:
+                                    loading !== null
+                                        ? 'not-allowed'
+                                        : 'pointer',
+                                backdropFilter: 'blur(8px)',
+                                letterSpacing: '-0.01em',
+                                transition:
+                                    'background 200ms ease, border-color 200ms ease, transform 200ms ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!loading) {
+                                    e.currentTarget.style.background =
+                                        'rgba(88,101,242,0.32)'
+                                    e.currentTarget.style.borderColor =
+                                        'rgba(88,101,242,0.65)'
+                                    e.currentTarget.style.transform =
+                                        'translateY(-1px)'
+                                }
+                            }}
+                            onMouseLeave={(e) => {
                                 e.currentTarget.style.background =
-                                    'rgba(88,101,242,0.2)'
+                                    loading !== null
+                                        ? 'rgba(88,101,242,0.08)'
+                                        : 'rgba(88,101,242,0.22)'
                                 e.currentTarget.style.borderColor =
-                                    'rgba(88,101,242,0.5)'
-                                e.currentTarget.style.transform =
-                                    'translateY(-1px)'
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background =
-                                loading !== null
-                                    ? 'rgba(88,101,242,0.04)'
-                                    : 'rgba(88,101,242,0.12)'
-                            e.currentTarget.style.borderColor =
-                                'rgba(88,101,242,0.3)'
-                            e.currentTarget.style.transform = 'translateY(0)'
-                        }}
-                    >
-                        {loading === 'discord' ? (
-                            <svg
-                                width={17}
-                                height={17}
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                style={{
-                                    animation:
-                                        'landing-spin 1s linear infinite',
-                                }}
-                            >
-                                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                            </svg>
-                        ) : (
-                            <DiscordIcon />
-                        )}
-                        {loading === 'discord'
-                            ? 'Signing in…'
-                            : 'Continue with Discord'}
-                    </button>
-                </div>
+                                    'rgba(88,101,242,0.45)'
+                                e.currentTarget.style.transform = 'translateY(0)'
+                            }}
+                        >
+                            {loading === 'discord' ? <Spinner /> : <DiscordIcon />}
+                            {loading === 'discord'
+                                ? 'Signing in…'
+                                : 'Continue with Discord'}
+                        </button>
+                    </div>
+                )}
 
                 <p
                     style={{
-                        fontSize: '0.56rem',
-                        color: '#1f2937',
-                        marginTop: 20,
+                        fontSize: '0.6rem',
+                        color: 'rgba(229,231,235,0.35)',
+                        marginTop: 18,
                     }}
                 >
                     By continuing you agree to have fun collecting cards.
                 </p>
             </div>
+
+            <style>{`
+                @keyframes landing-spin {
+                    from { transform: rotate(0deg); }
+                    to   { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
+    )
+}
+
+function Spinner() {
+    return (
+        <svg
+            width={16}
+            height={16}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            style={{ animation: 'landing-spin 1s linear infinite' }}
+        >
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
     )
 }
 
